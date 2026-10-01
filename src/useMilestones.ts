@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useStore, streak } from './store';
+import { useStore, streak, today } from './store';
+import { checkInWeeks } from './lib/habits';
 import { analyzePortfolio } from './lib/portfolio';
 import { analyzeBudget } from './lib/savings';
 import { MILESTONES, milestoneStatus, type MilestoneContext } from './lib/milestones';
@@ -20,7 +21,9 @@ export function useMilestones() {
       completedLessons: s.completedLessons,
       lessonsByTrack,
       streak: streak(s.activeDays),
+      automated: !!s.savePlan?.automated,
+      checkInStreak: checkInWeeks(s.checkIns, today()),
     };
     return MILESTONES.map((m) => ({ ...m, ...milestoneStatus(m, ctx, s.claimed) }));
-  }, [s.holdings, s.profile.riskProfile, s.income, s.budget, s.goals, s.cards, s.credit, s.completedLessons, s.activeDays, s.claimed]);
+  }, [s.holdings, s.profile.riskProfile, s.income, s.budget, s.goals, s.cards, s.credit, s.completedLessons, s.activeDays, s.claimed, s.savePlan, s.checkIns]);
 }

@@ -14,6 +14,8 @@ export interface MilestoneContext {
   completedLessons: string[];
   lessonsByTrack: Record<string, string[]>;
   streak: number;
+  automated: boolean;
+  checkInStreak: number;
 }
 
 export interface Milestone {
@@ -64,6 +66,24 @@ export const MILESTONES: Milestone[] = [
     bonus: 5,
     points: 75,
     progress: (c) => (c.budget.income > 0 ? frac(c.budget.shares.savings, 0.2) : 0),
+  },
+  {
+    id: 'automate',
+    track: 'Saving',
+    title: 'Put saving on autopilot',
+    detail: 'Schedule an automatic transfer to savings on payday.',
+    bonus: 5,
+    points: 100,
+    progress: (c) => (c.automated ? 1 : 0),
+  },
+  {
+    id: 'checkin-4',
+    track: 'Saving',
+    title: 'Four weekly check-ins in a row',
+    detail: 'Check in on your goals once a week for a month.',
+    bonus: 5,
+    points: 100,
+    progress: (c) => frac(c.checkInStreak, 4),
   },
   { id: 'streak-7', track: 'Saving', title: 'Seven-day streak', detail: 'Make a money move seven days in a row.', bonus: 5, points: 75, progress: (c) => frac(c.streak, 7) },
 

@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import type { Holding, RiskProfile } from './lib/types';
 import type { BudgetLine } from './lib/savings';
 import type { CreditCard, CreditProfile } from './lib/credit';
+import type { SavePlan } from './lib/habits';
 
 export type Stage = 'highSchool' | 'college' | 'graduated';
 
@@ -49,6 +50,11 @@ interface State {
   claimed: Record<string, string>;
   /** Who funds milestone bonuses (a parent, a sponsor, or the user). */
   sponsor: string;
+  savePlan: SavePlan | null;
+  /** Dates of weekly check-ins. */
+  checkIns: string[];
+  /** Fresh-start prompts the user has dismissed. */
+  dismissed: string[];
 
   setProfile: (p: Partial<Profile>) => void;
   addHolding: (h: Omit<Holding, 'id'>) => void;
@@ -69,6 +75,10 @@ interface State {
   completeLesson: (id: string, xp: number) => void;
   claimBonus: (id: string, points: number, goalId: string | null, amount: number) => void;
   setSponsor: (name: string) => void;
+  setSavePlan: (p: SavePlan | null) => void;
+  /** Log this week's deposits per goal and record the check-in. */
+  checkIn: (amounts: Record<string, number>) => void;
+  dismiss: (id: string) => void;
   reset: () => void;
 }
 
@@ -94,6 +104,9 @@ const initial = {
   activeDays: [] as string[],
   claimed: {} as Record<string, string>,
   sponsor: '',
+  savePlan: null as SavePlan | null,
+  checkIns: [] as string[],
+  dismissed: [] as string[],
 };
 
 export const useStore = create<State>()(
@@ -143,6 +156,19 @@ export const useStore = create<State>()(
               },
         ),
       setSponsor: (sponsor) => set({ sponsor }),
+      setSavePlan: (savePlan) => set({ savePlan }),
+      checkIn: (amounts) =>
+        set((s) => {
+          const entries = Object.entries(amounts).filter(([, a]) => a > 0);
+          return {
+            goals: s.goals.map((g) => (amounts[g.id] > 0 ? { ...g, saved: g.saved + amounts[g.id] } : g)),
+            deposits: [...s.deposits, ...entries.map(([goalId, amount]) => ({ id: uid(), goalId, amount, date: today() }))],
+            checkIns: s.checkIns.includes(today()) ? s.checkIns : [...s.checkIns, today()],
+            xp: s.xp + 15 + 10 * entries.length,
+            activeDays: markActive(s.activeDays),
+          };
+        }),
+      dismiss: (id) => set((s) => ({ dismissed: [...s.dismissed, id] })),
       reset: () => set({ ...initial }),
     }),
     { name: 'sprout-v1', version: 1 },

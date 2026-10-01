@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { Area, AreaChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useStore } from '../store';
+import { FREQUENCY_LABEL, monthlyAmount, type Frequency, type SavePlan } from '../lib/habits';
 import {
   CATEGORY_SUGGESTIONS,
   analyzeBudget,
@@ -34,7 +35,8 @@ export default function Savings() {
         </div>
       </div>
 
-      <Goals />
+      <PayYourselfFirst />
+      <div className="mt"><Goals /></div>
 
       <div className="grid g3 mt">
         <Card title="Monthly budget" className="span2">
@@ -112,6 +114,105 @@ export default function Savings() {
       </div>
       <Disclaimer />
     </>
+  );
+}
+
+function PayYourselfFirst() {
+  const { goals, savePlan, setSavePlan, deposit } = useStore();
+  const [draft, setDraft] = useState<SavePlan>(() => savePlan ?? { amount: 25, frequency: 'biweekly', goalId: goals[0]?.id ?? '', automated: false, raiseCommit: 0.5 });
+  const [raise, setRaise] = useState(0);
+  const plan = savePlan;
+  const goalName = (id: string) => goals.find((g) => g.id === id)?.name ?? 'savings';
+  const perMonth = monthlyAmount(draft);
+  // Fall back to the first goal if the chosen one doesn't exist (e.g. the plan was drafted before any goal).
+  const goalId = goals.some((g) => g.id === draft.goalId) ? draft.goalId : goals[0]?.id ?? '';
+
+  if (plan && plan.automated) {
+    return (
+      <Card title="Pay yourself first" action={<span className="pill good">On autopilot</span>}>
+        <div className="row between" style={{ alignItems: 'flex-end', gap: 20 }}>
+          <div>
+            <div className="stat-value">{money(plan.amount)} <span className="small muted" style={{ fontFamily: 'var(--sans)' }}>{FREQUENCY_LABEL[plan.frequency]}</span></div>
+            <p className="small muted">to {goalName(plan.goalId)} · {money(monthlyAmount(plan) * 12)} a year</p>
+          </div>
+          <div className="row">
+            <button className="primary" disabled={!goals.some((g) => g.id === plan.goalId)} onClick={() => { deposit(plan.goalId, plan.amount); celebrate(`Logged ${money(plan.amount)} to ${goalName(plan.goalId)}`); }}>
+              Log this payday’s transfer
+            </button>
+            <button className="ghost" onClick={() => setSavePlan({ ...plan, automated: false })}>Edit plan</button>
+          </div>
+        </div>
+        <div className="insight info mt">
+          <span className="eyebrow tag">Save more tomorrow</span>
+          <p className="small">You committed to saving {Math.round(plan.raiseCommit * 100)}% of every raise. Got a raise or a better-paying job?</p>
+          <div className="row" style={{ marginTop: 8 }}>
+            <label className="field" style={{ width: 220 }}>Extra pay per paycheck<NumberInput money value={raise} onChange={setRaise} aria-label="Raise per paycheck" /></label>
+            <button
+              disabled={raise <= 0}
+              onClick={() => {
+                const add = Math.round(raise * plan.raiseCommit);
+                setSavePlan({ ...plan, amount: plan.amount + add });
+                setRaise(0);
+                celebrate(`Plan raised by ${money(add)}. Update the transfer at your bank to match.`);
+              }}
+            >
+              Raise my transfer by {money(Math.round(raise * plan.raiseCommit))}
+            </button>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card title="Pay yourself first">
+      <p className="small muted" style={{ maxWidth: '72ch' }}>
+        The most reliable way to save is to never see the money. Pick an amount, then schedule an automatic transfer at your bank for payday, before you can spend it.
+        Automatic enrollment more than doubled retirement-plan participation in a well-known study (from 37% to 86%).
+      </p>
+      <div className="grid g4 mt" style={{ alignItems: 'end' }}>
+        <label className="field">Amount<NumberInput money value={draft.amount} onChange={(v) => setDraft({ ...draft, amount: v })} aria-label="Transfer amount" /></label>
+        <label className="field">How often
+          <select value={draft.frequency} onChange={(e) => setDraft({ ...draft, frequency: e.target.value as Frequency })}>
+            {(Object.keys(FREQUENCY_LABEL) as Frequency[]).map((f) => <option key={f} value={f}>{FREQUENCY_LABEL[f]}</option>)}
+          </select>
+        </label>
+        <label className="field">Into
+          <select value={goalId} onChange={(e) => setDraft({ ...draft, goalId: e.target.value })} disabled={!goals.length}>
+            {goals.length ? goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>) : <option>Create a goal below first</option>}
+          </select>
+        </label>
+        <label className="field">Save {Math.round(draft.raiseCommit * 100)}% of future raises
+          <input type="range" min={0} max={1} step={0.05} value={draft.raiseCommit} onChange={(e) => setDraft({ ...draft, raiseCommit: Number(e.target.value) })} />
+        </label>
+      </div>
+      <p className="small" style={{ marginTop: 10 }}>That’s <strong>{money(perMonth)}</strong> a month and <strong>{money(perMonth * 12)}</strong> a year, without having to remember.</p>
+
+      <div className="insight mt">
+        <span className="eyebrow tag">Set it up at your bank (about 3 minutes)</span>
+        <ol className="small" style={{ margin: '4px 0 0', paddingLeft: 18, display: 'grid', gap: 4 }}>
+          <li>Open your bank’s app and find <strong>Transfers</strong>, then <strong>Recurring</strong> or <strong>Scheduled</strong> transfer.</li>
+          <li>Move money from checking to savings. A high-yield savings account pays far more interest than a regular one.</li>
+          <li>Enter {money(draft.amount)}, repeating {FREQUENCY_LABEL[draft.frequency]}, starting on your next payday.</li>
+          <li>Under 18? Ask a parent or guardian to help set it up on your account.</li>
+        </ol>
+        <div className="row" style={{ marginTop: 12 }}>
+          <button
+            className="primary"
+            disabled={!goalId || draft.amount <= 0}
+            onClick={() => {
+              setSavePlan({ ...draft, goalId, automated: true });
+              celebrate('Saving is on autopilot');
+            }}
+          >
+            I scheduled the transfer
+          </button>
+          <button className="ghost" disabled={!goalId || draft.amount <= 0} onClick={() => setSavePlan({ ...draft, goalId, automated: false })}>
+            Save the plan for later
+          </button>
+        </div>
+      </div>
+    </Card>
   );
 }
 

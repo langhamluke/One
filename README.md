@@ -8,13 +8,13 @@ Sprout helps high school and college students learn to **save**, **invest**, and
 
 | Area | Features |
 |---|---|
-| **Home** | Streaks, XP and levels, your top three "next best steps" pulled from every section, the next lesson, and your closest milestone bonuses |
+| **Home** | A 30-second **weekly check-in**, **fresh-start prompts** (new year, new semester, summer job, new month), "**Meet you at 30**" (what steady saving grows to, and what waiting five years would cost), your top three next steps, the next lesson, and your closest bonuses |
 | **Learn** | The centerpiece: 8 short lessons in three courses (Saving, Investing, Credit), each with a quiz. Finishing a course unlocks a savings bonus |
-| **Savings** | Goals with progress and "save $X a month to hit it by…", a 50/30/20 budget with insights, emergency-fund targets, a compound-growth calculator, and a no-guilt small-habit calculator |
+| **Savings** | **Pay yourself first**: pick an amount and schedule, get step-by-step help setting up an automatic transfer at your bank, and commit a share of future raises to savings (Save More Tomorrow). Also goals with progress and "save $X a month to hit it by…", a 50/30/20 budget with insights, emergency-fund targets, a compound-growth calculator, and a no-guilt small-habit calculator |
 | **Portfolio** | Add holdings by ticker (about 50 common ETFs, stocks, and crypto built in, or any custom ticker). **Diversification score (0–100)** across 6 factors, asset and industry breakdowns, a fee analyzer, and plain-English tips |
 | **Optimizer** | A **utility function**, U = E[r] − ½·A·σ², where you set your own risk aversion (A) with a slider or a preset. You can **optimize for your utility, return, risk, Sharpe ratio, or taxes**. Taxes means after-tax utility in a taxable brokerage account or a Roth IRA, using 2026 brackets. It also shows a risk-contribution breakdown, an action plan (invest new money without selling, or a full rebalance with an estimated capital-gains tax), and a Monte-Carlo "what could it grow to" projection |
 | **Credit** | Credit health check based on FICO's published factor weights (an educational estimate, not a score), utilization tracker, minimum-payment-trap calculator, avalanche vs. snowball payoff, links to free real credit scores, and a starter-credit guide |
-| **Rewards** | 19 milestones across saving, investing, credit, and learning. Each pays XP and a dollar bonus that's logged as a deposit into a savings goal. You name who funds the bonuses (a parent, a sponsor, or yourself) |
+| **Rewards** | 21 milestones across saving, investing, credit, and learning. Each pays XP and a dollar bonus that's logged as a deposit into a savings goal. You name who funds the bonuses (a parent, a sponsor, or yourself) |
 
 Everything runs in the browser. Data is saved only on the user's device (`localStorage`). There are no accounts, no bank logins, and no API keys.
 
@@ -29,7 +29,7 @@ Everything runs in the browser. Data is saved only on the user's device (`localS
    npm run dev      # starts the app; open the link it prints (usually http://localhost:5173)
    ```
 
-Other commands: `npm test` (runs the 30 finance and milestone tests), `npm run build` (creates the production site in `dist/`).
+Other commands: `npm test` (runs the 35 finance, habit, and milestone tests), `npm run build` (creates the production site in `dist/`).
 
 ## Put it on the internet (free)
 
@@ -46,6 +46,7 @@ src/
     portfolio.ts   diversification scoring + tips
     optimizer.ts   Black–Litterman / mean–variance optimizer, utility and after-tax optimization, Monte Carlo
     milestones.ts  milestone bonus rules
+    habits.ts      save plan, check-ins, fresh-start moments, future-self math
     savings.ts     compound growth, goals, 50/30/20 budget analysis
     credit.ts      payoff math, avalanche/snowball, utilization, credit check-up
   data/         securities catalog, lessons, sample student data

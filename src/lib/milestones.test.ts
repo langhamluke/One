@@ -19,6 +19,8 @@ const base: MilestoneContext = {
   completedLessons: [],
   lessonsByTrack: { Saving: ['a', 'b'], Investing: ['c'], Credit: ['d'] },
   streak: 0,
+  automated: false,
+  checkInStreak: 0,
 };
 const get = (id: string) => MILESTONES.find((m) => m.id === id)!;
 
