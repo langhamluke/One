@@ -19,7 +19,6 @@ const AVG_SAVINGS_RATE = 0.004;
 
 const TYPE_LABEL: Record<SpendType, string> = { need: 'Need', want: 'Want', save: 'Save' };
 const TYPE_COLOR: Record<SpendType, string> = { need: 'var(--c2)', want: 'var(--c4)', save: 'var(--c1)' };
-const EMOJIS = ['🛟', '🏖️', '🚗', '💻', '🎓', '📱', '🎧', '🎁', '🏠', '✈️'];
 
 export default function Savings() {
   const s = useStore();
@@ -76,7 +75,7 @@ export default function Savings() {
                       </select>
                     </td>
                     <td><NumberInput money value={l.amount} onChange={(v) => s.updateBudgetLine(l.id, { amount: v })} aria-label={`${l.label} amount`} /></td>
-                    <td><button className="ghost" aria-label={`Remove ${l.label}`} onClick={() => s.removeBudgetLine(l.id)}>✕</button></td>
+                    <td><button className="ghost" aria-label={`Remove ${l.label}`} onClick={() => s.removeBudgetLine(l.id)}>Remove</button></td>
                   </tr>
                 ))}
               </tbody>
@@ -99,7 +98,7 @@ export default function Savings() {
               <span className="muted">(3 months of needs)</span>.
             </p>
             {!s.goals.some((g) => /emergency/i.test(g.name)) && (
-              <button className="mt" onClick={() => { s.addGoal({ name: 'Emergency fund', emoji: '🛟', target: ef.starter, deadline: '' }); celebrate('Goal created · +10 XP'); }}>
+              <button className="mt" onClick={() => { s.addGoal({ name: 'Emergency fund', target: ef.starter, deadline: '' }); celebrate('Goal created · +10 XP'); }}>
                 + Create emergency fund goal
               </button>
             )}
@@ -119,7 +118,7 @@ export default function Savings() {
 function Goals() {
   const { goals, addGoal, removeGoal, deposit } = useStore();
   const [adding, setAdding] = useState(false);
-  const [draft, setDraft] = useState({ name: '', emoji: '🎯', target: 500, deadline: '' });
+  const [draft, setDraft] = useState({ name: '', target: 500, deadline: '' });
   const [amounts, setAmounts] = useState<Record<string, number>>({});
 
   return (
@@ -132,16 +131,11 @@ function Goals() {
             e.preventDefault();
             if (!draft.name.trim() || draft.target <= 0) return;
             addGoal({ ...draft, name: draft.name.trim() });
-            celebrate('Goal created · +10 XP 🎯');
+            celebrate('Goal created · 10 XP');
             setAdding(false);
-            setDraft({ name: '', emoji: '🎯', target: 500, deadline: '' });
+            setDraft({ name: '', target: 500, deadline: '' });
           }}
         >
-          <label className="field" style={{ width: 80 }}>Icon
-            <select value={draft.emoji} onChange={(e) => setDraft({ ...draft, emoji: e.target.value })}>
-              {['🎯', ...EMOJIS].map((x) => <option key={x}>{x}</option>)}
-            </select>
-          </label>
           <label className="field" style={{ flex: '2 1 180px' }}>What are you saving for?
             <input autoFocus value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="New laptop, car, trip…" />
           </label>
@@ -152,7 +146,7 @@ function Goals() {
       )}
 
       {goals.length === 0 && !adding && (
-        <div className="empty"><div className="big">🎯</div>Saving is easier with a target. What do you want to save for?</div>
+        <div className="empty">Saving is easier with a target. What do you want to save for?</div>
       )}
 
       <div className="grid g3">
@@ -165,8 +159,8 @@ function Goals() {
           return (
             <div key={g.id} className="card" style={{ boxShadow: 'none' }}>
               <div className="row between">
-                <div className="row"><span style={{ fontSize: '1.6rem' }}>{g.emoji}</span><h3>{g.name}</h3></div>
-                <button className="ghost" aria-label={`Delete ${g.name}`} onClick={() => confirm(`Delete “${g.name}”?`) && removeGoal(g.id)}>✕</button>
+                <h3>{g.name}</h3>
+                <button className="ghost" aria-label={`Delete ${g.name}`} onClick={() => confirm(`Delete “${g.name}”?`) && removeGoal(g.id)}>Delete</button>
               </div>
               <div className="row between" style={{ margin: '8px 0 4px' }}>
                 <strong className="num">{money(g.saved)}</strong><span className="muted small num">of {money(g.target)}</span>
@@ -174,7 +168,7 @@ function Goals() {
               <Bar value={progress} color={done ? 'var(--good)' : undefined} />
               <p className="tiny muted" style={{ marginTop: 6 }}>
                 {done
-                  ? '🎉 Goal reached! Treat yourself (responsibly).'
+                  ? 'Goal reached. Well done.'
                   : g.deadline
                     ? `Save about ${money(perMonth)}/month to hit it by ${new Date(g.deadline + 'T00:00').toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}.`
                     : `${Math.round(progress * 100)}% there. Keep going!`}
@@ -186,7 +180,7 @@ function Goals() {
                   disabled={amt <= 0}
                   onClick={() => {
                     deposit(g.id, amt);
-                    celebrate(g.saved + amt >= g.target && !done ? `🎉 You reached “${g.name}”!` : `+${money(amt)} saved · +10 XP`);
+                    celebrate(g.saved + amt >= g.target && !done ? `You reached “${g.name}”` : `${money(amt)} saved · 10 XP`);
                   }}
                 >
                   Add
@@ -269,15 +263,14 @@ function HabitCalculator() {
       </div>
       <div className="stack mt">
         <div className="insight info">
-          <div className="dot">📅</div>
-          <div><h3>{money(r.perYear)} a year</h3><p className="small muted">That’s what “{label}” costs you annually.</p></div>
+          <span className="eyebrow tag">Per year</span>
+          <div className="stat-value">{money(r.perYear)}</div>
+          <p className="small muted">What “{label}” costs you annually.</p>
         </div>
         <div className="insight good">
-          <div className="dot">🌱</div>
-          <div>
-            <h3>Cut it in half → about {money(half.invested)} in 10 years</h3>
-            <p className="small muted">If you invested the {money(perWeek / 2)}/week you saved at a hypothetical 7% average return.</p>
-          </div>
+          <span className="eyebrow tag">Cut it in half and invest the rest</span>
+          <div className="stat-value">{money(half.invested)}</div>
+          <p className="small muted">after 10 years, investing the {money(perWeek / 2)} a week you save at a hypothetical 7% average return.</p>
         </div>
       </div>
     </Card>

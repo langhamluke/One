@@ -1,51 +1,89 @@
 import { useState } from 'react';
 import { useStore } from '../store';
 import { LESSONS, TRACKS, type Lesson } from '../data/lessons';
-import { Bar, Card, Segmented, celebrate } from '../components/ui';
+import { Bar, Card, celebrate } from '../components/ui';
+
+const TRACK_BLURB: Record<(typeof TRACKS)[number], string> = {
+  Saving: 'Budgeting, emergency funds, and making saving automatic.',
+  Investing: 'Compound growth, diversification, fees, and where to invest.',
+  Credit: 'How scores work and how to use a card without paying interest.',
+};
 
 export default function Learn() {
   const completed = useStore((s) => s.completedLessons);
   const [open, setOpen] = useState<Lesson | null>(null);
-  const [track, setTrack] = useState<'All' | (typeof TRACKS)[number]>('All');
 
   if (open) return <LessonView lesson={open} onClose={() => setOpen(null)} />;
 
-  const shown = LESSONS.filter((l) => track === 'All' || l.track === track);
+  const next = LESSONS.find((l) => !completed.includes(l.id));
   return (
     <>
       <div className="page-head">
         <div>
+          <p className="eyebrow">Curriculum</p>
           <h1>Learn</h1>
-          <p className="muted">Bite-sized lessons. About 4 minutes each. Earn XP and level up your money brain.</p>
+          <p className="muted">Short lessons, each about four minutes, with a quiz at the end. Finish a course to unlock a savings bonus.</p>
         </div>
-        <div style={{ minWidth: 220 }}>
-          <div className="small"><strong>{completed.length}/{LESSONS.length}</strong> lessons complete</div>
-          <Bar value={completed.length / LESSONS.length} />
+        <div style={{ minWidth: 240 }}>
+          <div className="row between small"><span className="muted">Overall progress</span><strong className="num">{completed.length} of {LESSONS.length}</strong></div>
+          <div style={{ marginTop: 6 }}><Bar value={completed.length / LESSONS.length} /></div>
         </div>
       </div>
-      <Segmented value={track} onChange={setTrack} options={[{ value: 'All', label: 'All' }, ...TRACKS.map((t) => ({ value: t, label: t }))]} />
-      <div className="grid g3 mt">
-        {shown.map((l) => {
-          const done = completed.includes(l.id);
-          return (
-            <button key={l.id} className="card" style={{ textAlign: 'left', display: 'block', fontWeight: 400 }} onClick={() => setOpen(l)}>
-              <div className="row between">
-                <span style={{ fontSize: '2rem' }}>{l.emoji}</span>
-                {done ? <span className="pill good">✓ Done</span> : <span className="pill accent">+{l.xp} XP</span>}
+
+      {next && (
+        <Card className="hero">
+          <div className="row between">
+            <div>
+              <p className="eyebrow" style={{ color: 'inherit', opacity: 0.75 }}>Up next · {next.track}</p>
+              <h1 style={{ marginTop: 4 }}>{next.title}</h1>
+              <p className="muted" style={{ marginTop: 4 }}>{next.minutes} minutes · {next.quiz.length}-question quiz · {next.xp} XP</p>
+            </div>
+            <button style={{ background: 'var(--on-brand)', color: 'var(--brand)', borderColor: 'transparent' }} onClick={() => setOpen(next)}>Start lesson</button>
+          </div>
+        </Card>
+      )}
+
+      {TRACKS.map((track) => {
+        const lessons = LESSONS.filter((l) => l.track === track);
+        const done = lessons.filter((l) => completed.includes(l.id)).length;
+        return (
+          <section key={track} className="mt" style={{ marginTop: 32 }}>
+            <div className="row between" style={{ alignItems: 'flex-end', marginBottom: 12 }}>
+              <div>
+                <h2 className="serif" style={{ fontSize: '1.6rem' }}>{track}</h2>
+                <p className="small muted">{TRACK_BLURB[track]}</p>
               </div>
-              <h3 style={{ marginTop: 8 }}>{l.title}</h3>
-              <p className="small muted">{l.track} · {l.minutes} min · {l.quiz.length}-question quiz</p>
-            </button>
-          );
-        })}
-      </div>
+              <div style={{ minWidth: 160 }}>
+                <div className="tiny muted" style={{ textAlign: 'right', marginBottom: 4 }}>{done} of {lessons.length} complete</div>
+                <Bar value={done / lessons.length} />
+              </div>
+            </div>
+            <div className="stack" style={{ gap: 8 }}>
+              {lessons.map((l) => {
+                const isDone = completed.includes(l.id);
+                return (
+                  <button key={l.id} className={`module${isDone ? ' done' : ''}`} onClick={() => setOpen(l)}>
+                    <span className="index">{String(LESSONS.indexOf(l) + 1).padStart(2, '0')}</span>
+                    <span>
+                      <strong style={{ fontWeight: 600 }}>{l.title}</strong>
+                      <span className="small muted" style={{ display: 'block' }}>{l.minutes} min · {l.quiz.length} questions</span>
+                    </span>
+                    {isDone ? <span className="pill good">Complete</span> : <span className="pill accent">{l.xp} XP</span>}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
     </>
   );
 }
 
 function LessonView({ lesson, onClose }: { lesson: Lesson; onClose: () => void }) {
   const completeLesson = useStore((s) => s.completeLesson);
-  const alreadyDone = useStore((s) => s.completedLessons.includes(lesson.id));
+  // Captured on open, so the summary still says "earned XP" after this lesson is marked complete.
+  const [alreadyDone] = useState(() => useStore.getState().completedLessons.includes(lesson.id));
   const [step, setStep] = useState(0);
   const [picked, setPicked] = useState<number | null>(null);
   const [correct, setCorrect] = useState(0);
@@ -61,32 +99,36 @@ function LessonView({ lesson, onClose }: { lesson: Lesson; onClose: () => void }
     setStep(nextStep);
     if (nextStep >= total && !alreadyDone) {
       completeLesson(lesson.id, lesson.xp);
-      celebrate(`Lesson complete · +${lesson.xp} XP 🎓`);
+      celebrate(`Lesson complete · ${lesson.xp} XP`);
     }
   };
 
   return (
-    <div style={{ maxWidth: 640, margin: '0 auto' }}>
-      <div className="row between" style={{ marginBottom: 12 }}>
-        <button className="ghost" onClick={onClose}>← All lessons</button>
-        <span className="small muted">{Math.min(step + 1, total)} / {total}</span>
+    <div style={{ maxWidth: 680, margin: '0 auto' }}>
+      <div className="row between" style={{ marginBottom: 14 }}>
+        <button className="ghost" onClick={onClose}>All lessons</button>
+        <span className="small muted num">{Math.min(step + 1, total)} / {total}</span>
       </div>
-      <Bar value={step / total} />
+      <div style={{ display: 'grid', gridTemplateColumns: `repeat(${total}, 1fr)`, gap: 4 }}>
+        {Array.from({ length: total }, (_, i) => (
+          <div key={i} style={{ height: 3, borderRadius: 2, background: i < step ? 'var(--brand)' : 'var(--surface-2)' }} />
+        ))}
+      </div>
       <Card className="mt">
-        <div style={{ fontSize: '2.2rem' }}>{lesson.emoji}</div>
-        <p className="tiny muted" style={{ marginTop: 4 }}>{lesson.track.toUpperCase()} · {lesson.title}</p>
+        <p className="eyebrow">{lesson.track} · {lesson.title}</p>
 
         {step < cards && (
-          <div className="stack" style={{ marginTop: 10 }}>
-            <h2>{lesson.cards[step].heading}</h2>
-            <p>{lesson.cards[step].body}</p>
-            <button className="primary" style={{ alignSelf: 'flex-start' }} onClick={next}>{step === cards - 1 ? 'Take the quiz →' : 'Next →'}</button>
+          <div className="stack" style={{ marginTop: 12, gap: 16 }}>
+            <h1>{lesson.cards[step].heading}</h1>
+            <p style={{ fontSize: '1.05rem', lineHeight: 1.65 }}>{lesson.cards[step].body}</p>
+            <button className="primary" style={{ alignSelf: 'flex-start' }} onClick={next}>{step === cards - 1 ? 'Take the quiz' : 'Continue'}</button>
           </div>
         )}
 
         {q && (
-          <div className="stack" style={{ marginTop: 10 }}>
-            <h2>{q.q}</h2>
+          <div className="stack" style={{ marginTop: 12 }}>
+            <p className="eyebrow">Question {step - cards + 1} of {lesson.quiz.length}</p>
+            <h1 style={{ fontSize: '1.8rem' }}>{q.q}</h1>
             {q.options.map((o, i) => {
               const state = picked === null ? '' : i === q.answer ? 'right' : i === picked ? 'wrong' : '';
               return (
@@ -98,19 +140,19 @@ function LessonView({ lesson, onClose }: { lesson: Lesson; onClose: () => void }
             {picked !== null && (
               <>
                 <div className={`insight ${picked === q.answer ? 'good' : 'warn'}`}>
-                  <div className="dot">{picked === q.answer ? '🎉' : '💡'}</div>
-                  <div><h3>{picked === q.answer ? 'Nice!' : 'Not quite.'}</h3><p className="small muted">{q.why}</p></div>
+                  <span className="eyebrow tag">{picked === q.answer ? 'Correct' : 'Not quite'}</span>
+                  <p className="small">{q.why}</p>
                 </div>
-                <button className="primary" style={{ alignSelf: 'flex-start' }} onClick={next}>Continue →</button>
+                <button className="primary" style={{ alignSelf: 'flex-start' }} onClick={next}>Continue</button>
               </>
             )}
           </div>
         )}
 
         {finished && (
-          <div className="stack" style={{ marginTop: 10, textAlign: 'center', alignItems: 'center' }}>
-            <h2>Lesson complete! 🎓</h2>
-            <p>You got <strong>{correct}/{lesson.quiz.length}</strong> right{alreadyDone ? '' : ` and earned ${lesson.xp} XP`}.</p>
+          <div className="stack" style={{ marginTop: 12, textAlign: 'center', alignItems: 'center', padding: '12px 0' }}>
+            <h1>Lesson complete</h1>
+            <p className="muted">You answered <strong style={{ color: 'var(--text)' }}>{correct} of {lesson.quiz.length}</strong> correctly{alreadyDone ? '' : ` and earned ${lesson.xp} XP`}.</p>
             <div className="row">
               <button onClick={() => { setStep(0); setCorrect(0); }}>Review again</button>
               <button className="primary" onClick={onClose}>Back to lessons</button>

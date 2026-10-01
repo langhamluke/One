@@ -11,7 +11,6 @@ export interface Lesson {
   id: string;
   track: Track;
   title: string;
-  emoji: string;
   minutes: number;
   xp: number;
   cards: { heading: string; body: string }[];
@@ -23,7 +22,6 @@ export const LESSONS: Lesson[] = [
     id: 'pay-yourself-first',
     track: 'Saving',
     title: 'Pay yourself first',
-    emoji: '🐷',
     minutes: 3,
     xp: 50,
     cards: [
@@ -65,7 +63,6 @@ export const LESSONS: Lesson[] = [
     id: 'budget-50-30-20',
     track: 'Saving',
     title: 'The 50/30/20 budget',
-    emoji: '🧾',
     minutes: 4,
     xp: 50,
     cards: [
@@ -107,7 +104,6 @@ export const LESSONS: Lesson[] = [
     id: 'emergency-fund',
     track: 'Saving',
     title: 'Your emergency fund',
-    emoji: '🛟',
     minutes: 3,
     xp: 50,
     cards: [
@@ -149,7 +145,6 @@ export const LESSONS: Lesson[] = [
     id: 'compound-interest',
     track: 'Investing',
     title: 'Compound interest: your superpower',
-    emoji: '📈',
     minutes: 4,
     xp: 60,
     cards: [
@@ -191,7 +186,6 @@ export const LESSONS: Lesson[] = [
     id: 'diversification',
     track: 'Investing',
     title: 'Don’t put all your eggs in one basket',
-    emoji: '🧺',
     minutes: 5,
     xp: 60,
     cards: [
@@ -233,7 +227,6 @@ export const LESSONS: Lesson[] = [
     id: 'fees-and-accounts',
     track: 'Investing',
     title: 'Fees, Roth IRAs & where to invest',
-    emoji: '🏦',
     minutes: 5,
     xp: 60,
     cards: [
@@ -275,7 +268,6 @@ export const LESSONS: Lesson[] = [
     id: 'credit-score-basics',
     track: 'Credit',
     title: 'How credit scores work',
-    emoji: '💳',
     minutes: 5,
     xp: 60,
     cards: [
@@ -317,7 +309,6 @@ export const LESSONS: Lesson[] = [
     id: 'using-credit-cards',
     track: 'Credit',
     title: 'Using a credit card the smart way',
-    emoji: '✅',
     minutes: 4,
     xp: 60,
     cards: [

@@ -1,11 +1,16 @@
 import { useMemo, useState } from 'react';
-import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis, ZAxis } from 'recharts';
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import { useStore } from '../store';
 import {
   CLASS_FUNDS,
   OPT_CLASSES,
-  DEFAULT_ASSUMPTIONS,
-  PROFILE_TARGET_VOL,
+  PROFILE_RISK_AVERSION,
+  afterTaxAssumptions,
+  optimizeUtility,
+  rebalanceTaxCost,
+  utility,
+  type AccountType,
+  type TaxSettings,
   RISK_FREE,
   badYear,
   contributionPlan,
@@ -24,7 +29,7 @@ import {
 } from '../lib/optimizer';
 import { pct } from '../lib/portfolio';
 import { RISK_PROFILE_LABELS, type RiskProfile } from '../lib/types';
-import { CHART_COLORS, Card, Disclaimer, Legend, NumberInput, Segmented, money } from '../components/ui';
+import { CHART_COLORS, Card, Disclaimer, Legend, NumberInput, Segmented, money, tooltipStyle } from '../components/ui';
 
 const CLASS_LABEL: Record<OptClass, string> = {
   usStocks: 'U.S. stocks',
@@ -42,38 +47,51 @@ const PROFILE_BLURB: Record<RiskProfile, string> = {
   aggressive: 'Nearly all stocks. Biggest long-run growth, and the biggest drops along the way.',
 };
 
-type Strategy = 'profile' | 'sharpe' | 'minvol' | 'maxret' | 'custom';
-const STRATEGY_BLURB: Record<Exclude<Strategy, 'profile'>, string> = {
-  sharpe: 'Max Sharpe ("tangency") portfolio: the most expected return per unit of risk.',
-  minvol: 'Minimum volatility: the smallest swings this mix of assets can achieve.',
-  maxret: 'Maximum return: the highest expected return within the diversification limits. Expect big swings.',
-  custom: 'Build your own: drag the sliders and watch your point move on the frontier chart.',
-};
-
-const tooltipStyle = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, color: 'var(--text)' };
+type Objective = 'utility' | 'return' | 'risk' | 'sharpe' | 'tax' | 'custom';
+const OBJECTIVES: { value: Objective; label: string; blurb: string }[] = [
+  { value: 'utility', label: 'My risk tolerance', blurb: 'Maximizes your utility: the best trade-off between return and risk at the risk tolerance you set.' },
+  { value: 'return', label: 'Return', blurb: 'Maximizes expected return within the diversification limits. Expect the biggest swings.' },
+  { value: 'risk', label: 'Risk', blurb: 'Minimizes volatility: the smallest swings this set of assets can achieve.' },
+  { value: 'sharpe', label: 'Sharpe ratio', blurb: 'Maximizes the Sharpe ratio: the most expected return per unit of risk taken.' },
+  {
+    value: 'tax',
+    label: 'Taxes',
+    blurb: 'Maximizes your utility after taxes. In a taxable account, interest from bonds, cash, and REITs is taxed every year at income-tax rates, while stock funds mostly grow untaxed until you sell. So the tax-aware mix leans toward stock funds.',
+  },
+  { value: 'custom', label: 'Build your own', blurb: 'Drag the sliders and watch the risk and return numbers update.' },
+];
+const BRACKETS = [0.1, 0.12, 0.22, 0.24];
+/** Long-term gains and qualified dividends are 0% for single filers under $49,450 of taxable income (2026), which lines up with the 10–12% brackets. */
+const qualifiedRateFor = (ordinary: number) => (ordinary <= 0.12 ? 0 : 0.15);
 
 export default function Optimizer() {
   const { holdings, profile, setProfile } = useStore();
   const risk = profile.riskProfile;
   const frontier = useMemo(() => efficientFrontier(), []);
   const best = maxSharpe(frontier);
-  const [strategy, setStrategy] = useState<Strategy>('profile');
+  const [objective, setObjective] = useState<Objective>('utility');
+  const [riskAversion, setRiskAversion] = useState(PROFILE_RISK_AVERSION[risk]);
+  const [account, setAccount] = useState<AccountType>('taxable');
+  const [ordinaryRate, setOrdinaryRate] = useState(0.12);
+  const [gainShare, setGainShare] = useState(0.2);
+  const tax: TaxSettings = { account, ordinaryRate, qualifiedRate: qualifiedRateFor(ordinaryRate) };
   const [custom, setCustom] = useState<Weights>(() => portfolioForProfile(frontier, risk).weights);
   const customSum = OPT_CLASSES.reduce((t, c) => t + custom[c], 0);
   const target =
-    strategy === 'sharpe'
+    objective === 'sharpe'
       ? best
-      : strategy === 'minvol'
+      : objective === 'risk'
         ? minVolatility(frontier)
-        : strategy === 'maxret'
+        : objective === 'return'
           ? maxReturn(frontier)
-          : strategy === 'custom'
+          : objective === 'custom'
             ? evaluate(Object.fromEntries(OPT_CLASSES.map((c) => [c, customSum ? custom[c] / customSum : 0])) as Weights)
-            : portfolioForProfile(frontier, risk);
+            : objective === 'tax'
+              ? optimizeUtility(riskAversion, { assumptions: afterTaxAssumptions(tax) })
+              : optimizeUtility(riskAversion);
   const rc = riskContributions(target.weights);
   const worst = badYear(target);
   const mix = useMemo(() => currentMix(holdings), [holdings]);
-  const current = mix.investable > 0 ? evaluate(mix.weights) : null;
 
   const [mode, setMode] = useState<'contribute' | 'rebalance'>('contribute');
   const [contribution, setContribution] = useState(100);
@@ -87,7 +105,6 @@ export default function Optimizer() {
   );
   const end = projection[projection.length - 1];
 
-  const frontierPts = frontier.map((p) => ({ x: +(p.volatility * 100).toFixed(2), y: +(p.expectedReturn * 100).toFixed(2) }));
   const targetMix = OPT_CLASSES.map((c, i) => ({ cls: c, value: target.weights[c], color: CHART_COLORS[i] })).filter((d) => d.value > 0.001);
 
   return (
@@ -99,32 +116,45 @@ export default function Optimizer() {
         </div>
       </div>
 
-      <Card title="1 · Choose a strategy">
-        <Segmented<Strategy>
-          value={strategy}
-          onChange={setStrategy}
-          options={[
-            { value: 'profile', label: 'Match my risk level' },
-            { value: 'sharpe', label: 'Max Sharpe' },
-            { value: 'minvol', label: 'Min volatility' },
-            { value: 'maxret', label: 'Max return' },
-            { value: 'custom', label: 'Build your own' },
-          ]}
-        />
-        {strategy === 'profile' && (
-          <div style={{ marginTop: 12 }}>
+      <Card title="1 · Your utility function">
+        <p className="small muted" style={{ maxWidth: '70ch' }}>
+          Economists describe how much you value return versus how much you dislike risk with a <strong>utility function</strong>. Sprout uses the standard
+          mean–variance form:
+        </p>
+        <p className="serif" style={{ fontSize: '1.7rem', margin: '10px 0' }}>U = E[r] − ½ · A · σ²</p>
+        <p className="small muted" style={{ maxWidth: '70ch' }}>
+          E[r] is expected return, σ is volatility, and A is your <strong>risk aversion</strong>. A higher A means each unit of risk costs you more, so the
+          best portfolio holds more bonds and cash.
+        </p>
+        <div className="grid g2 mt" style={{ alignItems: 'end' }}>
+          <label className="field">
+            <span className="row between"><span>Risk aversion (A)</span><strong className="num" style={{ color: 'var(--text)' }}>{riskAversion.toFixed(1)}</strong></span>
+            <input type="range" min={1} max={10} step={0.1} value={riskAversion} onChange={(e) => setRiskAversion(Number(e.target.value))} />
+            <span className="row between tiny"><span>1 · Comfortable with big swings</span><span>10 · Avoids losses</span></span>
+          </label>
+          <div>
+            <div className="eyebrow" style={{ marginBottom: 6 }}>Presets</div>
             <Segmented<RiskProfile>
               value={risk}
-              onChange={(r) => setProfile({ riskProfile: r })}
+              onChange={(r) => {
+                setProfile({ riskProfile: r });
+                setRiskAversion(PROFILE_RISK_AVERSION[r]);
+              }}
               options={(Object.keys(RISK_PROFILE_LABELS) as RiskProfile[]).map((r) => ({ value: r, label: RISK_PROFILE_LABELS[r] }))}
             />
-            <p className="small muted" style={{ marginTop: 8 }}>
-              {PROFILE_BLURB[risk]} Typical yearly swing: about ±{pct(PROFILE_TARGET_VOL[risk])}.
-            </p>
           </div>
-        )}
-        {strategy !== 'profile' && <p className="small muted" style={{ marginTop: 8 }}>{STRATEGY_BLURB[strategy]}</p>}
-        {strategy === 'custom' && (
+        </div>
+        <p className="small muted" style={{ marginTop: 8 }}>{PROFILE_BLURB[risk]}</p>
+
+        <div style={{ marginTop: 22 }}>
+          <div className="eyebrow" style={{ marginBottom: 6 }}>Optimize for</div>
+          <Segmented<Objective> value={objective} onChange={setObjective} options={OBJECTIVES.map(({ value, label }) => ({ value, label }))} />
+          <p className="small muted" style={{ marginTop: 8, maxWidth: '75ch' }}>{OBJECTIVES.find((o) => o.value === objective)!.blurb}</p>
+        </div>
+
+        {objective === 'tax' && <TaxSettingsForm account={account} setAccount={setAccount} ordinaryRate={ordinaryRate} setOrdinaryRate={setOrdinaryRate} />}
+
+        {objective === 'custom' && (
           <div className="grid g3 mt" style={{ gap: 12 }}>
             {OPT_CLASSES.map((c) => (
               <label key={c} className="field">
@@ -138,15 +168,19 @@ export default function Optimizer() {
       </Card>
 
       <div className="grid g2 mt">
-        <Card title={strategy === 'custom' ? '2 · Your custom mix' : '2 · Your target mix'}>
+        <Card title={objective === 'custom' ? '2 · Your custom mix' : '2 · Your optimal mix'}>
           <div className="row" style={{ alignItems: 'flex-start', gap: 20 }}>
             <div style={{ flex: 1, minWidth: 220 }}>
               <Legend items={targetMix.map((d) => ({ label: CLASS_LABEL[d.cls], value: pct(d.value), color: d.color }))} />
             </div>
             <div className="stack" style={{ minWidth: 160 }}>
-              <div><div className="stat-label">Long-run return (est.)</div><div className="stat-value">{pct(target.expectedReturn, 1)}</div></div>
+              <div>
+                <div className="stat-label">{objective === 'tax' ? 'Long-run return after tax (est.)' : 'Long-run return (est.)'}</div>
+                <div className="stat-value">{pct(target.expectedReturn, 1)}</div>
+              </div>
               <div><div className="stat-label">Typical yearly swing</div><div className="stat-value">±{pct(target.volatility, 1)}</div></div>
               <div><div className="stat-label">Sharpe ratio</div><div className="stat-value">{target.sharpe.toFixed(2)}</div></div>
+              <div><div className="stat-label">Your utility (A = {riskAversion.toFixed(1)})</div><div className="stat-value">{pct(utility(target, riskAversion), 2)}</div></div>
               <div><div className="stat-label">A bad year (1 in 20)</div><div className="stat-value" style={{ color: 'var(--alert)' }}>{pct(worst, 0)}</div></div>
             </div>
           </div>
@@ -163,36 +197,6 @@ export default function Optimizer() {
           </p>
         </Card>
 
-        <Card title="The efficient frontier">
-          <p className="small muted" style={{ marginBottom: 8 }}>
-            Each point on the curve is the highest expected return for that level of risk. Below the curve means you’re taking risk you aren’t paid for.
-          </p>
-          <div style={{ height: 250 }}>
-            <ResponsiveContainer>
-              <ScatterChart margin={{ top: 10, right: 10, bottom: 18, left: 0 }}>
-                <CartesianGrid stroke="var(--border)" strokeDasharray="3 3" />
-                <XAxis type="number" dataKey="x" name="Risk" unit="%" domain={[0, 'auto']} tick={{ fill: 'var(--muted)', fontSize: 12 }} label={{ value: 'Risk (yearly swing)', position: 'insideBottom', offset: -10, fill: 'var(--muted)', fontSize: 12 }} />
-                <YAxis type="number" dataKey="y" name="Return" unit="%" domain={['auto', 'auto']} tick={{ fill: 'var(--muted)', fontSize: 12 }} width={44} />
-                <ZAxis range={[40, 40]} />
-                <Tooltip cursor={false} contentStyle={tooltipStyle} formatter={(v) => `${v}%`} />
-                <Scatter name="Frontier" data={frontierPts} fill="var(--c7)" line={{ stroke: 'var(--c7)', strokeWidth: 2 }} shape="circle" />
-                <Scatter name="Your target" data={[{ x: +(target.volatility * 100).toFixed(2), y: +(target.expectedReturn * 100).toFixed(2) }]} fill="var(--c1)" shape="star" />
-                <Scatter name="Best return per unit of risk" data={[{ x: +(best.volatility * 100).toFixed(2), y: +(best.expectedReturn * 100).toFixed(2) }]} fill="var(--c3)" shape="diamond" />
-                {current && <Scatter name="You today" data={[{ x: +(current.volatility * 100).toFixed(2), y: +(current.expectedReturn * 100).toFixed(2) }]} fill="var(--c8)" shape="triangle" />}
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-          <Legend
-            items={[
-              { label: 'Your target', value: '★', color: 'var(--c1)' },
-              { label: 'Best return per unit of risk', value: '◆', color: 'var(--c3)' },
-              ...(current ? [{ label: 'Your portfolio today', value: '▲', color: 'var(--c8)' }] : []),
-            ]}
-          />
-        </Card>
-      </div>
-
-      <div className="grid g2 mt">
         <Card title="Where your risk really comes from">
           <p className="small muted" style={{ marginBottom: 10 }}>
             Dollars and risk aren’t the same thing. Stocks swing far more than bonds, so they usually supply most of a portfolio’s ups and downs.
@@ -200,7 +204,7 @@ export default function Optimizer() {
           <div className="stack">
             {OPT_CLASSES.filter((c) => target.weights[c] > 0.001).map((c) => (
               <div key={c}>
-                <div className="row between small"><strong>{CLASS_LABEL[c]}</strong><span className="muted num">{pct(target.weights[c])} of money → <strong style={{ color: 'var(--text)' }}>{pct(Math.max(0, rc[c]))} of risk</strong></span></div>
+                <div className="row between small"><strong>{CLASS_LABEL[c]}</strong><span className="muted num">{pct(target.weights[c])} of money, <strong style={{ color: 'var(--text)' }}>{pct(Math.max(0, rc[c]))} of risk</strong></span></div>
                 <div style={{ display: 'grid', gap: 3 }}>
                   <div className="bar" style={{ height: 6 }}><span style={{ width: `${target.weights[c] * 100}%`, background: 'var(--c7)' }} /></div>
                   <div className="bar" style={{ height: 6 }}><span style={{ width: `${Math.max(0, rc[c]) * 100}%`, background: 'var(--c3)' }} /></div>
@@ -209,12 +213,6 @@ export default function Optimizer() {
             ))}
           </div>
           <div className="mt"><Legend items={[{ label: 'Share of money', value: '', color: 'var(--c7)' }, { label: 'Share of risk', value: '', color: 'var(--c3)' }]} /></div>
-        </Card>
-        <Card title="Correlation: who moves together?">
-          <p className="small muted" style={{ marginBottom: 10 }}>
-            +1 means two assets move in lockstep. 0 means they’re unrelated. Low numbers are the secret sauce of diversification.
-          </p>
-          <CorrelationMatrix />
         </Card>
       </div>
 
@@ -236,15 +234,32 @@ export default function Optimizer() {
                 <span className="small muted">We’ll steer it toward what’s underweight, with no selling needed.</span>
               </div>
             ) : (
-              <p className="small muted" style={{ marginBottom: 12 }}>
-                Buys and sells to match your target exactly. Selling in a taxable account can trigger taxes, so many people rebalance with new money instead.
-              </p>
+              <div style={{ marginBottom: 12 }}>
+                <p className="small muted">
+                  Buys and sells to match your target exactly. Selling at a profit in a taxable account triggers capital-gains tax, so many people rebalance with
+                  new money instead.
+                </p>
+                <TaxSettingsForm account={account} setAccount={setAccount} ordinaryRate={ordinaryRate} setOrdinaryRate={setOrdinaryRate} />
+                {account === 'taxable' && (
+                  <div className="row mt" style={{ alignItems: 'flex-end', gap: 20 }}>
+                    <label className="field" style={{ width: 240 }}>
+                      Share of what you sell that is profit: {pct(gainShare)}
+                      <input type="range" min={0} max={1} step={0.05} value={gainShare} onChange={(e) => setGainShare(Number(e.target.value))} />
+                    </label>
+                    <p className="small" style={{ flex: 1, minWidth: 240 }}>
+                      Estimated tax from this rebalance: <strong>{money(rebalanceTaxCost(trades, gainShare, tax.qualifiedRate))}</strong> if you’ve held for over a year
+                      ({pct(tax.qualifiedRate)} rate), or <strong>{money(rebalanceTaxCost(trades, gainShare, ordinaryRate))}</strong> if under a year
+                      ({pct(ordinaryRate)}, taxed like income).
+                    </p>
+                  </div>
+                )}
+              </div>
             )}
             <div className="table-wrap">
               <table>
                 <thead><tr><th>Asset class</th><th>You have</th><th>Target</th><th>Action</th><th>Fund ideas</th></tr></thead>
                 <tbody>
-                  {trades.length === 0 && <tr><td colSpan={5} className="muted">You’re already on target. Nothing to do. 🎉</td></tr>}
+                  {trades.length === 0 && <tr><td colSpan={5} className="muted">You’re already on target. Nothing to do.</td></tr>}
                   {trades.map((t) => (
                     <tr key={t.cls}>
                       <td>{CLASS_LABEL[t.cls]}</td>
@@ -276,7 +291,7 @@ export default function Optimizer() {
         <div className="grid g3" style={{ marginBottom: 12 }}>
           <div><div className="stat-label">You put in</div><div className="stat-value">{money(end.contributed)}</div></div>
           <div><div className="stat-label">Typical outcome</div><div className="stat-value" style={{ color: 'var(--good)' }}>{money(end.p50)}</div></div>
-          <div><div className="stat-label">Range (bad → great)</div><div className="stat-value small" style={{ fontSize: '1.1rem' }}>{money(end.p10)} – {money(end.p90)}</div></div>
+          <div><div className="stat-label">Range (bad to great)</div><div className="stat-value small" style={{ fontSize: '1.1rem' }}>{money(end.p10)} – {money(end.p90)}</div></div>
         </div>
         <div style={{ height: 260 }}>
           <ResponsiveContainer>
@@ -320,9 +335,8 @@ export default function Optimizer() {
           <div className="grid g2" style={{ gap: 10 }}>
             <p><strong>Volatility (σ)</strong>: how much returns typically swing in a year. Higher means a bumpier ride.</p>
             <p><strong>Sharpe ratio</strong>: (return − cash rate) ÷ volatility. Extra return earned for each unit of risk taken.</p>
-            <p><strong>Correlation (ρ)</strong>: from −1 to +1, how closely two assets move together. Lower means better diversification.</p>
-            <p><strong>Efficient frontier</strong>: the curve of best-possible portfolios. Every point gives the most return for its risk.</p>
-            <p><strong>Tangency portfolio</strong>: the frontier point with the highest Sharpe ratio (the ◆ on the chart).</p>
+            <p><strong>Diversification</strong>: owning assets that don’t all move together, so one bad stretch doesn’t sink everything.</p>
+            <p><strong>Max Sharpe portfolio</strong>: the mix with the highest Sharpe ratio, the best return per unit of risk.</p>
             <p><strong>Rebalancing</strong>: nudging your mix back to target, ideally with new money so you don’t trigger taxes.</p>
           </div>
         </div>
@@ -332,31 +346,22 @@ export default function Optimizer() {
   );
 }
 
-function CorrelationMatrix() {
-  const short: Record<OptClass, string> = { usStocks: 'US', intlStocks: 'Intl', emStocks: 'EM', bonds: 'Bond', cash: 'Cash', realEstate: 'REIT' };
-  const color = (r: number) => `color-mix(in srgb, var(--c3) ${Math.round(Math.abs(r) * 85)}%, var(--surface))`;
+function TaxSettingsForm(p: { account: AccountType; setAccount: (a: AccountType) => void; ordinaryRate: number; setOrdinaryRate: (r: number) => void }) {
   return (
-    <div className="table-wrap">
-      <table style={{ tableLayout: 'fixed', minWidth: 340 }}>
-        <thead>
-          <tr><th />{OPT_CLASSES.map((c) => <th key={c} style={{ textAlign: 'center', padding: 4 }}>{short[c]}</th>)}</tr>
-        </thead>
-        <tbody>
-          {OPT_CLASSES.map((ci, i) => (
-            <tr key={ci}>
-              <th style={{ padding: 4 }}>{short[ci]}</th>
-              {OPT_CLASSES.map((cj, j) => {
-                const r = DEFAULT_ASSUMPTIONS.correlation[i][j];
-                return (
-                  <td key={cj} title={`${CLASS_LABEL[ci]} vs ${CLASS_LABEL[cj]}: ${r}`} style={{ textAlign: 'center', padding: '8px 2px', background: color(r), fontSize: '0.8rem', fontWeight: 600, border: '2px solid var(--surface)' }}>
-                    {r.toFixed(2)}
-                  </td>
-                );
-              })}
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid g2 mt" style={{ alignItems: 'end' }}>
+      <div>
+        <div className="eyebrow" style={{ marginBottom: 6 }}>Account type</div>
+        <Segmented<AccountType> value={p.account} onChange={p.setAccount} options={[{ value: 'taxable', label: 'Taxable brokerage' }, { value: 'roth', label: 'Roth IRA' }]} />
+      </div>
+      {p.account === 'taxable' ? (
+        <label className="field">Your federal income-tax bracket
+          <select value={p.ordinaryRate} onChange={(e) => p.setOrdinaryRate(Number(e.target.value))}>
+            {BRACKETS.map((b) => <option key={b} value={b}>{pct(b)}{b <= 0.12 ? ' (0% on long-term gains)' : ' (15% on long-term gains)'}</option>)}
+          </select>
+        </label>
+      ) : (
+        <p className="small muted">In a Roth IRA, growth and qualified withdrawals are tax-free, so taxes don’t change the optimal mix or the cost of rebalancing.</p>
+      )}
     </div>
   );
 }

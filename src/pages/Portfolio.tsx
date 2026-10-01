@@ -37,14 +37,13 @@ export default function Portfolio() {
       <AddHolding
         onAdd={(h) => {
           addHolding(h);
-          celebrate(`Added ${h.symbol} · +5 XP`);
+          celebrate(`Added ${h.symbol} · 5 XP`);
         }}
       />
 
       {holdings.length === 0 ? (
         <Card className="mt">
           <div className="empty">
-            <div className="big">📊</div>
             <p>Add an investment above, like <strong>VTI</strong>, <strong>AAPL</strong>, or <strong>VOO</strong>, to see your diversification score.</p>
             <p className="small" style={{ marginTop: 6 }}>Not investing yet? Add what you’re <em>thinking</em> of buying to test it first.</p>
           </div>
@@ -77,7 +76,7 @@ export default function Portfolio() {
           </div>
 
           <div className="grid g3 mt">
-            <Card title="Tips to improve" className="span2" action={<Link to="/optimizer" className="btn">Open optimizer →</Link>}>
+            <Card title="Tips to improve" className="span2" action={<Link to="/optimizer" className="btn">Open optimizer</Link>}>
               <Insights items={a.insights} />
             </Card>
             <div className="stack">
@@ -113,7 +112,7 @@ export default function Portfolio() {
                         <td><NumberInput money value={h.value} onChange={(v) => updateHolding(h.id, { value: v })} aria-label={`${h.symbol} value`} /></td>
                         <td className="num">{pct(w, 1)}</td>
                         <td className="num small muted">{h.kind === 'stock' || h.kind === 'crypto' ? '—' : pctFine(h.expenseRatio)}</td>
-                        <td><button className="ghost" aria-label={`Remove ${h.symbol}`} onClick={() => removeHolding(h.id)}>✕</button></td>
+                        <td><button className="ghost" aria-label={`Remove ${h.symbol}`} onClick={() => removeHolding(h.id)}>Remove</button></td>
                       </tr>
                     );
                   })}
@@ -213,7 +212,7 @@ function AddHolding({ onAdd }: { onAdd: (h: NewHolding) => void }) {
         </label>
         <button className="primary" type="submit" disabled={!symbol || value <= 0}>Add</button>
       </form>
-      {known && <p className="small muted" style={{ marginTop: 8 }}>✓ <strong>{known.name}</strong>: {known.blurb}</p>}
+      {known && <p className="small muted" style={{ marginTop: 8 }}><strong>{known.name}</strong>: {known.blurb}</p>}
       {symbol && !known && !open && (
         <div className="grid g4 mt" style={{ gap: 10 }}>
           <p className="small muted" style={{ gridColumn: '1 / -1' }}>We don’t know <strong>{symbol}</strong> yet. Tell us a bit about it so we can score it:</p>

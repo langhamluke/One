@@ -9,7 +9,6 @@ export type Stage = 'highSchool' | 'college' | 'graduated';
 export interface SavingsGoal {
   id: string;
   name: string;
-  emoji: string;
   target: number;
   saved: number;
   /** ISO date (yyyy-mm-dd) or empty for no deadline. */
@@ -21,6 +20,8 @@ export interface Deposit {
   goalId: string;
   amount: number;
   date: string; // ISO date
+  /** Logged from a claimed milestone bonus. */
+  bonus?: boolean;
 }
 
 export interface Profile {
@@ -44,6 +45,10 @@ interface State {
   completedLessons: string[];
   /** ISO dates on which the user did something money-positive (for streaks). */
   activeDays: string[];
+  /** Milestone id -> date its bonus was claimed. */
+  claimed: Record<string, string>;
+  /** Who funds milestone bonuses (a parent, a sponsor, or the user). */
+  sponsor: string;
 
   setProfile: (p: Partial<Profile>) => void;
   addHolding: (h: Omit<Holding, 'id'>) => void;
@@ -62,6 +67,8 @@ interface State {
   removeCard: (id: string) => void;
   setCredit: (p: Partial<CreditProfile>) => void;
   completeLesson: (id: string, xp: number) => void;
+  claimBonus: (id: string, points: number, goalId: string | null, amount: number) => void;
+  setSponsor: (name: string) => void;
   reset: () => void;
 }
 
@@ -85,6 +92,8 @@ const initial = {
   xp: 0,
   completedLessons: [] as string[],
   activeDays: [] as string[],
+  claimed: {} as Record<string, string>,
+  sponsor: '',
 };
 
 export const useStore = create<State>()(
@@ -121,6 +130,19 @@ export const useStore = create<State>()(
             ? s
             : { completedLessons: [...s.completedLessons, id], xp: s.xp + xp, activeDays: markActive(s.activeDays) },
         ),
+      claimBonus: (id, points, goalId, amount) =>
+        set((s) =>
+          s.claimed[id]
+            ? s
+            : {
+                claimed: { ...s.claimed, [id]: today() },
+                xp: s.xp + points,
+                goals: goalId && amount > 0 ? s.goals.map((g) => (g.id === goalId ? { ...g, saved: g.saved + amount } : g)) : s.goals,
+                deposits:
+                  goalId && amount > 0 ? [...s.deposits, { id: uid(), goalId, amount, date: today(), bonus: true }] : s.deposits,
+              },
+        ),
+      setSponsor: (sponsor) => set({ sponsor }),
       reset: () => set({ ...initial }),
     }),
     { name: 'sprout-v1', version: 1 },

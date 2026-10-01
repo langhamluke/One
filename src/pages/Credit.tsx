@@ -17,28 +17,24 @@ const FREE_SCORE_LINKS = [
 
 const STARTER_PATHS = [
   {
-    icon: '👨‍👩‍👧',
     title: 'Authorized user',
     who: 'Any age (issuer rules vary)',
     how: 'A parent or guardian adds you to their card. Their on-time history can show up on your credit report. You don’t even need to use the card.',
     watch: 'Only works if they pay on time and keep balances low. Their mistakes can show up on your report too.',
   },
   {
-    icon: '🔒',
     title: 'Secured credit card',
     who: '18+',
     how: 'You put down a refundable deposit (often $200–$500) that becomes your limit. It works like a normal card and reports to the bureaus.',
     watch: 'Pick one with no annual fee that reports to all three bureaus and lets you “graduate” to an unsecured card.',
   },
   {
-    icon: '🎓',
     title: 'Student credit card',
     who: '18+ (21+, or 18–20 with your own income or a co-signer)',
     how: 'An unsecured starter card with a low limit, made for students with little credit history. Some offer small cash-back rewards.',
     watch: 'Under the CARD Act, applicants under 21 must show independent income or have a co-signer. Skip any card with an annual fee.',
   },
   {
-    icon: '🏦',
     title: 'Credit-builder loan',
     who: '18+',
     how: 'Offered by credit unions and some apps. You make small monthly payments into a locked savings account, get the money at the end, and build payment history.',
@@ -102,7 +98,7 @@ export default function Credit() {
       <div className="grid g3 mt">
         <Card title="Your cards" className="span2" action={<button className="primary" onClick={() => addCard({ name: `Card ${cards.length + 1}`, balance: 0, limit: 1000, apr: TYPICAL_APR })}>+ Add card</button>}>
           {cards.length === 0 ? (
-            <div className="empty"><div className="big">💳</div>No cards yet, and that’s totally fine. Check out the starter options below.</div>
+            <div className="empty">No cards yet, and that’s totally fine. Check out the starter options below.</div>
           ) : (
             <>
               <div className="row between" style={{ marginBottom: 8 }}>
@@ -122,7 +118,7 @@ export default function Credit() {
                         <td style={{ width: 90 }}><NumberInput value={+(c.apr * 100).toFixed(2)} onChange={(v) => updateCard(c.id, { apr: v / 100 })} aria-label="APR" /></td>
                         <td className="num">{c.limit ? Math.round((c.balance / c.limit) * 100) : 0}%</td>
                         <td className="num">{money(minimumPayment(c.balance, c.apr), 2)}</td>
-                        <td><button className="ghost" aria-label={`Remove ${c.name}`} onClick={() => removeCard(c.id)}>✕</button></td>
+                        <td><button className="ghost" aria-label={`Remove ${c.name}`} onClick={() => removeCard(c.id)}>Remove</button></td>
                       </tr>
                     ))}
                   </tbody>
@@ -146,20 +142,18 @@ export default function Credit() {
         <div className="grid g4">
           {STARTER_PATHS.map((p) => (
             <div key={p.title} className="stack" style={{ gap: 6 }}>
-              <div style={{ fontSize: '1.8rem' }}>{p.icon}</div>
               <h3>{p.title}</h3>
               <span className="pill info" style={{ alignSelf: 'flex-start' }}>{p.who}</span>
               <p className="small">{p.how}</p>
-              <p className="tiny muted">⚠️ {p.watch}</p>
+              <p className="tiny muted"><strong>Watch out:</strong> {p.watch}</p>
             </div>
           ))}
         </div>
         <div className="insight good mt">
-          <div className="dot">✅</div>
+          <span className="eyebrow tag">The simple recipe</span>
           <div>
-            <h3>The simple recipe</h3>
             <p className="small muted">
-              One card → one small recurring bill (like a streaming plan) → autopay the <strong>full statement balance</strong> → don’t touch it otherwise. That builds
+              One card, one small recurring bill (like a streaming plan), autopay set to the <strong>full statement balance</strong>, and don’t touch it otherwise. That builds
               on-time history and low utilization, and you pay $0 in interest.
             </p>
           </div>
@@ -189,12 +183,10 @@ function PayoffCalculator() {
       </div>
       <div className="grid g2 mt" style={{ gap: 10 }}>
         <div className="insight alert">
-          <div className="dot">🐢</div>
-          <div><h3>Minimum only</h3><p className="small">{fmtTime(min.months)} · <strong>{Number.isFinite(min.totalInterest) ? money(min.totalInterest) : '∞'}</strong> interest</p></div>
+          <span className="eyebrow tag">Minimum only</span><p className="small">{fmtTime(min.months)} · <strong>{Number.isFinite(min.totalInterest) ? money(min.totalInterest) : '∞'}</strong> interest</p>
         </div>
         <div className="insight good">
-          <div className="dot">🚀</div>
-          <div><h3>{money(payment)}/month</h3><p className="small">{fmtTime(fixed.months)} · <strong>{Number.isFinite(fixed.totalInterest) ? money(fixed.totalInterest) : '∞'}</strong> interest</p></div>
+          <span className="eyebrow tag">{money(payment)} a month</span><p className="small">{fmtTime(fixed.months)} · <strong>{Number.isFinite(fixed.totalInterest) ? money(fixed.totalInterest) : '∞'}</strong> interest</p>
         </div>
       </div>
       {!Number.isFinite(fixed.months) && <p className="small" style={{ color: 'var(--alert)', marginTop: 8 }}>That payment doesn’t even cover the monthly interest. The balance would never shrink.</p>}
@@ -244,7 +236,7 @@ function MultiCardPlan() {
               {strategy === 'avalanche' ? ' Avalanche saves the most money.' : ' Snowball gives quicker wins, which helps some people stay motivated.'}
             </p>
           )}
-          <p className="small">Payoff order: {plan.order.map((id) => cards.find((c) => c.id === id)?.name).join(' → ')}</p>
+          <p className="small">Payoff order: {plan.order.map((id) => cards.find((c) => c.id === id)?.name).join(', then ')}</p>
         </div>
       ) : (
         <p className="small mt" style={{ color: 'var(--alert)' }}>You need at least {money(minTotal, 2)}/month to cover all minimum payments.</p>
@@ -262,8 +254,7 @@ function CheckRealScore() {
       <div className="stack">
         {FREE_SCORE_LINKS.map((l) => (
           <a key={l.name} href={l.url} target="_blank" rel="noopener noreferrer" className="insight" style={{ textDecoration: 'none', color: 'inherit' }}>
-            <div className="dot" style={{ background: 'var(--info-soft)' }}>↗</div>
-            <div><h3>{l.name}</h3><p className="small muted">{l.what}</p></div>
+            <h3>{l.name}</h3><p className="small muted">{l.what}</p>
           </a>
         ))}
       </div>

@@ -31,8 +31,8 @@ export function loadSampleData() {
       { id: uid(), label: 'Investing', amount: 50, type: 'save', category: 'Investing' },
     ],
     goals: [
-      { id: 'g-emergency', name: 'Emergency fund', emoji: '🛟', target: 1000, saved: 320, deadline: '' },
-      { id: 'g-trip', name: 'Spring break trip', emoji: '🏖️', target: 600, saved: 150, deadline: nextMarch() },
+      { id: 'g-emergency', name: 'Emergency fund', target: 1000, saved: 320, deadline: '' },
+      { id: 'g-trip', name: 'Spring break trip', target: 600, saved: 150, deadline: nextMarch() },
     ],
     deposits: [{ id: uid(), goalId: 'g-emergency', amount: 20, date: today() }],
     cards: [{ id: uid(), name: 'Student card', balance: 420, limit: 1500, apr: 0.2399 }],

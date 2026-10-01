@@ -16,6 +16,10 @@ import {
   projectGrowth,
   rebalanceTrades,
   riskContributions,
+  optimizeUtility,
+  afterTaxAssumptions,
+  rebalanceTaxCost,
+  utility,
 } from './optimizer';
 import { analyzeBudget, futureValue, monthlyNeeded, monthsToGoal } from './savings';
 import { creditCheckup, minimumPayment, multiPayoff, payoff, utilization } from './credit';
@@ -124,6 +128,31 @@ describe('optimizer', () => {
     const rc = riskContributions(w);
     expect(OPT_CLASSES.reduce((s, c) => s + rc[c], 0)).toBeCloseTo(1, 9);
     expect(rc.usStocks).toBeGreaterThan(0.85);
+  });
+
+  it('takes less risk as risk aversion rises, and beats the frontier on its own utility', () => {
+    const bold = optimizeUtility(2);
+    const careful = optimizeUtility(8);
+    expect(careful.volatility).toBeLessThan(bold.volatility);
+    for (const p of frontier) expect(utility(bold, 2)).toBeGreaterThanOrEqual(utility(p, 2) - 1e-4);
+  });
+
+  it('holds fewer bonds in a taxable account than in a Roth at the same risk tolerance', () => {
+    const taxable = afterTaxAssumptions({ account: 'taxable', ordinaryRate: 0.22, qualifiedRate: 0.15 });
+    const roth = afterTaxAssumptions({ account: 'roth', ordinaryRate: 0.22, qualifiedRate: 0.15 });
+    expect(roth.expectedReturn).toEqual(DEFAULT_ASSUMPTIONS.expectedReturn);
+    expect(taxable.expectedReturn.bonds).toBeCloseTo(DEFAULT_ASSUMPTIONS.expectedReturn.bonds - 0.045 * 0.22, 9);
+    const t = optimizeUtility(5, { assumptions: taxable });
+    const r = optimizeUtility(5, { assumptions: roth });
+    expect(t.weights.bonds + t.weights.cash).toBeLessThan(r.weights.bonds + r.weights.cash);
+  });
+
+  it('estimates tax only on sells', () => {
+    const trades = [
+      { cls: 'usStocks' as const, current: 0, target: 0, amount: -1000 },
+      { cls: 'bonds' as const, current: 0, target: 0, amount: 1000 },
+    ];
+    expect(rebalanceTaxCost(trades, 0.3, 0.15)).toBeCloseTo(45);
   });
 
   it('rebalances and plans contributions without selling', () => {

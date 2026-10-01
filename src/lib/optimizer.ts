@@ -230,6 +230,81 @@ export function maxReturn(frontier: PortfolioPoint[]): PortfolioPoint {
   return frontier[frontier.length - 1];
 }
 
+/**
+ * Mean–variance utility: U = E[r] − ½·A·σ², where A is the investor's risk aversion
+ * (higher A = more cautious). Maximising U is the same problem as solve() with λ = 1/A.
+ */
+export function utility(p: Pick<PortfolioPoint, 'expectedReturn' | 'volatility'>, riskAversion: number): number {
+  return p.expectedReturn - 0.5 * riskAversion * p.volatility * p.volatility;
+}
+
+export function optimizeUtility(riskAversion: number, opts: OptimizeOptions = {}): PortfolioPoint {
+  const a = opts.assumptions ?? DEFAULT_ASSUMPTIONS;
+  const capMap = opts.caps ?? DEFAULT_CAPS;
+  const cov = covariance(a);
+  const caps = OPT_CLASSES.map((c) => capMap[c]);
+  const w = solve(1 / Math.max(riskAversion, 0.1), cov, OPT_CLASSES.map((c) => a.expectedReturn[c]), caps);
+  return evaluate(toWeights(roundWeights(w, caps)), a, cov);
+}
+
+/** Risk-aversion presets for the four risk profiles. */
+export const PROFILE_RISK_AVERSION: Record<RiskProfile, number> = {
+  cautious: 6,
+  balanced: 3.5,
+  growth: 2.2,
+  aggressive: 1.5,
+};
+
+export type AccountType = 'taxable' | 'roth';
+
+export interface TaxSettings {
+  account: AccountType;
+  /** Marginal ordinary income tax rate (interest, REIT dividends, short-term gains). */
+  ordinaryRate: number;
+  /** Rate on qualified dividends and long-term gains: 0% for single filers under $49,450 of taxable income in 2026. */
+  qualifiedRate: number;
+}
+
+/**
+ * Rough annual income yield per class and whether it is taxed as ordinary income.
+ * Stock returns arrive mostly as (untaxed until sold) price growth; bonds, cash and REITs pay
+ * most of their return as income taxed every year at ordinary rates.
+ */
+const INCOME: Record<OptClass, { yield: number; ordinary: boolean }> = {
+  usStocks: { yield: 0.013, ordinary: false },
+  intlStocks: { yield: 0.03, ordinary: false },
+  emStocks: { yield: 0.028, ordinary: false },
+  bonds: { yield: 0.045, ordinary: true },
+  cash: { yield: RISK_FREE, ordinary: true },
+  realEstate: { yield: 0.04, ordinary: true },
+};
+
+/** Yearly return lost to taxes on income, per asset class (0 in a Roth IRA). */
+export function taxDrag(t: TaxSettings): Record<OptClass, number> {
+  return Object.fromEntries(
+    OPT_CLASSES.map((c) => [
+      c,
+      t.account === 'roth' ? 0 : INCOME[c].yield * (INCOME[c].ordinary ? t.ordinaryRate : t.qualifiedRate),
+    ]),
+  ) as Record<OptClass, number>;
+}
+
+export function afterTaxAssumptions(t: TaxSettings, a: Assumptions = DEFAULT_ASSUMPTIONS): Assumptions {
+  const drag = taxDrag(t);
+  return {
+    ...a,
+    expectedReturn: Object.fromEntries(OPT_CLASSES.map((c) => [c, a.expectedReturn[c] - drag[c]])) as Record<OptClass, number>,
+  };
+}
+
+/**
+ * Estimated tax from the sells in a rebalance. We don't know cost basis, so the user tells us
+ * roughly what share of their holdings is gain.
+ */
+export function rebalanceTaxCost(trades: Trade[], gainShare: number, rate: number): number {
+  return trades.reduce((s, t) => s + (t.amount < 0 ? -t.amount * gainShare * rate : 0), 0);
+}
+
 export function maxSharpe(frontier: PortfolioPoint[]): PortfolioPoint {
   return frontier.reduce((best, p) => (p.sharpe > best.sharpe ? p : best), frontier[0]);
 }

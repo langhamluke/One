@@ -8,12 +8,13 @@ Sprout helps high school and college students learn to **save**, **invest**, and
 
 | Area | Features |
 |---|---|
-| 🏠 **Home** | Streaks, XP and levels, badges, and your top 3 "next best steps" pulled from every section |
-| 📊 **Portfolio** | Add holdings by ticker (about 50 common ETFs, stocks, and crypto built in, or any custom ticker). **Diversification score (0–100)** across 6 factors: single-stock concentration, breadth, industry balance, global mix, fit with your risk level, and speculation. Asset and industry breakdowns, a fee analyzer, and plain-English tips with "Learn" nuggets |
-| 🎯 **Optimizer** | Mean–variance optimizer using **Black–Litterman equilibrium returns** with diversification caps. Strategies: match my risk level, max Sharpe, min volatility, max return, or build your own with sliders. Efficient-frontier chart (target, tangency, and you today), **risk contribution** (share of money vs. share of risk), a correlation heatmap, a "bad year" estimate, an action plan (invest new money without selling, or full rebalance), and a Monte-Carlo growth projection (10th/50th/90th percentile) |
-| 🐷 **Savings** | Goals with progress and "save $X/month to hit it by…", 50/30/20 budget with insights, emergency-fund targets, compound-growth calculator (regular vs. high-yield savings vs. stocks), and a no-guilt small-habit calculator |
-| 💳 **Credit** | Credit health check based on FICO's published factor weights (an educational estimate, not a score), utilization tracker, minimum-payment-trap calculator, avalanche vs. snowball multi-card payoff, **links to free real credit scores**, and a starter-credit guide (authorized user, secured card, student card, credit-builder loan, CARD Act rules for under-21s) |
-| 🎓 **Learn** | 8 bite-sized lessons with quizzes across Saving, Investing, and Credit |
+| **Home** | Streaks, XP and levels, your top three "next best steps" pulled from every section, the next lesson, and your closest milestone bonuses |
+| **Learn** | The centerpiece: 8 short lessons in three courses (Saving, Investing, Credit), each with a quiz. Finishing a course unlocks a savings bonus |
+| **Savings** | Goals with progress and "save $X a month to hit it by…", a 50/30/20 budget with insights, emergency-fund targets, a compound-growth calculator, and a no-guilt small-habit calculator |
+| **Portfolio** | Add holdings by ticker (about 50 common ETFs, stocks, and crypto built in, or any custom ticker). **Diversification score (0–100)** across 6 factors, asset and industry breakdowns, a fee analyzer, and plain-English tips |
+| **Optimizer** | A **utility function**, U = E[r] − ½·A·σ², where you set your own risk aversion (A) with a slider or a preset. You can **optimize for your utility, return, risk, Sharpe ratio, or taxes**. Taxes means after-tax utility in a taxable brokerage account or a Roth IRA, using 2026 brackets. It also shows a risk-contribution breakdown, an action plan (invest new money without selling, or a full rebalance with an estimated capital-gains tax), and a Monte-Carlo "what could it grow to" projection |
+| **Credit** | Credit health check based on FICO's published factor weights (an educational estimate, not a score), utilization tracker, minimum-payment-trap calculator, avalanche vs. snowball payoff, links to free real credit scores, and a starter-credit guide |
+| **Rewards** | 19 milestones across saving, investing, credit, and learning. Each pays XP and a dollar bonus that's logged as a deposit into a savings goal. You name who funds the bonuses (a parent, a sponsor, or yourself) |
 
 Everything runs in the browser. Data is saved only on the user's device (`localStorage`). There are no accounts, no bank logins, and no API keys.
 
@@ -28,7 +29,7 @@ Everything runs in the browser. Data is saved only on the user's device (`localS
    npm run dev      # starts the app; open the link it prints (usually http://localhost:5173)
    ```
 
-Other commands: `npm test` (runs the 21 finance-math tests), `npm run build` (creates the production site in `dist/`).
+Other commands: `npm test` (runs the 30 finance and milestone tests), `npm run build` (creates the production site in `dist/`).
 
 ## Put it on the internet (free)
 
@@ -43,7 +44,8 @@ This repo includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) th
 src/
   lib/          the finance engine (pure TypeScript, unit tested)
     portfolio.ts   diversification scoring + tips
-    optimizer.ts   Black–Litterman / mean–variance optimizer, risk contribution, Monte Carlo
+    optimizer.ts   Black–Litterman / mean–variance optimizer, utility and after-tax optimization, Monte Carlo
+    milestones.ts  milestone bonus rules
     savings.ts     compound growth, goals, 50/30/20 budget analysis
     credit.ts      payoff math, avalanche/snowball, utilization, credit check-up
   data/         securities catalog, lessons, sample student data
@@ -58,6 +60,7 @@ src/
 - Average credit card APR on new offers: about 21–24% (WalletHub, LendingTree, Federal Reserve G.19). The app defaults to 22%.
 - High-yield savings: top accounts about 4–4.5% APY, versus a national average of about 0.4% (FDIC national rate). The app uses 4% and 0.4%.
 - Optimizer: volatilities and correlations are rounded long-run figures. Expected returns are *implied* from global market weights (Black–Litterman, δ = 2.5, risk-free 4%). They are illustrative, not forecasts.
+- Taxes: 2026 long-term capital gains are taxed at 0% for single filers under $49,450 of taxable income, and 15% above that. Short-term gains, interest, and REIT dividends are taxed as ordinary income.
 - FICO factor weights: payment history 35%, amounts owed 30%, length of history 15%, new credit 10%, credit mix 10% (published by myFICO).
 
 > Sprout is educational and is not financial advice. Projections are not guarantees.

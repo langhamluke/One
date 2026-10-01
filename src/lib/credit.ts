@@ -135,7 +135,7 @@ export function creditCheckup(profile: CreditProfile, utilRatio: number): { heal
       label: 'Payment history',
       weight: 0.35,
       rating: r(profile.missedPayments === 0 ? 1 : 0.6 - 0.2 * (profile.missedPayments - 1)),
-      status: profile.missedPayments === 0 ? 'No missed payments 🎉' : `${profile.missedPayments} missed payment(s)`,
+      status: profile.missedPayments === 0 ? 'No missed payments' : `${profile.missedPayments} missed payment(s)`,
       tip: 'Turn on autopay for at least the minimum so you never miss a due date. A payment 30+ days late can stay on your report for 7 years.',
     },
     {

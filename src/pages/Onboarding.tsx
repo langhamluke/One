@@ -40,7 +40,7 @@ export default function Onboarding() {
   return (
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center', padding: 16 }}>
       <div className="card" style={{ maxWidth: 520, width: '100%', padding: 28 }}>
-        <div className="logo" style={{ padding: '0 0 12px' }}><span className="logo-mark">🌱</span>Sprout</div>
+        <div className="logo" style={{ padding: '0 0 12px' }}><span className="logo-mark">S</span>Sprout</div>
 
         {step === 0 && (
           <div className="stack">
@@ -63,7 +63,7 @@ export default function Onboarding() {
               <input type="number" min={13} max={30} value={age} onChange={(e) => setAge(Number(e.target.value) || 0)} />
             </label>
             {age > 0 && age < 13 && <p className="small" style={{ color: 'var(--alert)' }}>Sprout is designed for ages 13 and up.</p>}
-            <button className="primary" disabled={age < 13} onClick={() => setStep(1)}>Next →</button>
+            <button className="primary" disabled={age < 13} onClick={() => setStep(1)}>Continue</button>
           </div>
         )}
 
@@ -84,13 +84,13 @@ export default function Onboarding() {
                 {o}
               </button>
             ))}
-            <button className="ghost" onClick={() => setStep(step - 1)}>← Back</button>
+            <button className="ghost" onClick={() => setStep(step - 1)}>Back</button>
           </div>
         )}
 
         {step === QUESTIONS.length + 1 && (
           <div className="stack">
-            <h1>Nice to meet you, {name.trim() || 'friend'} 👋</h1>
+            <h1>Nice to meet you, {name.trim() || 'friend'}.</h1>
             <p>
               Your investing style looks <strong>{RISK_PROFILE_LABELS[profileFromAnswers(answers)]}</strong>. That just sets a starting point for
               tips, and you can change it any time in the Optimizer.
