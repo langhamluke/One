@@ -6,7 +6,7 @@ import { analyzePortfolio, feeDrag, pct, pctFine } from '../lib/portfolio';
 import { ASSET_CLASS_LABELS, ASSET_CLASSES, type AssetClass, type HoldingKind } from '../lib/types';
 import { findSecurity, searchSecurities } from '../data/securities';
 import { holdingFrom, loadSampleData } from '../data/sample';
-import { Bar, CHART_COLORS, Card, Disclaimer, Insights, Legend, NumberInput, ScoreRing, celebrate, money } from '../components/ui';
+import { Bar, CHART_COLORS, Card, Disclaimer, Insights, Legend, NumberInput, ScoreRing, celebrate, money, ConfirmButton } from '../components/ui';
 
 const KIND_LABEL: Record<HoldingKind, string> = { etf: 'ETF', mutualFund: 'Mutual fund', stock: 'Stock', crypto: 'Crypto', cash: 'Cash' };
 const SECTORS = ['Technology', 'Communication', 'Consumer Discretionary', 'Consumer Staples', 'Financials', 'Health Care', 'Energy', 'Industrials', 'Utilities', 'Materials', 'Real Estate'];
@@ -29,7 +29,7 @@ export default function Portfolio() {
         <div className="row">
           {holdings.length === 0 && <button onClick={loadSampleData}>Try sample portfolio</button>}
           {holdings.length > 0 && (
-            <button className="ghost" onClick={() => confirm('Remove all holdings?') && setHoldings([])}>Clear all</button>
+            <ConfirmButton label="Clear all" confirmLabel="Remove every holding?" onConfirm={() => setHoldings([])} />
           )}
         </div>
       </div>

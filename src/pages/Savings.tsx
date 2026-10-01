@@ -11,7 +11,7 @@ import {
   smallHabitCost,
   type SpendType,
 } from '../lib/savings';
-import { Bar, Card, Disclaimer, Insights, NumberInput, Segmented, celebrate, money } from '../components/ui';
+import { Bar, Card, Disclaimer, Insights, NumberInput, Segmented, celebrate, money, ConfirmButton } from '../components/ui';
 
 /** High-yield savings accounts paid roughly 4% APY in Oct 2026; the national average savings rate was ~0.4%. */
 const HYSA_RATE = 0.04;
@@ -160,7 +160,7 @@ function Goals() {
             <div key={g.id} className="card" style={{ boxShadow: 'none' }}>
               <div className="row between">
                 <h3>{g.name}</h3>
-                <button className="ghost" aria-label={`Delete ${g.name}`} onClick={() => confirm(`Delete “${g.name}”?`) && removeGoal(g.id)}>Delete</button>
+                <ConfirmButton label="Delete" confirmLabel="Confirm delete" ariaLabel={`Delete ${g.name}`} onConfirm={() => removeGoal(g.id)} />
               </div>
               <div className="row between" style={{ margin: '8px 0 4px' }}>
                 <strong className="num">{money(g.saved)}</strong><span className="muted small num">of {money(g.target)}</span>

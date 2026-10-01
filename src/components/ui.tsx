@@ -142,6 +142,22 @@ export function NumberInput({
   return input;
 }
 
+/** Two-step destructive button: the first click asks, the second acts. Native confirm() is blocked in embedded viewers. */
+export function ConfirmButton({ label, confirmLabel, onConfirm, ariaLabel }: { label: string; confirmLabel: string; onConfirm: () => void; ariaLabel?: string }) {
+  const [armed, setArmed] = useState(false);
+  return (
+    <button
+      className="ghost"
+      aria-label={ariaLabel}
+      style={armed ? { color: 'var(--alert)' } : undefined}
+      onBlur={() => setArmed(false)}
+      onClick={() => (armed ? onConfirm() : setArmed(true))}
+    >
+      {armed ? confirmLabel : label}
+    </button>
+  );
+}
+
 export function Segmented<T extends string>({ options, value, onChange }: { options: { value: T; label: string }[]; value: T; onChange: (v: T) => void }) {
   return (
     <div className="seg" role="radiogroup">
