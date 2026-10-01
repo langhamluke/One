@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useStore } from '../store';
 import { useMilestones } from '../useMilestones';
 import type { MilestoneTrack } from '../lib/milestones';
@@ -42,7 +42,7 @@ export default function Rewards() {
                 {goals.map((g) => <option key={g.id} value={g.id}>{g.name}</option>)}
               </select>
             ) : (
-              <Link to="/savings" className="btn">Create a savings goal</Link>
+              <Link href="/savings" className="btn">Create a savings goal</Link>
             )}
           </label>
         </Card>

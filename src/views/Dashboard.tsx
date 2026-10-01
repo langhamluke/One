@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { useStore, streak, levelFor, today } from '../store';
 import { checkInDue, checkInWeeks, freshStart, futureSelf, monthlyAmount } from '../lib/habits';
 import { analyzePortfolio } from '../lib/portfolio';
@@ -61,7 +61,7 @@ export default function Dashboard() {
       <FreshStartPrompt />
 
       <div className="grid g4 mt">
-        <Link to="/portfolio" className="card" style={tile}>
+        <Link href="/portfolio" className="card" style={tile}>
           <div className="row" style={{ flexWrap: 'nowrap', gap: 14 }}>
             <ScoreRing score={portfolio.score} size={64} />
             <div>
@@ -71,18 +71,18 @@ export default function Dashboard() {
             </div>
           </div>
         </Link>
-        <Link to="/savings" className="card" style={tile}>
+        <Link href="/savings" className="card" style={tile}>
           <div className="stat-label">Saved toward goals</div>
           <div className="stat-value">{money(saved)}</div>
           <div style={{ margin: '8px 0 4px' }}><Bar value={target ? saved / target : 0} /></div>
           <div className="small muted">{target ? `of ${money(target)} across ${s.goals.length} goal${s.goals.length === 1 ? '' : 's'}` : 'Set your first goal'}</div>
         </Link>
-        <Link to="/savings" className="card" style={tile}>
+        <Link href="/savings" className="card" style={tile}>
           <div className="stat-label">Savings rate</div>
           <div className="stat-value">{s.income ? `${Math.round(budget.shares.savings * 100)}%` : '—'}</div>
           <div className="small muted">{s.income ? `${money(budget.savings)} of ${money(s.income)} a month` : 'Add your budget'}</div>
         </Link>
-        <Link to="/credit" className="card" style={tile}>
+        <Link href="/credit" className="card" style={tile}>
           <div className="stat-label">Credit utilization</div>
           <div className="stat-value">{s.cards.length ? `${Math.round(util.overall * 100)}%` : '—'}</div>
           <div className="small muted">{s.cards.length ? utilizationBand(util.overall).label : 'No cards added'}</div>
@@ -96,7 +96,7 @@ export default function Dashboard() {
               <Insights items={nextSteps} />
               <div className="row">
                 {[...new Set(nextSteps.map((n) => n.where))].map((w) => (
-                  <Link key={w} to={w} className="btn">Open {w.slice(1)}</Link>
+                  <Link key={w} href={w} className="btn">Open {w.slice(1)}</Link>
                 ))}
               </div>
             </div>
@@ -106,20 +106,20 @@ export default function Dashboard() {
         </Card>
 
         <div className="stack">
-          <Card title="Keep learning" action={<Link to="/learn" className="small">All lessons</Link>}>
+          <Card title="Keep learning" action={<Link href="/learn" className="small">All lessons</Link>}>
             {nextLesson ? (
               <div className="stack" style={{ gap: 8 }}>
                 <p className="eyebrow">{nextLesson.track}</p>
                 <h1 style={{ fontSize: '1.6rem' }}>{nextLesson.title}</h1>
                 <p className="small muted">{nextLesson.minutes} min · {nextLesson.xp} XP</p>
-                <Link to="/learn" className="btn primary" style={{ alignSelf: 'flex-start' }}>Start lesson</Link>
+                <Link href="/learn" className="btn primary" style={{ alignSelf: 'flex-start' }}>Start lesson</Link>
               </div>
             ) : (
               <p>You’ve finished every lesson.</p>
             )}
           </Card>
           <FutureSelf invested={portfolio.total} budgetSavings={budget.savings} />
-          <Card title="Next bonuses" action={<Link to="/rewards" className="small">All rewards</Link>}>
+          <Card title="Next bonuses" action={<Link href="/rewards" className="small">All rewards</Link>}>
             <div className="stack">
               {nextBonuses.map((m) => (
                 <div key={m.id}>
@@ -128,7 +128,7 @@ export default function Dashboard() {
                     <strong className="num">{money(m.bonus)}</strong>
                   </div>
                   {m.status === 'ready' ? (
-                    <Link to="/rewards" className="pill good" style={{ textDecoration: 'none', marginTop: 4 }}>Ready to claim</Link>
+                    <Link href="/rewards" className="pill good" style={{ textDecoration: 'none', marginTop: 4 }}>Ready to claim</Link>
                   ) : (
                     <div style={{ marginTop: 6 }}><Bar value={m.progress} /></div>
                   )}
@@ -186,7 +186,7 @@ function FreshStartPrompt() {
       <h3>{f.title}</h3>
       <p className="small muted" style={{ marginTop: 3 }}>{f.detail}</p>
       <div className="row" style={{ marginTop: 10 }}>
-        <Link to="/savings" className="btn primary">Review my savings plan</Link>
+        <Link href="/savings" className="btn primary">Review my savings plan</Link>
         <button className="ghost" onClick={() => dismiss(f.id)}>Not now</button>
       </div>
     </div>

@@ -26,33 +26,39 @@ Everything runs in the browser. Data is saved only on the user's device (`localS
 
    ```bash
    npm install      # one-time: downloads the libraries
-   npm run dev      # starts the app; open the link it prints (usually http://localhost:5173)
+   npm run dev      # starts the app at http://localhost:3000
    ```
 
-Other commands: `npm test` (runs the 35 finance, habit, and milestone tests), `npm run build` (creates the production site in `dist/`).
+Other commands: `npm test` (runs the 35 finance, habit, and milestone tests), `npm run build` (checks the production build).
 
-## Put it on the internet (free)
+## Put it on the internet (Vercel, free)
 
-This repo includes a GitHub Actions workflow (`.github/workflows/deploy.yml`) that tests, builds, and publishes the site to **GitHub Pages** every time `main` changes. One-time setup:
+1. Sign in at <https://vercel.com> with your GitHub account.
+2. **Add New → Project**, pick `langhamluke/One`, and click **Deploy**. Vercel detects Next.js; no settings needed.
+3. Every pull request then gets its own preview link, and every merge to `main` updates the live site.
 
-1. On GitHub: **Settings → Pages → Build and deployment → Source: GitHub Actions**.
-2. Merge the pull request into `main`. In about a minute the site is live at `https://langhamluke.github.io/One/`.
+## How the AI agents work together
+
+Read `AGENTS.md`. In short: Antigravity writes a spec in `specs/`, Claude Code builds it on its own branch and opens a pull request, CI (`.github/workflows/ci.yml`) runs typecheck, tests and build, Antigravity reviews the pull request against the spec, and **you** merge. `CLAUDE.md` and `.agent/rules/` both point at `AGENTS.md`, so there is one rulebook.
 
 ## Project layout
 
 ```
 src/
+  app/          Next.js routes (one folder per page) and the app shell
+  views/        one file per screen
   lib/          the finance engine (pure TypeScript, unit tested)
     portfolio.ts   diversification scoring + tips
     optimizer.ts   Black–Litterman / mean–variance optimizer, utility and after-tax optimization, Monte Carlo
-    milestones.ts  milestone bonus rules
-    habits.ts      save plan, check-ins, fresh-start moments, future-self math
     savings.ts     compound growth, goals, 50/30/20 budget analysis
     credit.ts      payoff math, avalanche/snowball, utilization, credit check-up
-  data/         securities catalog, lessons, sample student data
-  pages/        one file per screen
+    milestones.ts  milestone bonus rules
+    habits.ts      save plan, check-ins, fresh-start moments, future-self math
+  data/         lessons, securities catalog, sample student data
   components/   shared UI pieces
-  store.ts      app state, saved to the device
+  store.ts      app state, saved on the device for now
+specs/          one spec per feature (start from TEMPLATE.md)
+reports/        product research
 ```
 
 ## Assumptions and sources (as of October 2026)

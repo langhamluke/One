@@ -1,5 +1,3 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap');
-
 :root {
   --bg: #f5f4ef;
   --surface: #ffffff;
@@ -23,8 +21,8 @@
   --alert-soft: #f6e5e1;
   --shadow: 0 1px 2px rgb(18 26 23 / 0.04);
   --radius: 14px;
-  --serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
-  --sans: Geist, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --serif: var(--font-serif), Georgia, 'Times New Roman', serif;
+  --sans: var(--font-sans), system-ui, -apple-system, 'Segoe UI', sans-serif;
   /* Chart series: deep green, slate, brass, plum, teal, clay, stone, olive */
   --c1: #2e6b50;
   --c2: #3d6a8a;

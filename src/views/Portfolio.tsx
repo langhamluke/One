@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
+import Link from 'next/link';
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { useStore } from '../store';
 import { analyzePortfolio, feeDrag, pct, pctFine } from '../lib/portfolio';
@@ -76,7 +76,7 @@ export default function Portfolio() {
           </div>
 
           <div className="grid g3 mt">
-            <Card title="Tips to improve" className="span2" action={<Link to="/optimizer" className="btn">Open optimizer</Link>}>
+            <Card title="Tips to improve" className="span2" action={<Link href="/optimizer" className="btn">Open optimizer</Link>}>
               <Insights items={a.insights} />
             </Card>
             <div className="stack">
