@@ -1,0 +1,9 @@
+services:
+  letf:
+    build: .
+    env_file: .env
+    volumes:
+      - ./out:/app/out
+      - ./data/cache:/app/data/cache
+      - ./config:/app/config
+    restart: unless-stopped

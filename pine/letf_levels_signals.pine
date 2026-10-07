@@ -1,0 +1,613 @@
+// This source code is subject to the terms of the MIT License (https://opensource.org/licenses/MIT)
+// LETF Levels & Signals — options-engine level overlay, native levels, regime context and
+// systematic long-call / long-put signals for TQQQ, UPRO, QQQ, SPY on 5m–4h charts.
+// Level-paste pattern inspired by community scripts (BKLevels, Gamma Exposure Profile – Manual Chain Input)
+//@version=6
+indicator("LETF Levels & Signals", shorttitle = "LETF L&S", overlay = true, max_lines_count = 500, max_labels_count = 500, max_boxes_count = 100)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 1 — Inputs
+// ═════════════════════════════════════════════════════════════════════════════
+string G_ENG = "Engine levels (paste)"
+string G_NAT = "Native levels"
+string G_REG = "Regime"
+string G_SIG = "Signals"
+string G_VIS = "Display"
+
+string ENG_TIP = "Paste the block exported by the Python engine. First line is a header starting with '#'. " +
+     "Then one record per line: type,price,strength,label  or  catalyst,YYYY-MM-DD,label. " +
+     "Lines may also be separated by ';'. See README for the full format."
+
+engineText     = input.text_area("", "Engine levels", tooltip = ENG_TIP, group = G_ENG)
+hideStale      = input.bool(true, "Hide stale levels", tooltip = "Hide pasted levels whose header date is not the current chart date (exchange time). When off, stale levels are drawn with 50% transparency.", group = G_ENG)
+labelOffset    = input.int(3, "Level label offset (bars to the right)", minval = 0, maxval = 200, group = G_ENG)
+
+showRound      = input.bool(true, "Round numbers", group = G_NAT, inline = "rn")
+roundOverride  = input.float(0, "step (0 = auto)", minval = 0, step = 0.5, group = G_NAT, inline = "rn")
+roundN         = input.int(6, "Round-number steps each side of price", minval = 1, maxval = 30, group = G_NAT)
+showHalf       = input.bool(false, "Half-step dotted round numbers", group = G_NAT)
+showPD         = input.bool(true, "Prior day high / low / close", group = G_NAT)
+showVwap       = input.bool(true, "Session VWAP", group = G_NAT, inline = "vw")
+showVwapBands  = input.bool(true, "±1σ / ±2σ bands", group = G_NAT, inline = "vw")
+showOR         = input.bool(true, "Opening range", group = G_NAT, inline = "or")
+orSession      = input.session("0930-0945", "OR window (exchange time)", group = G_NAT, inline = "or")
+orKeepDays     = input.int(5, "Keep OR drawings for N days", minval = 1, maxval = 30, group = G_NAT)
+showPivots     = input.bool(true, "Pivot S/R", group = G_NAT, inline = "pv")
+pivLeft        = input.int(10, "left", minval = 1, maxval = 100, group = G_NAT, inline = "pv")
+pivRight       = input.int(5, "right", minval = 1, maxval = 100, group = G_NAT, inline = "pv")
+pivKeep        = input.int(6, "Pivots kept per side", minval = 1, maxval = 20, group = G_NAT)
+showMAs        = input.bool(true, "Daily EMA20 / SMA200", group = G_NAT)
+
+vixSym         = input.symbol("CBOE:VIX", "VIX symbol", tooltip = "If CBOE:VIX is not available on your plan, use TVC:VIX. An invalid symbol yields a 'n/a' vol regime instead of an error.", group = G_REG)
+vixLen         = input.int(252, "VIX percentile window (daily bars)", minval = 20, maxval = 1000, group = G_REG)
+useCompleted   = input.bool(true, "Use completed daily bars (non-repainting)", tooltip = "ON: daily EMA/SMA/RSI/VIX come from the last completed daily bar (stable intraday). OFF: the developing daily bar is used (more responsive, but historical bars see end-of-day values).", group = G_REG)
+showGammaBg    = input.bool(true, "Gamma regime background", group = G_REG)
+
+minPullback    = input.float(1.5, "Call: min 5-day pullback %", minval = 0, step = 0.1, group = G_SIG)
+callRsiMax     = input.float(40, "Call: daily RSI5 below", minval = 1, maxval = 99, step = 1, group = G_SIG)
+putRsiMin      = input.float(60, "Put: daily RSI5 above", minval = 1, maxval = 99, step = 1, group = G_SIG)
+touchPct       = input.float(0.15, "Level touch tolerance %", minval = 0.01, step = 0.05, group = G_SIG)
+requireConfirm = input.bool(true, "Require confirmation on catalyst days", tooltip = "On a day with a pasted catalyst, a trigger bar must be followed by one bar closing in the signal direction before the signal fires.", group = G_SIG)
+showTouch      = input.bool(true, "Show level-touch markers", group = G_SIG)
+
+showTable      = input.bool(true, "Regime table", group = G_VIS, inline = "tb")
+tblPos         = input.string(position.top_right, "table position", options = [position.top_right, position.top_left, position.bottom_right, position.bottom_left, position.middle_right], group = G_VIS, inline = "tb")
+showCatTable   = input.bool(true, "Catalyst table", group = G_VIS, inline = "ct")
+catTblPos      = input.string(position.bottom_right, "catalyst table position", options = [position.bottom_right, position.bottom_left, position.top_right, position.top_left, position.middle_left], group = G_VIS, inline = "ct")
+catTblMax      = input.int(8, "Catalyst rows shown", minval = 1, maxval = 20, group = G_VIS)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 2 — Types, methods and helpers
+// ═════════════════════════════════════════════════════════════════════════════
+type Level
+    string kind
+    float  price
+    float  strength
+    string label
+
+type Catalyst
+    int    key        // yyyymmdd
+    string dateStr
+    string label
+
+method kindColor(Level this) =>
+    switch this.kind
+        "callwall" => color.red
+        "putwall"  => color.green
+        "flip"     => color.orange
+        "maxpain"  => color.blue
+        "vt"       => color.purple
+        => color.gray
+
+method lineWidth(Level this) =>
+    math.max(1, math.min(4, 1 + math.round(this.strength / 100.0 * 3.0)))
+
+method transparency(Level this) =>
+    math.max(0, math.min(95, math.round(65.0 - this.strength * 0.45)))
+
+f_pad2(int n) =>
+    n < 10 ? "0" + str.tostring(n) : str.tostring(n)
+
+// "YYYY-MM-DD" -> yyyymmdd int key (na on failure)
+f_dateKey(string s) =>
+    int key = na
+    array<string> parts = str.split(str.trim(s), "-")
+    if array.size(parts) == 3
+        float y = str.tonumber(str.trim(array.get(parts, 0)))
+        float m = str.tonumber(str.trim(array.get(parts, 1)))
+        float d = str.tonumber(str.trim(array.get(parts, 2)))
+        if not na(y) and not na(m) and not na(d) and y >= 1970 and y <= 2200 and m >= 1 and m <= 12 and d >= 1 and d <= 31
+            key := int(y) * 10000 + int(m) * 100 + int(d)
+    key
+
+f_keyToStr(int key) =>
+    if na(key)
+        "n/a"
+    else
+        int y = math.floor(key / 10000.0)
+        int m = math.floor((key - y * 10000) / 100.0)
+        int d = key - y * 10000 - m * 100
+        str.tostring(y) + "-" + f_pad2(m) + "-" + f_pad2(d)
+
+// Percentile rank: % of the previous `len` values (at offset `off`) that are below the current value.
+f_pctRank(float src, int len, int off) =>
+    int below = 0
+    int valid = 0
+    float cur = src[off]
+    for i = 1 to len
+        float v = src[i + off]
+        if not na(v) and not na(cur)
+            valid += 1
+            if v < cur
+                below += 1
+    valid > 0 ? 100.0 * below / valid : na
+
+f_autoStep(float p) =>
+    p < 50 ? 1.0 : p < 200 ? 5.0 : p < 1000 ? 10.0 : 50.0
+
+f_touch(float lvl, float tolPct) =>
+    not na(lvl) and lvl > 0 and low <= lvl * (1 + tolPct / 100.0) and high >= lvl * (1 - tolPct / 100.0)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 3 — Parsing of the pasted engine block
+// ═════════════════════════════════════════════════════════════════════════════
+// Returns [levels, catalysts, sym, date, src, ratio]. Never errors on bad input.
+f_parse(string raw) =>
+    array<Level>    lv    = array.new<Level>()
+    array<Catalyst> ct    = array.new<Catalyst>()
+    string hSym   = ""
+    string hDate  = ""
+    string hSrc   = ""
+    float  hRatio = na
+    string txt    = str.replace_all(raw, ";", "\n")
+    array<string> lines = str.split(txt, "\n")
+    for ln in lines
+        string s = str.trim(ln)
+        if str.length(s) == 0
+            continue
+        if str.startswith(s, "#")
+            continue                                  // version marker, e.g. "#v1"
+        if str.contains(s, ",")
+            // ---- record line ----
+            array<string> f = str.split(s, ",")
+            int n = array.size(f)
+            string kind = str.lower(str.trim(array.get(f, 0)))
+            if n < 2 or str.length(kind) == 0
+                continue
+            if kind == "catalyst"
+                int k = f_dateKey(array.get(f, 1))
+                string lab = ""
+                if n >= 3
+                    lab := str.trim(array.get(f, 2))
+                    if n > 3
+                        for i = 3 to n - 1
+                            lab := lab + "," + str.trim(array.get(f, i))
+                if not na(k)
+                    array.push(ct, Catalyst.new(k, f_keyToStr(k), lab))
+            else
+                float p  = str.tonumber(str.trim(array.get(f, 1)))
+                float st = n >= 3 ? str.tonumber(str.trim(array.get(f, 2))) : 50.0
+                string lab = kind
+                if n >= 4
+                    lab := str.trim(array.get(f, 3))
+                    if n > 4
+                        for i = 4 to n - 1
+                            lab := lab + "," + str.trim(array.get(f, i))
+                    if str.length(lab) == 0
+                        lab := kind
+                if not na(p) and p > 0
+                    if na(st)
+                        st := 50.0
+                    st := math.max(0.0, math.min(100.0, st))
+                    array.push(lv, Level.new(kind, p, st, lab))
+        else if str.contains(s, "=")
+            // ---- header key=value ----
+            int eq = str.pos(s, "=")
+            if eq > 0
+                string key = str.lower(str.trim(str.substring(s, 0, eq)))
+                string val = str.trim(str.substring(s, eq + 1))
+                if key == "sym"
+                    hSym := val
+                else if key == "date"
+                    hDate := val
+                else if key == "src"
+                    hSrc := val
+                else if key == "ratio"
+                    hRatio := str.tonumber(val)
+    [lv, ct, hSym, hDate, hSrc, hRatio]
+
+var array<Level>    levels    = array.new<Level>()
+var array<Catalyst> cats      = array.new<Catalyst>()
+var string hdrSym   = ""
+var string hdrDate  = ""
+var string hdrSrc   = ""
+var float  hdrRatio = na
+var int    hdrKey   = na
+var float  pFlip    = na
+var float  pCallWall = na
+var float  pPutWall  = na
+var float  pMaxPain  = na
+var float  pVt       = na
+
+if barstate.isfirst
+    [lv, ct, hs, hd, hsrc, hr] = f_parse(engineText)
+    levels   := lv
+    cats     := ct
+    hdrSym   := hs
+    hdrDate  := hd
+    hdrSrc   := hsrc
+    hdrRatio := hr
+    hdrKey   := f_dateKey(hd)
+    for lvl in levels
+        if lvl.kind == "flip"
+            pFlip := lvl.price
+        else if lvl.kind == "callwall"
+            pCallWall := lvl.price
+        else if lvl.kind == "putwall"
+            pPutWall := lvl.price
+        else if lvl.kind == "maxpain"
+            pMaxPain := lvl.price
+        else if lvl.kind == "vt"
+            pVt := lvl.price
+
+bool hasLevels = array.size(levels) > 0 or array.size(cats) > 0
+bool symGiven  = str.length(hdrSym) > 0
+bool symOk     = not symGiven or str.lower(hdrSym) == str.lower(syminfo.ticker)
+
+// Per-bar date key in exchange time
+int  barKey    = year * 10000 + month * 100 + dayofmonth
+bool barStale  = na(hdrKey) or hdrKey != barKey
+// Levels are "active" on this bar if the symbol matches and they are fresh (or stale levels are allowed)
+bool levelsOn  = array.size(levels) > 0 and symOk and (not hideStale or not barStale)
+
+float flipP = levelsOn ? pFlip     : na
+float cwP   = levelsOn ? pCallWall : na
+float pwP   = levelsOn ? pPutWall  : na
+float mpP   = levelsOn ? pMaxPain  : na
+
+// Catalyst today?
+bool   catalystToday = false
+string catTodayTxt   = ""
+for c in cats
+    if c.key == barKey
+        catalystToday := true
+        catTodayTxt   := catTodayTxt == "" ? c.label : catTodayTxt + " | " + c.label
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 4 — Session / time bookkeeping
+// ═════════════════════════════════════════════════════════════════════════════
+bool isNewDay = timeframe.change("D") or barstate.isfirst
+var int   dayStartBar = 0
+var float todayHigh   = na
+var float todayLow    = na
+if isNewDay
+    dayStartBar := bar_index
+    todayHigh   := high
+    todayLow    := low
+else
+    todayHigh := math.max(nz(todayHigh, high), high)
+    todayLow  := math.min(nz(todayLow, low), low)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 5 — Native levels
+// ═════════════════════════════════════════════════════════════════════════════
+int dOff = useCompleted ? 1 : 0
+
+// --- Prior day H/L/C (always the completed prior day) -----------------------
+[pdh, pdl, pdc] = request.security(syminfo.tickerid, "D", [high[1], low[1], close[1]], lookahead = barmerge.lookahead_off)
+
+// --- Daily MAs / RSI / 5-day high (one call) ----------------------------------
+[dEma20, dSma200, dRsi5, dHH5, dHH4, dClose] = request.security(syminfo.tickerid, "D",
+     [ta.ema(close, 20)[dOff], ta.sma(close, 200)[dOff], ta.rsi(close, 5)[dOff], ta.highest(high, 5)[dOff], ta.highest(high, 4)[dOff], close[dOff]],
+     lookahead = barmerge.lookahead_off)
+
+// --- VIX daily close and percentile rank --------------------------------------
+[vixClose, vixPct] = request.security(vixSym, "D", [close[dOff], f_pctRank(close, vixLen, dOff)], lookahead = barmerge.lookahead_off, ignore_invalid_symbol = true)
+
+// --- Session VWAP with cumulative sigma bands ---------------------------------
+var float cumPV  = 0.0
+var float cumP2V = 0.0
+var float cumV   = 0.0
+if isNewDay
+    cumPV  := 0.0
+    cumP2V := 0.0
+    cumV   := 0.0
+float w = na(volume) or volume <= 0 ? 1.0 : volume
+cumPV  += hlc3 * w
+cumP2V += hlc3 * hlc3 * w
+cumV   += w
+float sVwap  = cumV > 0 ? cumPV / cumV : na
+float sVar   = cumV > 0 and not na(sVwap) ? math.max(cumP2V / cumV - sVwap * sVwap, 0.0) : na
+float sSigma = math.sqrt(sVar)
+float vU1 = sVwap + sSigma
+float vL1 = sVwap - sSigma
+float vU2 = sVwap + 2 * sSigma
+float vL2 = sVwap - 2 * sSigma
+
+// --- Opening range -------------------------------------------------------------
+bool inOR = not na(time(timeframe.period, orSession, syminfo.timezone))
+var float orHigh = na
+var float orLow  = na
+var box  orBox   = na
+var line orHiLn  = na
+var line orLoLn  = na
+var array<box>  orBoxes = array.new<box>()
+var array<line> orLines = array.new<line>()
+if isNewDay
+    orHigh := na
+    orLow  := na
+    orBox  := na
+    orHiLn := na
+    orLoLn := na
+if showOR
+    if inOR
+        orHigh := na(orHigh) ? high : math.max(orHigh, high)
+        orLow  := na(orLow)  ? low  : math.min(orLow, low)
+        if na(orBox)
+            orBox := box.new(bar_index, orHigh, bar_index, orLow, border_color = color.new(color.aqua, 40), border_width = 1, border_style = line.style_dotted, bgcolor = color.new(color.aqua, 90))
+            array.push(orBoxes, orBox)
+            if array.size(orBoxes) > orKeepDays
+                box.delete(array.shift(orBoxes))
+        else
+            box.set_right(orBox, bar_index)
+            box.set_top(orBox, orHigh)
+            box.set_bottom(orBox, orLow)
+    else if not na(orHigh)
+        if na(orHiLn)
+            orHiLn := line.new(bar_index - 1, orHigh, bar_index, orHigh, color = color.new(color.aqua, 30), style = line.style_dashed, width = 1)
+            orLoLn := line.new(bar_index - 1, orLow,  bar_index, orLow,  color = color.new(color.aqua, 30), style = line.style_dashed, width = 1)
+            array.push(orLines, orHiLn)
+            array.push(orLines, orLoLn)
+            if array.size(orLines) > orKeepDays * 2
+                line.delete(array.shift(orLines))
+                line.delete(array.shift(orLines))
+        else
+            line.set_x2(orHiLn, bar_index)
+            line.set_x2(orLoLn, bar_index)
+
+// --- Pivot S/R -------------------------------------------------------------------
+float ph = ta.pivothigh(high, pivLeft, pivRight)
+float pl = ta.pivotlow(low, pivLeft, pivRight)
+var array<line> phLines = array.new<line>()
+var array<line> plLines = array.new<line>()
+if showPivots and not na(ph)
+    array.push(phLines, line.new(bar_index - pivRight, ph, bar_index, ph, extend = extend.right, color = color.new(color.red, 55), style = line.style_dashed, width = 1))
+    if array.size(phLines) > pivKeep
+        line.delete(array.shift(phLines))
+if showPivots and not na(pl)
+    array.push(plLines, line.new(bar_index - pivRight, pl, bar_index, pl, extend = extend.right, color = color.new(color.green, 55), style = line.style_dashed, width = 1))
+    if array.size(plLines) > pivKeep
+        line.delete(array.shift(plLines))
+
+// --- Round numbers (redrawn on the last bar only) -------------------------------
+float rStep = roundOverride > 0 ? roundOverride : f_autoStep(close)
+var array<line> rnLines = array.new<line>()
+if showRound and barstate.islast
+    for l in rnLines
+        line.delete(l)
+    array.clear(rnLines)
+    float base = math.round(close / rStep) * rStep
+    for i = -roundN to roundN
+        float y = base + i * rStep
+        if y > 0
+            array.push(rnLines, line.new(dayStartBar, y, bar_index, y, extend = extend.right, color = color.new(color.gray, 65), style = line.style_solid, width = 1))
+        if showHalf and i < roundN
+            float y2 = y + rStep / 2.0
+            if y2 > 0
+                array.push(rnLines, line.new(dayStartBar, y2, bar_index, y2, extend = extend.right, color = color.new(color.gray, 80), style = line.style_dotted, width = 1))
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 6 — Regime
+// ═════════════════════════════════════════════════════════════════════════════
+bool   trendUpCore = not na(dSma200) and close > dSma200
+bool   trendUp     = trendUpCore and close > dEma20
+bool   trendDown   = not na(dSma200) and close < dSma200 and close < dEma20
+string trendTxt    = na(dSma200) ? "n/a" : trendUp ? "UP" : trendDown ? "DOWN" : "MIXED"
+
+string volTxt = na(vixPct) ? "n/a" : vixPct > 90 ? "EXTREME" : vixPct > 75 ? "HIGH" : vixPct < 25 ? "LOW" : "NORMAL"
+
+bool   gammaPos = not na(flipP) and close > flipP
+bool   gammaNeg = not na(flipP) and close < flipP
+string gammaTxt = na(flipP) ? "n/a" : gammaPos ? "POSITIVE GAMMA" : gammaNeg ? "NEGATIVE GAMMA" : "AT FLIP"
+
+// 5-day high: completed 4 prior days + today's running high when using completed bars
+float hhRef = useCompleted ? (na(dHH4) ? todayHigh : math.max(dHH4, nz(todayHigh, high))) : dHH5
+float pullbackPct = na(hhRef) or hhRef <= 0 ? na : 100.0 * (hhRef - close) / hhRef
+
+bgcolor(showGammaBg ? (gammaPos ? color.new(color.green, 92) : gammaNeg ? color.new(color.red, 92) : na) : na, title = "Gamma regime background")
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 7 — Signals
+// ═════════════════════════════════════════════════════════════════════════════
+bool putwallOk = na(pwP) ? true : close > pwP
+
+bool callSetup = trendUpCore and not na(pullbackPct) and pullbackPct >= minPullback and not na(dRsi5) and dRsi5 < callRsiMax and volTxt != "EXTREME" and putwallOk
+bool putSetup  = not na(dEma20) and close < dEma20 and ((not na(dSma200) and close < dSma200) or gammaNeg) and not na(dRsi5) and dRsi5 > putRsiMin and volTxt != "LOW"
+
+bool vwapXUp = ta.crossover(close, sVwap)
+bool vwapXDn = ta.crossunder(close, sVwap)
+bool callTrigRaw = vwapXUp or close > high[1]
+bool putTrigRaw  = vwapXDn or close < low[1]
+
+bool confirmNeeded = requireConfirm and catalystToday
+bool callReady = confirmNeeded ? (callSetup[1] and callTrigRaw[1] and close > close[1]) : (callSetup and callTrigRaw)
+bool putReady  = confirmNeeded ? (putSetup[1]  and putTrigRaw[1]  and close < close[1]) : (putSetup  and putTrigRaw)
+
+var bool callFiredToday = false
+var bool putFiredToday  = false
+var bool callArmed      = true
+var bool putArmed       = true
+if isNewDay
+    callFiredToday := false
+    putFiredToday  := false
+if not callSetup
+    callArmed := true
+if not putSetup
+    putArmed := true
+
+bool callSignal = barstate.isconfirmed and callReady and callArmed and not callFiredToday
+bool putSignal  = barstate.isconfirmed and putReady  and putArmed  and not putFiredToday
+if callSignal
+    callFiredToday := true
+    callArmed      := false
+if putSignal
+    putFiredToday := true
+    putArmed      := false
+
+// Level touches and gamma-flip crosses
+bool touchCW = f_touch(cwP, touchPct)
+bool touchPW = f_touch(pwP, touchPct)
+bool touchFL = f_touch(flipP, touchPct)
+bool touchMP = f_touch(mpP, touchPct)
+bool flipXUp = ta.crossover(close, flipP)
+bool flipXDn = ta.crossunder(close, flipP)
+bool catalystOpen = catalystToday and isNewDay
+
+string sigTxt = callFiredToday ? "LONG CALL fired today" : putFiredToday ? "LONG PUT fired today" : callSetup ? "CALL setup - await trigger" : putSetup ? "PUT setup - await trigger" : "none"
+if confirmNeeded and not callFiredToday and not putFiredToday
+    sigTxt := sigTxt + " (catalyst: confirm)"
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 8 — Drawing (plots + last-bar line/label redraw)
+// ═════════════════════════════════════════════════════════════════════════════
+plot(showPD ? pdh : na, "Prior day high",  color = color.new(color.teal, 20),   style = plot.style_stepline, linewidth = 1)
+plot(showPD ? pdl : na, "Prior day low",   color = color.new(color.teal, 20),   style = plot.style_stepline, linewidth = 1)
+plot(showPD ? pdc : na, "Prior day close", color = color.new(color.silver, 30), style = plot.style_stepline, linewidth = 1)
+
+plot(showVwap ? sVwap : na, "Session VWAP", color = color.new(color.orange, 0), linewidth = 2)
+pU1 = plot(showVwap and showVwapBands ? vU1 : na, "VWAP +1σ", color = color.new(color.orange, 60), linewidth = 1)
+pL1 = plot(showVwap and showVwapBands ? vL1 : na, "VWAP -1σ", color = color.new(color.orange, 60), linewidth = 1)
+plot(showVwap and showVwapBands ? vU2 : na, "VWAP +2σ", color = color.new(color.orange, 75), linewidth = 1, style = plot.style_circles)
+plot(showVwap and showVwapBands ? vL2 : na, "VWAP -2σ", color = color.new(color.orange, 75), linewidth = 1, style = plot.style_circles)
+fill(pU1, pL1, color = color.new(color.orange, 94), title = "VWAP ±1σ fill")
+
+plot(showMAs ? dEma20  : na, "Daily EMA20",  color = color.new(color.yellow, 20), linewidth = 1)
+plot(showMAs ? dSma200 : na, "Daily SMA200", color = color.new(color.fuchsia, 20), linewidth = 2)
+
+plotshape(callSignal, "Long call signal", style = shape.triangleup,   location = location.belowbar, color = color.new(color.lime, 0), size = size.small, text = "CALL", textcolor = color.new(color.lime, 0))
+plotshape(putSignal,  "Long put signal",  style = shape.triangledown, location = location.abovebar, color = color.new(color.red, 0),  size = size.small, text = "PUT",  textcolor = color.new(color.red, 0))
+
+plotshape(showTouch and touchCW ? cwP : na,   "Touch call wall",  style = shape.circle, location = location.absolute, color = color.new(color.red, 30),    size = size.tiny)
+plotshape(showTouch and touchPW ? pwP : na,   "Touch put wall",   style = shape.circle, location = location.absolute, color = color.new(color.green, 30),  size = size.tiny)
+plotshape(showTouch and touchFL ? flipP : na, "Touch gamma flip", style = shape.circle, location = location.absolute, color = color.new(color.orange, 30), size = size.tiny)
+plotshape(showTouch and touchMP ? mpP : na,   "Touch max pain",   style = shape.circle, location = location.absolute, color = color.new(color.blue, 30),   size = size.tiny)
+
+// --- External levels, catalyst marker and warnings: delete + redraw on last bar ----
+var array<line>  lvLines  = array.new<line>()
+var array<label> lvLabels = array.new<label>()
+var line  catLine   = na
+var label catLabel  = na
+var label warnLabel = na
+
+if barstate.islast
+    for l in lvLines
+        line.delete(l)
+    array.clear(lvLines)
+    for lb in lvLabels
+        label.delete(lb)
+    array.clear(lvLabels)
+    if not na(catLine)
+        line.delete(catLine)
+        catLine := na
+    if not na(catLabel)
+        label.delete(catLabel)
+        catLabel := na
+    if not na(warnLabel)
+        label.delete(warnLabel)
+        warnLabel := na
+
+    bool drawExt = array.size(levels) > 0 and symOk and (not barStale or not hideStale)
+    if drawExt
+        for lvl in levels
+            color c  = lvl.kindColor()
+            int   tr = barStale ? math.max(lvl.transparency(), 50) : lvl.transparency()
+            int   wd = lvl.lineWidth()
+            array.push(lvLines, line.new(dayStartBar, lvl.price, bar_index, lvl.price, extend = extend.right, color = color.new(c, tr), style = line.style_solid, width = wd))
+            string txt = lvl.label + "  " + str.tostring(lvl.price, format.mintick) + (barStale ? "  (stale " + hdrDate + ")" : "")
+            array.push(lvLabels, label.new(bar_index + labelOffset, lvl.price, txt, xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(c, tr), textcolor = color.white, size = size.small))
+
+    if hasLevels and not symOk
+        warnLabel := label.new(bar_index, high, "Engine levels ignored: header sym=" + hdrSym + " but chart is " + syminfo.ticker, xloc = xloc.bar_index, yloc = yloc.abovebar, style = label.style_label_down, color = color.new(color.red, 15), textcolor = color.white, size = size.small)
+    else if array.size(levels) > 0 and symOk and barStale and hideStale
+        warnLabel := label.new(bar_index, high, "Engine levels stale (date=" + hdrDate + ") - hidden", xloc = xloc.bar_index, yloc = yloc.abovebar, style = label.style_label_down, color = color.new(color.gray, 30), textcolor = color.white, size = size.small)
+
+    if catalystToday
+        catLine  := line.new(dayStartBar, low, dayStartBar, math.max(high, low + syminfo.mintick), extend = extend.both, color = color.new(color.yellow, 30), style = line.style_dashed, width = 1)
+        catLabel := label.new(dayStartBar, high, "CATALYST TODAY: " + catTodayTxt, xloc = xloc.bar_index, yloc = yloc.abovebar, style = label.style_label_down, color = color.new(color.yellow, 10), textcolor = color.black, size = size.small)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 9 — Tables
+// ═════════════════════════════════════════════════════════════════════════════
+var table regT = na
+var table catT = na
+
+if showTable and barstate.islast
+    if na(regT)
+        regT := table.new(tblPos, 2, 9, bgcolor = color.new(color.black, 25), frame_color = color.new(color.gray, 50), frame_width = 1, border_color = color.new(color.gray, 70), border_width = 1)
+
+    // next catalyst (nearest date >= today)
+    int    nextKey = na
+    string nextLab = ""
+    for c in cats
+        if c.key >= barKey and (na(nextKey) or c.key < nextKey)
+            nextKey := c.key
+            nextLab := c.label
+    string nextTxt = "none"
+    if not na(nextKey)
+        if nextKey == barKey
+            nextTxt := "TODAY " + nextLab
+        else
+            int ny = math.floor(nextKey / 10000.0)
+            int nm = math.floor((nextKey - ny * 10000) / 100.0)
+            int nd = nextKey - ny * 10000 - nm * 100
+            int daysTo = math.round((timestamp(syminfo.timezone, ny, nm, nd, 0, 0) - time) / 86400000.0)
+            nextTxt := f_keyToStr(nextKey) + " " + nextLab + " (" + str.tostring(daysTo) + "d)"
+
+    string lvlStatus = array.size(levels) == 0 ? "none pasted" : not symOk ? "SYM MISMATCH" : barStale ? (hideStale ? "STALE - hidden" : "STALE - shown") : str.tostring(array.size(levels)) + " active (" + hdrDate + ")"
+    color  lblCol  = color.new(color.white, 25)
+    color  trendCol = trendUp ? color.new(color.green, 0) : trendDown ? color.new(color.red, 0) : color.new(color.yellow, 0)
+    color  volCol   = volTxt == "EXTREME" ? color.new(color.red, 0) : volTxt == "HIGH" ? color.new(color.orange, 0) : volTxt == "LOW" ? color.new(color.aqua, 0) : color.white
+    color  gamCol   = gammaPos ? color.new(color.green, 0) : gammaNeg ? color.new(color.red, 0) : color.white
+    color  sigCol   = callFiredToday or callSetup ? color.new(color.lime, 0) : putFiredToday or putSetup ? color.new(color.red, 0) : color.white
+    string volDetail = na(vixClose) ? "" : " (VIX " + str.tostring(vixClose, "#.##") + ", " + str.tostring(vixPct, "#") + "%)"
+
+    table.cell(regT, 0, 0, "LETF L&S", text_color = color.white, text_size = size.small, bgcolor = color.new(color.blue, 40), text_halign = text.align_left)
+    table.cell(regT, 1, 0, syminfo.ticker + " " + timeframe.period, text_color = color.white, text_size = size.small, bgcolor = color.new(color.blue, 40))
+    table.cell(regT, 0, 1, "Trend (D)",   text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 1, trendTxt,      text_color = trendCol, text_size = size.small)
+    table.cell(regT, 0, 2, "Vol regime",  text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 2, volTxt + volDetail, text_color = volCol, text_size = size.small)
+    table.cell(regT, 0, 3, "Gamma",       text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 3, gammaTxt,      text_color = gamCol, text_size = size.small)
+    table.cell(regT, 0, 4, "RSI5 (D)",    text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 4, na(dRsi5) ? "n/a" : str.tostring(dRsi5, "#.#"), text_color = color.white, text_size = size.small)
+    table.cell(regT, 0, 5, "Pullback 5d", text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 5, na(pullbackPct) ? "n/a" : str.tostring(pullbackPct, "#.##") + "%", text_color = color.white, text_size = size.small)
+    table.cell(regT, 0, 6, "Next catalyst", text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 6, nextTxt,       text_color = catalystToday ? color.new(color.yellow, 0) : color.white, text_size = size.small)
+    table.cell(regT, 0, 7, "Signal",      text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 7, sigTxt,        text_color = sigCol, text_size = size.small)
+    table.cell(regT, 0, 8, "Levels",      text_color = lblCol, text_size = size.small, text_halign = text.align_left)
+    table.cell(regT, 1, 8, lvlStatus,     text_color = symOk and not barStale ? color.white : color.new(color.orange, 0), text_size = size.small)
+
+if showCatTable and barstate.islast and array.size(cats) > 0
+    if not na(catT)
+        table.delete(catT)
+    // collect upcoming catalysts (key >= today), up to catTblMax rows, in ascending date order
+    array<int>    upKeys = array.new<int>()
+    array<string> upLabs = array.new<string>()
+    for c in cats
+        if c.key >= barKey
+            // insertion sort by key
+            int pos = array.size(upKeys)
+            for j = 0 to array.size(upKeys) - 1
+                if array.size(upKeys) == 0
+                    break
+                if c.key < array.get(upKeys, j)
+                    pos := j
+                    break
+            array.insert(upKeys, pos, c.key)
+            array.insert(upLabs, pos, c.label)
+    int rows = math.min(array.size(upKeys), catTblMax)
+    catT := table.new(catTblPos, 2, rows + 1, bgcolor = color.new(color.black, 25), frame_color = color.new(color.gray, 50), frame_width = 1, border_color = color.new(color.gray, 70), border_width = 1)
+    table.cell(catT, 0, 0, "Catalysts", text_color = color.white, text_size = size.small, bgcolor = color.new(color.yellow, 60), text_halign = text.align_left)
+    table.cell(catT, 1, 0, rows == 0 ? "none upcoming" : str.tostring(rows), text_color = color.white, text_size = size.small, bgcolor = color.new(color.yellow, 60))
+    if rows > 0
+        for r = 0 to rows - 1
+            int    k   = array.get(upKeys, r)
+            bool   tdy = k == barKey
+            table.cell(catT, 0, r + 1, tdy ? "TODAY" : f_keyToStr(k), text_color = tdy ? color.new(color.yellow, 0) : color.new(color.white, 25), text_size = size.small, text_halign = text.align_left)
+            table.cell(catT, 1, r + 1, array.get(upLabs, r), text_color = tdy ? color.new(color.yellow, 0) : color.white, text_size = size.small, text_halign = text.align_left)
+
+// ═════════════════════════════════════════════════════════════════════════════
+// SECTION 10 — Alerts
+// ═════════════════════════════════════════════════════════════════════════════
+alertcondition(callSignal,   "Long call signal",     '{"sym":"{{ticker}}","event":"LONG_CALL","price":{{close}},"tf":"{{interval}}","time":"{{timenow}}"}')
+alertcondition(putSignal,    "Long put signal",      '{"sym":"{{ticker}}","event":"LONG_PUT","price":{{close}},"tf":"{{interval}}","time":"{{timenow}}"}')
+alertcondition(touchCW,      "Touch call wall",      '{"sym":"{{ticker}}","event":"TOUCH_CALLWALL","price":{{close}},"time":"{{timenow}}"}')
+alertcondition(touchPW,      "Touch put wall",       '{"sym":"{{ticker}}","event":"TOUCH_PUTWALL","price":{{close}},"time":"{{timenow}}"}')
+alertcondition(touchFL,      "Touch gamma flip",     '{"sym":"{{ticker}}","event":"TOUCH_FLIP","price":{{close}},"time":"{{timenow}}"}')
+alertcondition(touchMP,      "Touch max pain",       '{"sym":"{{ticker}}","event":"TOUCH_MAXPAIN","price":{{close}},"time":"{{timenow}}"}')
+alertcondition(flipXUp,      "Cross gamma flip up",  '{"sym":"{{ticker}}","event":"FLIP_CROSS_UP","price":{{close}},"time":"{{timenow}}"}')
+alertcondition(flipXDn,      "Cross gamma flip down",'{"sym":"{{ticker}}","event":"FLIP_CROSS_DOWN","price":{{close}},"time":"{{timenow}}"}')
+alertcondition(catalystOpen, "Catalyst today",       '{"sym":"{{ticker}}","event":"CATALYST_TODAY","price":{{close}},"time":"{{timenow}}"}')

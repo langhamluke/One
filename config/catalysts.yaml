@@ -1,0 +1,21 @@
+# User-maintained catalysts. Dates are YYYY-MM-DD. kind is free text but these
+# get default weights: FOMC CPI NFP PCE GDP OPEX ELECTION EARNINGS POLITICAL IPO OTHER
+# weight 0-1: how much the signal engine should care.
+catalysts:
+  - date: 2026-11-03
+    kind: ELECTION
+    label: US midterm elections
+    weight: 0.9
+  # Examples to edit:
+  # - date: 2026-10-15
+  #   kind: POLITICAL
+  #   label: Iran nuclear talks deadline
+  #   weight: 0.7
+  # - date: 2026-10-22
+  #   kind: EARNINGS
+  #   label: TSLA earnings AMC
+  #   weight: 0.7
+  # - date: 2026-10-30
+  #   kind: IPO
+  #   label: Large IPO pricing
+  #   weight: 0.3

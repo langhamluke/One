@@ -1,0 +1,39 @@
+# Copy to config/settings.yaml and edit. Everything has a default; see engine/letf/config.py.
+account: 100000
+provider: alpaca            # alpaca (needs keys) | cboe (free, no keys) | fixtures (offline)
+trade_symbols: [TQQQ, UPRO, QQQ, SPY]
+gex_symbols: [QQQ, SPY]
+dte_filter: monthly         # gamma window: 0dte | weekly | monthly | all
+allow_spreads: false        # defined-risk short premium into events needs spreads
+risk:
+  max_premium_pct: 0.01     # 1% of account per trade
+  max_open_positions: 3
+  max_total_premium_pct: 0.03
+  kelly_cap: 0.5            # half-Kelly
+  take_profit_x: 2.0
+  stop_loss_pct: 0.5
+  time_stop_dte: 1
+ranker:
+  min_dte: 1
+  max_dte: 14
+  min_oi: 100
+  min_volume: 10
+  max_spread_pct: 0.12
+  min_pop: 0.25
+  drift_k: 0.5
+sentiment:
+  enabled: true
+  rss: true
+  reddit: true
+  telegram: true
+  tradingview: false        # pip install tradingview-scraper to enable
+schedule:
+  pre_open: "08:45"
+  intraday_every_min: 15
+  post_close: "16:10"
+  tz: America/New_York
+alerts:
+  email: true
+  sms: true
+  min_score: 0.35
+  only_on_change: true
