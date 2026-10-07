@@ -1,0 +1,126 @@
+"""Command line entry points. `flowcast demo` runs the whole loop on a simulated store."""
+
+from __future__ import annotations
+
+from datetime import date, timedelta
+
+import numpy as np
+import pandas as pd
+import typer
+
+from flowcast import labor, ordering, scorecard
+from flowcast.features import baseline_4wk, build_features
+from flowcast.forecast import Forecaster, backtest, intraday_reforecast
+from flowcast.synth import StoreConfig, generate_store
+
+app = typer.Typer(add_completion=False, help="Restaurant flow forecasting toolkit.")
+
+pd.set_option("display.width", 160)
+pd.set_option("display.max_columns", 30)
+
+
+def _h(title: str) -> None:
+    typer.echo("\n" + "=" * 8 + f" {title} " + "=" * (70 - len(title)))
+
+
+@app.command()
+def demo(
+    days: int = typer.Option(540, help="Days of simulated history."),
+    seed: int = typer.Option(7, help="Simulator seed."),
+    folds: int = typer.Option(6, help="Backtest folds (1 week each)."),
+) -> None:
+    """Simulate a store, backtest the forecaster, and print tomorrow's plan."""
+    end = date(2026, 10, 6)
+    start = end - timedelta(days=days)
+    cfg = StoreConfig()
+    typer.echo(f"Simulating {cfg.name} from {start} to {end} ...")
+    data = generate_store(cfg, start, end, seed=seed)
+    frame = build_features(data["transactions"], data["weather"], data["calendar"], data["events"])
+
+    _h("Backtest: model vs 4-week same-weekday-hour average")
+    bt = backtest(frame, n_folds=folds)
+    typer.echo((bt.summary * 100).round(1).astype(str) + "%")
+    base, model = bt.summary.loc["baseline_4wk", "hourly_wape"], bt.summary.loc["model", "hourly_wape"]
+    typer.echo(f"\nHourly error reduced {100 * (1 - model / base):.0f}% relative to the baseline.")
+    _h("Where the external signals earn their keep (hourly WAPE by condition)")
+    bc = bt.by_condition.copy()
+    for c in ("baseline_wape", "model_wape", "improvement"):
+        bc[c] = (bc[c] * 100).round(1).astype(str) + "%"
+    typer.echo(bc.to_string())
+
+    _h("What the model learned to pay attention to")
+    fc = Forecaster.fit(frame)
+    imp = fc.feature_importance(frame).head(12)
+    typer.echo(imp.round(3).to_string())
+
+    # Tomorrow = last backtest fold's first day, so actuals exist for the demo.
+    tomorrow = bt.predictions["date"].min()
+    day = frame[frame["date"] == tomorrow].copy()
+    fold_model = Forecaster.fit(frame[frame["date"] < tomorrow])
+    interval = fold_model.predict_interval(day)
+    interval["baseline"] = baseline_4wk(day).round(1).to_numpy()
+    interval["actual"] = day["transactions"].to_numpy()
+    cal = data["calendar"].set_index("date").loc[tomorrow]
+    wx = day[["temp_f", "rain_in", "weather_code"]]
+    _h(f"Forecast for {tomorrow.date()} ({tomorrow.day_name()})")
+    typer.echo(
+        f"school: {cal.school_status} | holiday: {cal.holiday_name} | "
+        f"temp {wx.temp_f.min():.0f}-{wx.temp_f.max():.0f}F | rain {wx.rain_in.sum():.2f} in | "
+        f"event pressure peak {day.event_pressure.max():.0f}"
+    )
+    typer.echo(interval.assign(hour=interval["ts"].dt.hour)[["hour", "baseline", "forecast", "low", "high", "actual"]].to_string(index=False))
+    typer.echo(f"day total  baseline {interval.baseline.sum():.0f} | model {interval.forecast.sum():.0f} | actual {interval.actual.sum():.0f}")
+
+    _h("Intraday re-forecast at 2:00pm (actuals through 1pm)")
+    actuals = pd.Series(day["transactions"].to_numpy(), index=pd.DatetimeIndex(day["ts"]))
+    through = actuals[actuals.index.hour <= 13]
+    rf = intraday_reforecast(interval[["ts", "forecast"]], through)
+    typer.echo(f"observed {rf.attrs['observed']:.0f} vs expected {rf.attrs['expected']:.0f} so far -> ratio {rf.attrs['ratio']:.2f}")
+    typer.echo(rf.assign(hour=rf["ts"].dt.hour)[["hour", "forecast", "actual", "revised", "signal"]].to_string(index=False))
+
+    _h("Staffing plan: model vs baseline (labor hours)")
+    plan_model = labor.staffing_plan(interval[["ts", "forecast"]])
+    plan_base = labor.staffing_plan(interval[["ts", "baseline"]], forecast_col="baseline")
+    typer.echo(plan_model.assign(hour=plan_model["ts"].dt.hour).drop(columns="ts").set_index("hour").to_string())
+    actual_frame = interval[["ts", "actual"]].rename(columns={"actual": "transactions"})
+    for name, plan in (("baseline", plan_base), ("model", plan_model)):
+        r = labor.realized_labor_cost(actual_frame, plan)
+        typer.echo(
+            f"{name:>8}: {plan.total.sum():.0f} labor hrs scheduled | "
+            f"{r['over_hours']:.0f} hrs over (${r['over_cost']:.0f} wasted) | "
+            f"{r['under_hours']:.0f} hrs under ({100 * r['under_hours_pct']:.0f}% of need)"
+        )
+
+    _h("Employee scorecards (last 90 days)")
+    cards = scorecard.station_scorecards(data["shifts"])
+    summary = scorecard.employee_summary(cards)
+    typer.echo(summary.head(12).to_string(index=False))
+    _h("Who to put where for the dinner block (6pm need, 20 people available)")
+    need_row = plan_model[plan_model["ts"].dt.hour == 18].iloc[0]
+    needs = {s.station: int(need_row[s.station]) for s in labor.DEFAULT_STANDARDS}
+    available = summary["employee_id"].head(20).tolist()
+    typer.echo(scorecard.assign_stations(cards, needs, available).to_string(index=False))
+
+    _h("Order suggestion for next delivery (2-day lead, 3-day coverage)")
+    future = frame[(frame["date"] >= tomorrow) & (frame["date"] < tomorrow + pd.Timedelta(days=7))]
+    future_fc = fold_model.predict(future)
+    daily_fc = pd.DataFrame({"date": future["date"].to_numpy(), "forecast": future_fc.to_numpy()}).groupby("date")["forecast"].sum().reset_index()
+    mix = ordering.menu_mix(data["item_sales"], data["transactions"])
+    usage = ordering.ingredient_usage(ordering.forecast_item_demand(daily_fc, mix))
+    rng = np.random.default_rng(seed)
+    on_hand = {k: round(float(rng.uniform(0.2, 1.2) * usage[usage.ingredient == k]["qty"].head(2).sum()), 1) for k in ordering.INGREDIENTS}
+    orders = ordering.suggest_orders(usage, on_hand, forecast_wape=float(bt.summary.loc["model", "daily_wape"]))
+    typer.echo(orders.to_string(index=False))
+    typer.echo(f"\nTotal order ${orders.order_cost.sum():,.0f}")
+
+
+@app.command()
+def weather(lat: float, lon: float, days: int = 7, tz: str = "America/Chicago") -> None:
+    """Fetch a live hourly forecast from Open-Meteo (network required)."""
+    from flowcast.connectors.weather import fetch_forecast, weather_features
+
+    typer.echo(weather_features(fetch_forecast(lat, lon, days=days, tz=tz)).to_string(index=False))
+
+
+if __name__ == "__main__":
+    app()
