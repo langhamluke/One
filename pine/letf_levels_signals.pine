@@ -249,7 +249,7 @@ float mpP   = levelsOn ? pMaxPain  : na
 bool   catalystToday = false
 string catTodayTxt   = ""
 for c in cats
-    if c.key == barKey
+    if symOk and c.key == barKey
         catalystToday := true
         catTodayTxt   := catTodayTxt == "" ? c.label : catTodayTxt + " | " + c.label
 
@@ -499,12 +499,12 @@ if barstate.islast
     bool drawExt = array.size(levels) > 0 and symOk and (not barStale or not hideStale)
     if drawExt
         for lvl in levels
-            color c  = lvl.kindColor()
+            color lc = lvl.kindColor()
             int   tr = barStale ? math.max(lvl.transparency(), 50) : lvl.transparency()
             int   wd = lvl.lineWidth()
-            array.push(lvLines, line.new(dayStartBar, lvl.price, bar_index, lvl.price, extend = extend.right, color = color.new(c, tr), style = line.style_solid, width = wd))
-            string txt = lvl.label + "  " + str.tostring(lvl.price, format.mintick) + (barStale ? "  (stale " + hdrDate + ")" : "")
-            array.push(lvLabels, label.new(bar_index + labelOffset, lvl.price, txt, xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(c, tr), textcolor = color.white, size = size.small))
+            array.push(lvLines, line.new(dayStartBar, lvl.price, bar_index, lvl.price, extend = extend.right, color = color.new(lc, tr), style = line.style_solid, width = wd))
+            string lvTxt = lvl.label + "  " + str.tostring(lvl.price, format.mintick) + (barStale ? "  (stale " + hdrDate + ")" : "")
+            array.push(lvLabels, label.new(bar_index + labelOffset, lvl.price, lvTxt, xloc = xloc.bar_index, yloc = yloc.price, style = label.style_label_left, color = color.new(lc, tr), textcolor = color.white, size = size.small))
 
     if hasLevels and not symOk
         warnLabel := label.new(bar_index, high, "Engine levels ignored: header sym=" + hdrSym + " but chart is " + syminfo.ticker, xloc = xloc.bar_index, yloc = yloc.abovebar, style = label.style_label_down, color = color.new(color.red, 15), textcolor = color.white, size = size.small)
@@ -529,7 +529,7 @@ if showTable and barstate.islast
     int    nextKey = na
     string nextLab = ""
     for c in cats
-        if c.key >= barKey and (na(nextKey) or c.key < nextKey)
+        if symOk and c.key >= barKey and (na(nextKey) or c.key < nextKey)
             nextKey := c.key
             nextLab := c.label
     string nextTxt = "none"
@@ -543,7 +543,8 @@ if showTable and barstate.islast
             int daysTo = math.round((timestamp(syminfo.timezone, ny, nm, nd, 0, 0) - time) / 86400000.0)
             nextTxt := f_keyToStr(nextKey) + " " + nextLab + " (" + str.tostring(daysTo) + "d)"
 
-    string lvlStatus = array.size(levels) == 0 ? "none pasted" : not symOk ? "SYM MISMATCH" : barStale ? (hideStale ? "STALE - hidden" : "STALE - shown") : str.tostring(array.size(levels)) + " active (" + hdrDate + ")"
+    string srcTxt    = str.length(hdrSrc) > 0 ? " src=" + hdrSrc + (na(hdrRatio) ? "" : " r=" + str.tostring(hdrRatio, "#.####")) : ""
+    string lvlStatus = array.size(levels) == 0 ? "none pasted" : not symOk ? "SYM MISMATCH" : barStale ? (hideStale ? "STALE - hidden" : "STALE - shown") : str.tostring(array.size(levels)) + " active (" + hdrDate + ")" + srcTxt
     color  lblCol  = color.new(color.white, 25)
     color  trendCol = trendUp ? color.new(color.green, 0) : trendDown ? color.new(color.red, 0) : color.new(color.yellow, 0)
     color  volCol   = volTxt == "EXTREME" ? color.new(color.red, 0) : volTxt == "HIGH" ? color.new(color.orange, 0) : volTxt == "LOW" ? color.new(color.aqua, 0) : color.white
@@ -570,7 +571,7 @@ if showTable and barstate.islast
     table.cell(regT, 0, 8, "Levels",      text_color = lblCol, text_size = size.small, text_halign = text.align_left)
     table.cell(regT, 1, 8, lvlStatus,     text_color = symOk and not barStale ? color.white : color.new(color.orange, 0), text_size = size.small)
 
-if showCatTable and barstate.islast and array.size(cats) > 0
+if showCatTable and barstate.islast and symOk and array.size(cats) > 0
     if not na(catT)
         table.delete(catT)
     // collect upcoming catalysts (key >= today), up to catTblMax rows, in ascending date order
@@ -578,14 +579,13 @@ if showCatTable and barstate.islast and array.size(cats) > 0
     array<string> upLabs = array.new<string>()
     for c in cats
         if c.key >= barKey
-            // insertion sort by key
+            // insertion sort by key (guard: a `for` with to < from would iterate downward)
             int pos = array.size(upKeys)
-            for j = 0 to array.size(upKeys) - 1
-                if array.size(upKeys) == 0
-                    break
-                if c.key < array.get(upKeys, j)
-                    pos := j
-                    break
+            if pos > 0
+                for j = 0 to pos - 1
+                    if c.key < array.get(upKeys, j)
+                        pos := j
+                        break
             array.insert(upKeys, pos, c.key)
             array.insert(upLabs, pos, c.label)
     int rows = math.min(array.size(upKeys), catTblMax)
