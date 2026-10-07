@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sign in · flowcast</title><link rel="stylesheet" href="/static/app.css"><link rel="icon" href="data:,"></head>
+<body class="login">
+<main class="card narrow">
+  <h1><span class="logo">◔</span> flowcast</h1>
+  <p class="muted">{{ store_name }}</p>
+  {% if error %}<p class="err" role="alert">{{ error }}</p>{% endif %}
+  <form method="post" action="/login" autocomplete="off">
+    <label>Username <input name="username" required maxlength="64" autocapitalize="none" autofocus></label>
+    <label>Password <input name="password" type="password" required maxlength="200"></label>
+    <button class="primary">Sign in</button>
+  </form>
+  <p class="muted small">Sessions expire after 8 hours. Five failed attempts lock the account for 5 minutes.</p>
+</main>
+</body></html>

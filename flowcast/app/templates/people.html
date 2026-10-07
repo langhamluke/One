@@ -1,0 +1,87 @@
+{% extends "base.html" %}{% block title %}People{% endblock %}
+{% block content %}
+<h1>People and live decisions</h1>
+{% set sig = live.signal %}
+<section class="grid2">
+  <div class="card">
+    <form method="get" action="/people" class="row">
+      <label>As of <select name="as_of">{% for h in hours %}<option value="{{ h }}" {{ 'selected' if h == as_of }}>{{ h }}:00</option>{% endfor %}</select></label>
+      <button>Update</button>
+    </form>
+    <div class="status big {{ 'good' if sig == 'hold' else 'warning' if sig == 'send_home' else 'serious' }}">
+      <i>{{ '●' if sig == 'hold' else '▼' if sig == 'send_home' else '▲' }}</i>
+      <div>
+        <strong>{% if sig == 'hold' %}Hold{% elif sig == 'send_home' %}Send home{% else %}Call in{% endif %}</strong>
+        <div>{{ '%.0f' % live.observed }} transactions through {{ as_of }}:00 vs {{ '%.0f' % live.expected }} expected (ratio {{ '%.2f' % live.ratio }}).
+        Rest of day now {{ '%.0f' % live.remaining_forecast }} vs {{ '%.0f' % live.remaining_original }} planned.
+        {% if delta_hours > 0 %}Revised need is <strong>{{ delta_hours }} more labor hours</strong> than scheduled for the remaining hours.{% elif delta_hours < 0 %}Revised need is <strong>{{ -delta_hours }} fewer labor hours</strong> than scheduled for the remaining hours.{% else %}Revised need matches the schedule.{% endif %}</div>
+      </div>
+    </div>
+    {% if session.r in ('shift_lead', 'gm', 'admin') %}
+    <form method="post" action="/people/decision" class="row wrap">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="as_of" value="{{ as_of }}">
+      <input name="note" maxlength="300" placeholder="Note (who, why)">
+      <button name="outcome" value="followed" class="primary">Followed the call</button>
+      <button name="outcome" value="overrode">Overrode it</button>
+      <button name="outcome" value="hold">Holding</button>
+    </form>
+    <p class="muted small">The system recommends and logs; the manager decides. Decisions feed the audit trail and, later, the model.</p>
+    {% endif %}
+    {{ live_chart|safe }}
+  </div>
+  <div class="card">{{ heat|safe }}
+    <details><summary>Hourly table</summary><table class="t"><tr><th>Hour</th>{% for s in stations %}<th>{{ s.replace('_',' ') }}</th>{% endfor %}<th>Mgr</th><th>Total</th><th>Revised</th></tr>
+    {% for r in today_plan.itertuples() %}<tr><td>{{ r.hour }}:00</td>{% for s in stations %}<td>{{ r[stations.index(s) + 2] }}</td>{% endfor %}<td>{{ r.manager }}</td><td><strong>{{ r.total }}</strong></td><td>{{ r.revised_total }}</td></tr>{% endfor %}</table></details>
+    <h3>Week labor hours</h3>
+    <table class="t"><tr><th>Day</th><th>Forecast plan</th><th>4-wk plan</th><th>Δ</th></tr>
+    {% for r in week_totals.itertuples() %}<tr><td>{{ r.date.strftime('%a %-m/%-d') }}</td><td>{{ r.total|int }}</td><td>{{ r.baseline_total|int }}</td><td class="{{ 'neg' if r.total < r.baseline_total else 'pos' if r.total > r.baseline_total }}">{{ '%+d' % (r.total - r.baseline_total) }}</td></tr>{% endfor %}</table>
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">
+    <h2>Warnings this week</h2>
+    {% if not overstaff and not understaff %}<p class="muted">The 4-week-average plan and the forecast plan agree within 2 people every hour.</p>{% endif %}
+    <ul class="alerts">
+    {% for w in overstaff %}<li class="status warning"><i>!</i>Overstaffed {{ w.date.strftime('%a %-m/%-d') }}: {{ w.hours }} labor hours (${{ '%.0f' % w.dollars }}) more than the forecast needs, at {{ w.when }}.</li>{% endfor %}
+    {% for w in understaff %}<li class="status serious"><i>▲</i>Understaffed {{ w.date.strftime('%a %-m/%-d') }}: forecast needs {{ w.hours }} more labor hours than the 4-week plan, at {{ w.when }}.</li>{% endfor %}
+    </ul>
+    <h2>Hiring and cross-training</h2>
+    {% if hiring %}
+    <table class="t"><tr><th>Station</th><th>Peak need</th><th>Qualified</th><th>Specialists</th><th>Required*</th><th>Gap</th></tr>
+    {% for g in hiring %}<tr class="{{ 'warn' if g.gap > 0 }}"><td>{{ g.station.replace('_',' ') }}</td><td>{{ g.peak_need }}</td><td>{{ g.qualified }}</td><td>{{ g.specialists }}</td><td>{{ g.required }}</td><td><strong>{{ g.gap if g.gap > 0 else '–' }}</strong></td></tr>{% endfor %}</table>
+    <p class="muted small">*Required = peak need × 2 shifts + 1 for days off. "Qualified" = composite ≥ 55 with enough shifts to be rated. A gap means hire or cross-train before the next peak.</p>
+    {% else %}<p class="muted">No shift data loaded.</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Suggested 6 pm lineup today</h2>
+    {% if lineup is not none and lineup|length %}
+    <table class="t"><tr><th>Station</th><th>Slot</th><th>Employee</th><th>Score</th><th>Gap to next</th></tr>
+    {% for r in lineup.itertuples() %}<tr><td>{{ r.station.replace('_',' ') }}</td><td>{{ r.slot }}</td><td>{{ r.employee_id or 'unfilled' }}</td><td>{{ r.score if r.score is not none else '–' }}</td><td>{{ r.gap_to_next if r.gap_to_next is not none else '–' }}</td></tr>{% endfor %}</table>
+    <p class="muted small">Greedy best-fit from the top-rated available people. "Gap to next" is how much better this person is than the next option at that station: big gaps are where the lineup matters.</p>
+    {% else %}<p class="muted">No lineup without shift data.</p>{% endif %}
+    <h2>Recent decisions</h2>
+    {% if decisions %}<table class="t"><tr><th>When</th><th>Who</th><th>Signal</th><th>Ratio</th><th>Outcome</th><th>Note</th></tr>
+    {% for d in decisions %}<tr><td>{{ d['at'][:16].replace('T',' ') }}</td><td>{{ d['username'] }}</td><td>{{ d['signal'] }}</td><td>{{ '%.2f' % d['ratio'] }}</td><td>{{ d['outcome'] }}</td><td>{{ d['note'] }}</td></tr>{% endfor %}</table>{% else %}<p class="muted">None logged yet.</p>{% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>Scorecards, last 90 days</h2>
+  {% if summary is not none and summary|length %}
+  <div class="grid2">
+    <div>
+      <h3>By person</h3>
+      <table class="t sortable"><tr><th>Employee</th><th>Best station</th><th>Score</th><th>Specialist in</th><th>Reliability</th><th>Overall</th></tr>
+      {% for r in summary.itertuples() %}<tr><td>{{ r.employee_id }}</td><td>{{ r.best_station.replace('_',' ') }}</td><td>{{ r.best_score }}</td><td>{{ r.specialist_in.replace('_',' ') }}</td><td>{{ r.reliability }}</td><td><strong>{{ r.overall }}</strong></td></tr>{% endfor %}</table>
+    </div>
+    <div>
+      <h3>By station (top 3)</h3>
+      <table class="t"><tr><th>Station</th><th>Employee</th><th>Throughput</th><th>Speed</th><th>Accuracy</th><th>Composite</th></tr>
+      {% for s in stations %}{% for r in cards[cards.station == s].head(3).itertuples() %}<tr><td>{{ s.replace('_',' ') if loop.first else '' }}</td><td>{{ r.employee_id }}</td><td>{{ r.throughput_score }}</td><td>{{ r.speed_score }}</td><td>{{ r.accuracy_score }}</td><td><strong>{{ r.composite }}</strong></td></tr>{% endfor %}{% endfor %}</table>
+    </div>
+  </div>
+  <p class="muted small">Scores are relative to peers at the same station (50 = station average, 15 points per standard deviation). Throughput is normalized for how busy the shift was. Fewer than 4 shifts at a station = not rated.</p>
+  {% else %}<p class="muted">Load shifts.csv to enable scorecards.</p>{% endif %}
+</section>
+{% endblock %}

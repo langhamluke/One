@@ -1,0 +1,28 @@
+{% extends "base.html" %}{% block title %}Admin{% endblock %}
+{% block content %}
+<h1>Administration</h1>
+<section class="grid2">
+  <div class="card">
+    <h2>Users</h2>
+    <table class="t"><tr><th>Username</th><th>Name</th><th>Role</th><th>Created</th></tr>
+    {% for u in users %}<tr><td>{{ u['username'] }}</td><td>{{ u['display_name'] }}</td><td>{{ u['role'] }}</td><td class="muted small">{{ u['created_at'][:10] }}</td></tr>{% endfor %}</table>
+    <h3>Add user</h3>
+    <form method="post" action="/admin/users" class="stack" autocomplete="off">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <div class="row"><label>Username <input name="username" required maxlength="64" pattern="[a-z0-9]+"></label><label>Display name <input name="display_name" required maxlength="80"></label></div>
+      <div class="row"><label>Role <select name="role"><option value="viewer">viewer</option><option value="shift_lead" selected>shift lead</option><option value="gm">gm</option><option value="admin">admin</option></select></label>
+      <label>Password <input name="password" type="password" required minlength="12" maxlength="200"></label></div>
+      <button class="primary">Create</button>
+    </form>
+    <p class="muted small">Roles: viewer reads; shift lead logs decisions, counts, and exports; gm edits events, overrides, templates, auto-order; admin manages users. Passwords: 12+ chars, mixed case, a digit.</p>
+    <h3>Deployment</h3>
+    <table class="t small"><tr><td>Data source</td><td>{{ store.data.source }}</td></tr><tr><td>Secure cookies / HSTS</td><td>{{ 'on' if settings.secure_cookies else 'OFF (dev mode)' }}</td></tr><tr><td>Secret key</td><td>{{ 'ephemeral (set FLOWCAST_SECRET_KEY)' if settings.generated_secret else 'configured' }}</td></tr><tr><td>Assistant backend</td><td>{{ settings.assistant_backend }}</td></tr><tr><td>Database</td><td>{{ settings.db_path }}</td></tr></table>
+    {% if data_notes %}<ul class="drivers small">{% for n in data_notes %}<li>{{ n }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Audit log</h2>
+    <table class="t small"><tr><th>When (UTC)</th><th>Who</th><th>Action</th><th>Detail</th></tr>
+    {% for a in audit %}<tr><td>{{ a['at'][:19].replace('T',' ') }}</td><td>{{ a['username'] }}</td><td>{{ a['action'] }}</td><td class="mono">{{ a['detail'] }}</td></tr>{% endfor %}</table>
+  </div>
+</section>
+{% endblock %}

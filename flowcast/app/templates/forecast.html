@@ -1,0 +1,56 @@
+{% extends "base.html" %}{% block title %}Forecast{% endblock %}
+{% block content %}
+<h1>Forecast and assumptions</h1>
+<section class="daystrip">
+{% for c in contexts %}
+  <a class="daycard {{ 'on' if c.date == sel }}" href="/forecast?day={{ c.date.strftime('%Y-%m-%d') }}">
+    <div class="label">{{ c.date.strftime('%a %-m/%-d') }}</div>
+    <div class="val">{{ '%.0f' % c.total }}</div>
+    <div class="muted small">4-wk {{ '%.0f' % c.baseline }}</div>
+    <div class="muted small">{{ '%.0f' % c.temp_lo }}–{{ '%.0f' % c.temp_hi }}° {% if c.rain_in > 0.05 %}· rain{% endif %} {% if c.storm %}⚡{% endif %}</div>
+    <div class="muted small">{{ c.school }}{% if c.holiday %} · {{ c.holiday }}{% endif %}{% if c.events %} · {{ c.events|length }} event{% endif %}</div>
+  </a>
+{% endfor %}
+</section>
+
+<section class="grid2">
+  <div class="card">{{ chart|safe }}
+    <details open><summary>Hourly table</summary><table class="t"><tr><th>Hour</th><th>Forecast</th><th>80% range</th><th>4-wk avg</th><th>Actual</th></tr>
+    {% for r in day.itertuples() %}<tr><td>{{ r.hour }}:00</td><td>{{ '%.0f' % r.forecast }}</td><td>{{ '%.0f' % r.low }}–{{ '%.0f' % r.high }}</td><td>{{ '%.0f' % r.baseline }}</td><td>{{ '%.0f' % r.actual if r.actual == r.actual else '–' }}</td></tr>{% endfor %}
+    <tr class="sum"><td>Total</td><td>{{ '%.0f' % day.forecast.sum() }}</td><td>{{ '%.0f' % day.low.sum() }}–{{ '%.0f' % day.high.sum() }}</td><td>{{ '%.0f' % day.baseline.sum() }}</td><td>{{ '%.0f' % day.actual.sum() if day.actual.notna().any() else '–' }}</td></tr></table></details>
+  </div>
+  <div class="card">
+    <h2>Assumptions for {{ sel.strftime('%A %-m/%-d') }}</h2>
+    <ul class="drivers">{% for d in drivers %}<li>{{ d }}</li>{% endfor %}</ul>
+    <h3>Events this week</h3>
+    {% set evs = [] %}{% for c in contexts %}{% for e in c.events %}{% set _ = evs.append((c.date, e)) %}{% endfor %}{% endfor %}
+    {% if evs %}<table class="t">{% for d, e in evs %}<tr><td>{{ d.strftime('%a') }} {{ e.start }}</td><td>{{ e.name }}</td><td>{{ '{:,}'.format(e.attendance) }} people</td><td>{{ '%.1f' % e.distance_mi }} mi</td></tr>{% endfor %}</table>
+    {% else %}<p class="muted">No events loaded this week.</p>{% endif %}
+    {% if session.r in ('gm', 'admin') %}
+    <details><summary>Add an event the model doesn't know about</summary>
+      <form method="post" action="/forecast/events" class="stack">
+        <input type="hidden" name="csrf_token" value="{{ csrf }}">
+        <label>Name <input name="name" required maxlength="120" placeholder="Homecoming game"></label>
+        <div class="row"><label>Starts <input name="start" type="datetime-local" required></label><label>Hours <input name="hours" type="number" step="0.5" min="0.5" max="24" value="3"></label></div>
+        <div class="row"><label>Attendance <input name="attendance" type="number" min="0" required placeholder="8000"></label><label>Miles away <input name="distance_mi" type="number" step="0.1" min="0" required placeholder="1.5"></label></div>
+        <label>Type <select name="category"><option>sports</option><option>concert</option><option>festival</option><option>school</option><option>community</option><option selected>other</option></select></label>
+        <button class="primary">Add and re-forecast</button>
+      </form>
+      {% if manual_events %}<table class="t">{% for e in manual_events %}<tr><td>{{ e['start'][:16].replace('T',' ') }}</td><td>{{ e['name'] }}</td><td>{{ e['attendance'] }}</td>
+        <td><form method="post" action="/forecast/events/{{ e['id'] }}/delete" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="link danger">remove</button></form></td></tr>{% endfor %}</table>{% endif %}
+    </details>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">{{ cond_chart|safe }}
+    <p class="muted small">Rolling backtest over the last {{ nfolds }} weeks, one week ahead at a time, scored on hours the store was open. The 4-week average is what a schedule built without external data assumes.</p>
+  </div>
+  <div class="card">
+    <h2>What the model weighs</h2>
+    <table class="t"><tr><th>Input</th><th>Importance</th></tr>{% for k, v in importance.items() %}<tr><td>{{ k }}</td><td><svg class="meter" width="120" height="8" viewBox="0 0 120 8" aria-hidden="true"><rect class="track" width="120" height="8" rx="4"/><rect class="fill" width="{{ (120 * v / importance.max())|round(0)|int }}" height="8" rx="4"/></svg> {{ '%.3f' % v }}</td></tr>{% endfor %}</table>
+    <p class="muted small">Permutation importance on the last 90 days: how much worse the forecast gets when that input is scrambled. The 4-week average dominates by design; the rest is the correction the store pays for.</p>
+  </div>
+</section>
+{% endblock %}

@@ -7,6 +7,7 @@ Goal: one real store's POS history, one honest number.
 - [x] Simulator, feature pipeline, model, backtest vs 4-week baseline
 - [x] Intraday re-forecast with send-home / call-in signal
 - [x] Staffing plan from labor standards; scorecards; assignment; ordering
+- [x] Self-hosted interface: overview, forecast, people and live decisions, ordering with export templates, assistant; auth, roles, CSRF, CSP, audit log
 - [ ] Get 12+ months of hourly POS exports from one or two stores (any
       brand; a friendly franchisee or independent is faster than corporate)
 - [ ] Replace synthetic weather with Open-Meteo archive for that store's

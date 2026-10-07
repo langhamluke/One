@@ -115,6 +115,30 @@ def demo(
 
 
 @app.command()
+def serve(host: str = "127.0.0.1", port: int = 8000, insecure_dev: bool = typer.Option(False, help="Allow http (no Secure cookie flag) for local development.")) -> None:
+    """Run the web interface. Set FLOWCAST_* environment variables to configure."""
+    import os
+
+    import uvicorn
+
+    if insecure_dev:
+        os.environ["FLOWCAST_INSECURE_DEV"] = "1"
+    from flowcast.app.main import create_app
+
+    uvicorn.run(create_app(), host=host, port=port, log_level="info")
+
+
+@app.command("weather-history")
+def weather_history(lat: float, lon: float, start: str, end: str, out: str = "weather.csv", tz: str = "America/Denver") -> None:
+    """Fetch hourly weather history from Open-Meteo into a CSV for FLOWCAST_DATA_DIR."""
+    from flowcast.connectors.weather import fetch_history
+
+    frame = fetch_history(lat, lon, date.fromisoformat(start), date.fromisoformat(end), tz=tz)
+    frame.to_csv(out, index=False)
+    typer.echo(f"wrote {len(frame)} hours to {out}")
+
+
+@app.command()
 def weather(lat: float, lon: float, days: int = 7, tz: str = "America/Chicago") -> None:
     """Fetch a live hourly forecast from Open-Meteo (network required)."""
     from flowcast.connectors.weather import fetch_forecast, weather_features

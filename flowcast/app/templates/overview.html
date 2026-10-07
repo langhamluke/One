@@ -1,0 +1,63 @@
+{% extends "base.html" %}{% block title %}Overview{% endblock %}
+{% block content %}
+{% set sig = live.signal %}
+<section class="hero">
+  <div>
+    <div class="label">Today, {{ today.strftime('%A %B %-d') }} · as of 2:00 pm</div>
+    <div class="hero-num">{{ '%.0f' % live.remaining_forecast }} <span class="muted small">transactions still to come</span></div>
+    <div class="status {{ 'good' if sig == 'hold' else 'warning' if sig == 'send_home' else 'serious' }}">
+      <i>{{ '●' if sig == 'hold' else '▼' if sig == 'send_home' else '▲' }}</i>
+      {% if sig == 'hold' %}On pace: {{ '%.0f' % live.observed }} vs {{ '%.0f' % live.expected }} expected (ratio {{ '%.2f' % live.ratio }}). Hold the schedule.
+      {% elif sig == 'send_home' %}Running slow: {{ '%.0f' % live.observed }} vs {{ '%.0f' % live.expected }} expected (ratio {{ '%.2f' % live.ratio }}). Consider sending someone home.
+      {% else %}Running hot: {{ '%.0f' % live.observed }} vs {{ '%.0f' % live.expected }} expected (ratio {{ '%.2f' % live.ratio }}). Consider calling someone in.{% endif %}
+      <a href="/people">Decide →</a>
+    </div>
+  </div>
+  <div class="kpis">
+    <div class="tile"><div class="label">Today forecast</div><div class="val">{{ '%.0f' % store.day(today).forecast.sum() }}</div><div class="delta">4-wk avg {{ '%.0f' % store.day(today).baseline.sum() }}</div></div>
+    <div class="tile"><div class="label">Daily error, last {{ acc|length }} wks</div><div class="val">{{ '%.1f' % (summary.loc['model','daily_wape']*100) }}%</div><div class="delta good">vs {{ '%.1f' % (summary.loc['baseline_4wk','daily_wape']*100) }}% 4-wk avg</div>{{ spark|safe }}</div>
+    <div class="tile"><div class="label">This week's labor plan</div><div class="val">{{ '%.0f' % week_hours.model }} h</div><div class="delta">4-wk plan {{ '%.0f' % week_hours.baseline }} h ({{ '%+.0f' % (week_hours.model - week_hours.baseline) }})</div></div>
+    <div class="tile"><div class="label">Auto-order</div><div class="val">{{ 'Eligible' if elig.eligible else 'Locked' }}</div><div class="delta">{{ elig.weeks }} wks under {{ '%.0f' % (elig.threshold*100) }}% error</div></div>
+  </div>
+</section>
+
+{% if alerts %}
+<section class="card">
+  <h2>Needs attention</h2>
+  <ul class="alerts">{% for level, text in alerts %}<li class="status {{ level }}"><i>{{ '▲' if level == 'serious' else '!' }}</i>{{ text }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+<section class="grid2">
+  <div class="card">{{ today_chart|safe }}
+    <details><summary>Table</summary><table class="t"><tr><th>Hour</th><th>Forecast</th><th>Revised</th><th>4-wk avg</th><th>Actual</th></tr>
+    {% for r in live.table.itertuples() %}<tr><td>{{ r.hour }}:00</td><td>{{ '%.0f' % r.forecast }}</td><td>{{ '%.0f' % r.revised }}</td><td>{{ '%.0f' % r.baseline }}</td><td>{{ '%.0f' % r.actual if r.actual == r.actual else '–' }}</td></tr>{% endfor %}</table></details>
+  </div>
+  <div class="card">
+    <h2>Why today looks like this</h2>
+    <ul class="drivers">{% for d in drivers %}<li>{{ d }}</li>{% endfor %}</ul>
+    <p class="muted small">Weather {{ '%.0f' % ctx.temp_lo }}–{{ '%.0f' % ctx.temp_hi }}°F · school {{ ctx.school }} · {{ ctx.holiday or 'no holiday' }} · {{ ctx.events|length }} event(s)</p>
+  </div>
+</section>
+
+<section class="grid2">
+  <div class="card">{{ week_chart|safe }}
+    <details><summary>Table</summary><table class="t"><tr><th>Day</th><th>Forecast</th><th>80% range</th><th>4-wk avg</th></tr>
+    {% for r in daily.itertuples() %}<tr><td>{{ r.date.strftime('%a %-m/%-d') }}</td><td>{{ '%.0f' % r.forecast }}</td><td>{{ '%.0f' % r.low }}–{{ '%.0f' % r.high }}</td><td>{{ '%.0f' % r.baseline }}</td></tr>{% endfor %}</table></details>
+  </div>
+  <div class="card">{{ acc_chart|safe }}
+    <details><summary>Table</summary><table class="t"><tr><th>Week of</th><th>4-wk avg</th><th>Model</th></tr>
+    {% for r in acc.itertuples() %}<tr><td>{{ r.week_start.strftime('%-m/%-d') }}</td><td>{{ '%.1f' % (r.baseline*100) }}%</td><td>{{ '%.1f' % (r.model*100) }}%</td></tr>{% endfor %}</table></details>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Last week's schedule, scored against what happened</h2>
+  <table class="t">
+    <tr><th>Plan built from</th><th>Labor hours</th><th>Hours over need</th><th>Wasted</th><th>Hours under need</th></tr>
+    <tr><td>4-week average</td><td>{{ '%.0f' % lw.baseline.scheduled }}</td><td>{{ '%.0f' % lw.baseline.over_hours }}</td><td>${{ '%.0f' % lw.baseline.over_cost }}</td><td>{{ '%.0f' % lw.baseline.under_hours }}</td></tr>
+    <tr><td>Model</td><td>{{ '%.0f' % lw.model.scheduled }}</td><td>{{ '%.0f' % lw.model.over_hours }}</td><td>${{ '%.0f' % lw.model.over_cost }}</td><td>{{ '%.0f' % lw.model.under_hours }}</td></tr>
+  </table>
+  <p class="muted small">"Need" is the headcount the actual hourly volume required under the store's labor standards. Over = idle or sent home; under = slow service.</p>
+</section>
+{% endblock %}

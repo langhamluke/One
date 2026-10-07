@@ -74,6 +74,19 @@ the forecast says why.
   WAPE from the latest backtest) scaled by sqrt(window), with a service
   level target and a shelf-life cap on perishables.
 
+## The interface (`flowcast/app/`)
+
+| Module | Responsibility |
+|---|---|
+| `main.py` | FastAPI routes for login, the five pages, forms, export, admin |
+| `state.py` | Loads data (CSV directory or simulator), trains, backtests, precomputes the week; every page helper lives here so templates do no math |
+| `security.py` | scrypt passwords, signed session cookies, CSRF, login throttle, role checks, response headers |
+| `db.py` | SQLite: users, audit log, decisions, inventory counts, order overrides, templates, manual events, assistant log, auto-order unlocks |
+| `charts.py` | Server-rendered SVG charts styled by CSS variables; no JavaScript charting library |
+| `exports.py` | Order export templates: validated JSON specs mapped onto the suggested order |
+| `assistant.py` | Local deterministic assistant; optional self-hosted Ollama backend behind a private-address gate; redaction |
+| `templates/`, `static/` | Jinja2 pages, one stylesheet, one small script. No external assets |
+
 ## What the production system adds
 
 - **Ingest**: POS webhooks/exports (Toast, Square, Aloha, Brink), labor

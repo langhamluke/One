@@ -18,10 +18,36 @@ Working package name: `flowcast`.
 
 - `docs/01-product-brief.md`: problem, product, differentiation, business model
 - `docs/02-market-landscape.md`: who already does this (Oct 2026), pricing, data sources
-- `docs/03-architecture.md`: how the engine is built and why
+- `docs/03-architecture.md`: how the engine and the interface are built and why
 - `docs/04-roadmap.md`: phases from "prove it on one real store" to multi-store
-- `flowcast/`: a working prototype of the whole loop on a simulated QSR store
-- `tests/`: 21 tests covering every module
+- `docs/05-loading-real-data.md`: CSV formats and commands to run on a real store's exports
+- `SECURITY.md`: threat model, controls, deployment checklist
+- `flowcast/`: the engine (forecast, intraday, labor, scorecards, ordering)
+- `flowcast/app/`: the self-hosted web interface
+- `tests/`: 33 tests covering the engine and the interface
+
+## The interface
+
+Five pages, one login, no external services:
+
+| Page | What it answers |
+|---|---|
+| Overview | Are we on pace right now, what needs attention this week, how accurate have we been, and why does today look the way it does |
+| Forecast | Seven days by hour with an 80% band, the weather, school, holiday, and event assumptions behind each day, a place to add events the model doesn't know about, and the backtest by condition |
+| People | The live send-home / call-in / hold call with the ratio behind it, a button to log the decision, today's headcount by hour and station, overstaff and understaff warnings, hiring and cross-training gaps, per-station scorecards, and a suggested lineup |
+| Ordering | Suggested cases per ingredient with error-sized safety stock, on-hand counts, GM overrides, per-item auto-order that unlocks only after four weeks under the accuracy bar, and export to the distributor's file layout through an editable template |
+| Assistant | Questions answered from the store's own numbers. Default backend is deterministic code with no model; the only optional model backend is self-hosted and must be on a private address. Every exchange is redacted and logged |
+
+Security is a design constraint, not a feature list; see `SECURITY.md`.
+
+```bash
+export FLOWCAST_SECRET_KEY="$(python -c 'import secrets;print(secrets.token_urlsafe(48))')"
+export FLOWCAST_ADMIN_PASSWORD='pick-Something-Long-1'
+.venv/bin/flowcast serve --insecure-dev     # http://127.0.0.1:8000, demo store
+```
+
+Point `FLOWCAST_DATA_DIR` at real exports to replace the demo store; formats
+are in `docs/05-loading-real-data.md`.
 
 ## Prototype results (simulated store, 18 months, 8-week rolling backtest)
 
@@ -41,7 +67,8 @@ the roadmap is replacing the simulator with real POS data.
 
 ```bash
 uv venv .venv && uv pip install -e ".[dev]"
-.venv/bin/flowcast demo            # simulate, backtest, forecast, staff, score, order
+.venv/bin/flowcast demo            # simulate, backtest, forecast, staff, score, order (terminal)
+.venv/bin/flowcast serve --insecure-dev   # the web interface on the demo store
 .venv/bin/flowcast weather 30.45 -91.19   # live Open-Meteo forecast (network)
 .venv/bin/python -m pytest -q
 ```

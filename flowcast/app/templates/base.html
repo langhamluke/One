@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}flowcast{% endblock %} · {{ store_name }}</title>
+<link rel="stylesheet" href="/static/app.css"><link rel="icon" href="data:,">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo">◔</span> flowcast <span class="muted">· {{ store_name }}</span></div>
+  <nav>
+    <a href="/" class="{{ 'on' if nav == 'overview' }}">Overview</a>
+    <a href="/forecast" class="{{ 'on' if nav == 'forecast' }}">Forecast</a>
+    <a href="/people" class="{{ 'on' if nav == 'people' }}">People</a>
+    <a href="/ordering" class="{{ 'on' if nav == 'ordering' }}">Ordering</a>
+    <a href="/assistant" class="{{ 'on' if nav == 'assistant' }}">Assistant</a>
+    {% if session and session.r == 'admin' %}<a href="/admin" class="{{ 'on' if nav == 'admin' }}">Admin</a>{% endif %}
+  </nav>
+  <div class="who">
+    {% if session %}
+      <span class="muted">{{ session.u }} · {{ session.r.replace('_', ' ') }}</span>
+      <form method="post" action="/logout" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><button class="link">Sign out</button></form>
+    {% endif %}
+  </div>
+</header>
+{% if demo_mode %}<div class="banner demo">Demo mode: this store is simulated. Point <code>FLOWCAST_DATA_DIR</code> at real POS exports to replace it. "Today" is {{ today.strftime('%A %B %-d, %Y') }}.</div>{% endif %}
+{% if message %}<div class="banner flash">{{ message }}</div>{% endif %}
+<main>
+{% block content %}{% endblock %}
+</main>
+<footer class="foot muted">Self-hosted. No data leaves this server. No external scripts, fonts, or AI services. Every decision is audited.</footer>
+<script src="/static/app.js"></script>
+</body>
+</html>

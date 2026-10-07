@@ -1,0 +1,35 @@
+{% extends "base.html" %}{% block title %}Assistant{% endblock %}
+{% block content %}
+<h1>Store assistant</h1>
+<section class="grid2">
+  <div class="card chat">
+    <div class="log" id="chatlog">
+      {% if not history %}<p class="muted">Ask about today's forecast, why it is busy or slow, how we are pacing, who is best on a station, hiring gaps, what to order, or how accurate the forecast has been.</p>{% endif %}
+      {% for h in history %}
+        <div class="msg q"><span class="muted small">{{ h['username'] }} · {{ h['at'][11:16] }}</span><p>{{ h['question'] }}</p></div>
+        <div class="msg a"><span class="muted small">assistant · {{ h['backend'] }}{% if h['redactions'] %} · {{ h['redactions'] }} item(s) redacted{% endif %}</span><p>{{ h['answer'] }}</p></div>
+      {% endfor %}
+    </div>
+    <form method="post" action="/assistant" class="row">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <input name="question" maxlength="500" required placeholder="How are we pacing? Who should be on fry tonight? What do we order?" autofocus>
+      <button class="primary">Ask</button>
+    </form>
+  </div>
+  <div class="card">
+    <h2>Data policy</h2>
+    <ul class="drivers">
+      <li><strong>Backend: {{ backend }}.</strong> {% if backend == 'local' %}Deterministic answers computed from this store's numbers. No language model, no network call.{% else %}Self-hosted model at {{ ollama_url }} on the operator's own hardware. Public endpoints are refused at startup.{% endif %}</li>
+      <li>No cloud AI service is wired in. Nothing you type here is sent outside this server.</li>
+      <li>Employees appear as IDs only. Emails, phone numbers, and card or ID-shaped numbers in your question are redacted before anything is processed, and the count is shown.</li>
+      <li>Every question and answer is logged with your username and reviewable by admins.</li>
+      <li>Answers cite the page that holds the detail so you can verify them.</li>
+    </ul>
+    <h3>Try asking</h3>
+    <ul class="chips">
+      {% for q in ["What does tomorrow look like?", "Why is today slow?", "How are we pacing right now?", "Who is best at drive thru window?", "Are we short on anyone?", "Any overstaffing this week?", "What should we order?", "How accurate is the forecast?", "What events are this week?"] %}
+      <li><form method="post" action="/assistant" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="question" value="{{ q }}"><button class="chip">{{ q }}</button></form></li>{% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,58 @@
+{% extends "base.html" %}{% block title %}Ordering{% endblock %}
+{% block content %}
+<h1>Ordering</h1>
+<section class="grid2">
+  <div class="card">
+    <h2>Suggested order · delivery {{ delivery.strftime('%a %-m/%-d') }} · ${{ '{:,.0f}'.format(total_cost) }}</h2>
+    <table class="t"><tr><th>Ingredient</th><th>Usage (5 d)</th><th>Safety</th><th>On hand</th><th>Suggested</th><th>Final cases</th><th>Cost</th><th>Days after</th>{% if session.r in ('gm','admin') %}<th></th>{% endif %}</tr>
+    {% for r in orders.itertuples() %}<tr class="{{ 'warn' if r.overridden }}"><td>{{ r.ingredient }} <span class="muted small">{{ r.unit }}</span></td><td>{{ '%.0f' % r.protected_usage }}</td><td>{{ '%.0f' % r.safety_stock }}</td><td>{{ '%.0f' % r.on_hand }}</td><td>{{ r.order_cases }}</td><td><strong>{{ r.final_cases }}</strong>{% if r.overridden %} <span class="muted small">(override)</span>{% endif %}</td><td>${{ '{:,.0f}'.format(r.final_cost) }}</td><td>{{ r.days_of_supply_after }}</td>
+      {% if session.r in ('gm','admin') %}<td><form method="post" action="/ordering/override" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="ingredient" value="{{ r.ingredient }}"><input name="cases" type="number" min="0" class="tiny" placeholder="{{ r.order_cases }}"><button class="link">set</button></form></td>{% endif %}</tr>{% endfor %}</table>
+    <p class="muted small">Safety stock = z(95%) × forecast error × usage; shelf life caps perishables. Blank an override to clear it.</p>
+    <h3>Export to the ordering system</h3>
+    <form method="get" action="/ordering/export" class="row wrap">
+      <label>Template <select name="template">{% for n in templates %}<option value="{{ n }}" {{ 'selected' if n == sel }}>{{ n }}</option>{% endfor %}</select></label>
+      <label>Delivery <input type="date" name="delivery" value="{{ delivery.isoformat() }}"></label>
+      <button class="primary" {{ 'disabled' if session.r == 'viewer' }}>Download file</button>
+    </form>
+    <p class="muted small">Downloads are audited. The distributor template is a placeholder layout: paste the real order guide's columns and item codes below once you have it.</p>
+  </div>
+  <div class="card">
+    <h2>Auto-order</h2>
+    <p class="status {{ 'good' if elig.eligible else 'warning' }}"><i>{{ '●' if elig.eligible else '!' }}</i>{% if elig.eligible %}Forecast has stayed under {{ '%.0f' % (elig.threshold*100) }}% daily error for {{ elig.weeks }} weeks. Items can be unlocked.{% else %}Locked until daily error stays under {{ '%.0f' % (elig.threshold*100) }}% for {{ elig.weeks }} straight weeks. Recent: {% for v in elig.recent %}{{ '%.1f' % (v*100) }}%{{ ', ' if not loop.last }}{% endfor %}.{% endif %}</p>
+    {% if session.r in ('gm','admin') %}
+    <table class="t">{% for ing in ingredients %}<tr><td>{{ ing }}</td><td>{{ 'auto' if unlocks.get(ing) else 'manual' }}</td><td>
+      <form method="post" action="/ordering/unlock" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="ingredient" value="{{ ing }}"><input type="hidden" name="enabled" value="{{ '0' if unlocks.get(ing) else '1' }}"><button class="link" {{ 'disabled' if not elig.eligible and not unlocks.get(ing) }}>{{ 'disable' if unlocks.get(ing) else 'enable' }}</button></form></td></tr>{% endfor %}</table>
+    {% endif %}
+    <h2>Forecast usage by day</h2>
+    <table class="t small"><tr><th>Ingredient</th>{% for d in usage_dates %}<th>{{ d.strftime('%a') }}</th>{% endfor %}</tr>
+    {% for ing, row in usage_pivot.iterrows() %}<tr><td>{{ ing }}</td>{% for v in row %}<td>{{ '%.0f' % v }}</td>{% endfor %}</tr>{% endfor %}</table>
+  </div>
+</section>
+<section class="grid2">
+  <div class="card">
+    <h2>On-hand counts</h2>
+    {% if session.r in ('shift_lead','gm','admin') %}
+    <form method="post" action="/ordering/inventory">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <table class="t"><tr><th>Ingredient</th><th>Unit</th><th>On hand</th><th>On order</th><th>Updated</th></tr>
+      {% for ing, spec in ingredients.items() %}{% set cur = inventory.get(ing) %}<tr><td>{{ ing }}</td><td>{{ spec.unit }}</td>
+        <td><input name="on_hand_{{ ing }}" type="number" step="0.1" min="0" class="small" value="{{ cur.on_hand if cur else '' }}"></td>
+        <td><input name="on_order_{{ ing }}" type="number" step="0.1" min="0" class="small" value="{{ cur.on_order if cur else '' }}"></td>
+        <td class="muted small">{{ (cur.updated_at[:16].replace('T',' ') + ' ' + cur.updated_by) if cur else '–' }}</td></tr>{% endfor %}</table>
+      <button class="primary">Save counts</button>
+    </form>
+    {% else %}<p class="muted">Shift leads and above enter counts.</p>{% endif %}
+  </div>
+  <div class="card">
+    <h2>Export template: {{ sel }}</h2>
+    {% if session.r in ('gm','admin') %}
+    <form method="post" action="/ordering/template" class="stack">
+      <input type="hidden" name="csrf_token" value="{{ csrf }}">
+      <textarea name="spec" rows="22" spellcheck="false">{{ spec_json }}</textarea>
+      <button class="primary">Save template</button>
+    </form>
+    <p class="muted small">Fields: store_number, vendor_code, ingredient, order_cases, order_units, unit, case_size, delivery_date, on_hand, protected_usage, safety_stock, order_cost; or a <code>const</code>. Map ingredient → vendor item code in <code>item_codes</code>. Save under a new <code>name</code> to add a template.</p>
+    {% else %}<pre class="small">{{ spec_json }}</pre>{% endif %}
+  </div>
+</section>
+{% endblock %}
