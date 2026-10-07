@@ -1,0 +1,13 @@
+#v1;sym=UPRO;date=2026-10-07;src=SPY;ratio=0.1995
+flip,153.76,80,Gamma flip
+callwall,159.83,100,Call wall
+lvl,156.84,24,Call GEX
+lvl,161.03,8,Call GEX
+putwall,149.06,100,Put wall
+lvl,153.85,36,Put GEX
+lvl,150.86,33,Put GEX
+maxpain,150.86,50,Max pain
+hvl,159.83,40,Vanna peak
+em_hi,158.85,30,+1σ expected move
+em_lo,151.03,30,-1σ expected move
+catalyst,2026-10-16,Monthly OPEX

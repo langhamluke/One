@@ -93,15 +93,26 @@ def rank_singles(chain: pd.DataFrame, spot: float, score: float, direction: str,
     if df.empty:
         return df
     sign = 1.0 if want == "call" else -1.0
+    # Distribution width comes from the ATM IV of each expiry (the market's consensus
+    # move), not from the strike's own skewed IV; otherwise richer OTM strikes get
+    # rewarded with wider simulated distributions. The strike's IV only sets its price.
+    full = chain.copy()
+    full["type"] = full["type"].str.lower()
+    full["iv"] = pd.to_numeric(full["iv"], errors="coerce")
+    full["strike"] = pd.to_numeric(full["strike"], errors="coerce")
+    atm_iv = {}
+    for exp, grp in full.dropna(subset=["iv", "strike"]).groupby("expiration"):
+        near = grp.iloc[(grp["strike"] - spot).abs().argsort()[:4]]
+        atm_iv[exp] = float(near["iv"].median())
     rows = []
     cap_premium = p.account * p.max_premium_pct
     for _, r in df.iterrows():
         iv, T, K = float(r["iv"]), float(r["T"]), float(r["strike"])
-        implied_move = iv * np.sqrt(T)
-        drift = score * p.drift_k * implied_move * (1 if direction == "LONG_CALL" else -1) * (1 if score >= 0 else -1)
-        # note: score sign already encodes direction; for LONG_PUT score is negative -> drift negative
+        dist_iv = atm_iv.get(r["expiration"], iv)
+        implied_move = dist_iv * np.sqrt(T)
+        # score sign already encodes direction: LONG_PUT carries a negative score -> negative drift
         drift = score * p.drift_k * implied_move
-        ST = simulate_terminal(spot, iv, T, drift, p, rng)
+        ST = simulate_terminal(spot, dist_iv, T, drift, p, rng)
         payoff = np.maximum(sign * (ST - K), 0.0)
         entry = float(r["ask"])
         exit_cost = (float(r["ask"]) - float(r["bid"])) / 2  # slippage proxy on exit
@@ -119,7 +130,7 @@ def rank_singles(chain: pd.DataFrame, spot: float, score: float, direction: str,
             "spread_pct": float(r["spread_pct"]), "liquid": bool(r["liquid"]),
             "ev_$": ev, "ev_on_premium": ev / (entry * 100), "pop": pop, "p_2x": p2x, "kelly_f": kelly,
             "contracts": contracts, "premium_$": contracts * entry * 100, "max_loss_$": contracts * entry * 100,
-            "breakeven": K + sign * entry, "implied_move_pct": implied_move * 100, "model_drift_pct": drift * 100,
+            "breakeven": K + sign * entry, "implied_move_pct": implied_move * 100, "atm_iv": dist_iv, "model_drift_pct": drift * 100,
         })
     out = pd.DataFrame(rows)
     out = out[out["pop"] >= p.min_pop]

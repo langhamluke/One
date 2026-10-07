@@ -1,0 +1,41 @@
+{
+  "underlying": "QQQ",
+  "captured_date": "2026-10-07",
+  "capture_timestamp_utc": "2026-10-07T17:22:36.615256311Z",
+  "quote_updated_at_range": [
+    "2026-10-07T16:38:24.955352678Z",
+    "2026-10-07T17:22:36.615256311Z"
+  ],
+  "spot_used": "756.360000",
+  "spot_source": "get_equity_quotes last_trade_price",
+  "spot_time_utc": "2026-10-07T16:34:12.290887765Z",
+  "previous_close": "759.660000",
+  "strike_band_pct": 0.08,
+  "strike_band": [
+    695.8512,
+    816.8688
+  ],
+  "expirations": [
+    "2026-10-09",
+    "2026-10-12",
+    "2026-10-16"
+  ],
+  "rows_per_expiration": {
+    "2026-10-09": 232,
+    "2026-10-12": 216,
+    "2026-10-16": 206
+  },
+  "row_count": 654,
+  "instruments_without_quote": 0,
+  "blank_cells_by_column": {
+    "iv": 28,
+    "delta": 28,
+    "gamma": 28,
+    "theta": 28,
+    "vega": 28,
+    "rho": 28,
+    "chance_of_profit_long": 28
+  },
+  "source": "Robinhood MCP get_option_chains/get_option_instruments/get_option_quotes",
+  "notes": "type is call/put; blank = field null in source; greeks/iv null for some deep ITM/OTM contracts; closes omitted by API for batches >20 ids"
+}

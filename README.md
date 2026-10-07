@@ -22,11 +22,11 @@ cp config/settings.example.yaml config/settings.yaml
 docker compose run --rm letf python -m letf run      # one report now
 docker compose up -d --build                           # scheduler: pre-open, every 15 min RTH, post-close
 ```
-Without Docker: `python3 -m venv .venv && . .venv/bin/activate && pip install -r engine/requirements.txt && cd engine && python -m letf run`.
+Without Docker (run from the repo root): `python3 -m venv .venv && . .venv/bin/activate && pip install -r engine/requirements.txt && PYTHONPATH=engine python -m letf run`.
 
 Droplet one-liner (Ubuntu, as root): `curl -fsSL https://raw.githubusercontent.com/langhamluke/One/claude/serene-clarke-ln6u4a/deploy/droplet.sh | bash`
 
-Offline demo with recorded chains: `cd engine && python -m letf run --provider fixtures --offline`.
+Offline demo with the recorded 2026-10-07 chains: `PYTHONPATH=engine python -m letf run --provider fixtures --offline --config config/settings.example.yaml`.
 
 ## What the engine does on each run
 
@@ -46,7 +46,7 @@ Max premium per trade 1% of account, max 3 open positions, 3% total premium at r
 Alpaca (free paper keys give greeks + IV + OI on an indicative feed; Algo Trader Plus gives real-time OPRA), CBOE free delayed JSON (no keys), or recorded fixtures. Daily history via yfinance with a CSV cache in `data/cache/`.
 
 ## Backtest
-`cd engine && python -m letf.backtest --symbols TQQQ UPRO --parents QQQ SPY --start 2020-01-01 --out ../out/backtest` — synthetic Black-Scholes option pricing from VXN/VIX, walk-forward optimization, trade-bootstrap Monte Carlo. Read the limitations section in the generated report before trusting any number.
+`PYTHONPATH=engine python -m letf.backtest --symbols TQQQ UPRO --parents QQQ SPY --start 2020-01-01 --out out/backtest` — synthetic Black-Scholes option pricing from VXN/VIX, walk-forward optimization, trade-bootstrap Monte Carlo. Read the limitations section in the generated report before trusting any number.
 
 ## Tests
-`cd engine && python -m pytest -q`
+`cd engine && python -m pytest -q` (26 tests, including an end-to-end run on the recorded chains)

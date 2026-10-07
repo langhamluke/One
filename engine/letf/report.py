@@ -43,7 +43,9 @@ def markdown(run: dict) -> str:
     L.append("## Recommended contracts (singles, EV-ranked)")
     for sym, df in run["ranked"].items():
         if df is None or df.empty:
-            L.append(f"- {sym}: no contract passes filters")
+            parent = sym if sym in run["signals"] else next((k for k, v in run.get("gex", {}).items() if sym in v.get("mapped", {})), None)
+            sg = run["signals"].get(parent)
+            L.append(f"- {sym}: " + ("no signal today, nothing to rank" if (sg is None or sg.direction == "NONE") else "no contract passes liquidity/EV filters"))
             continue
         top = df.head(5)
         L.append(f"**{sym}**")

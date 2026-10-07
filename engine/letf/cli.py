@@ -85,7 +85,13 @@ def run_once(cfg: dict, online: bool = True, verbose: bool = True) -> dict:
     for sym in cfg["gex_symbols"]:
         try:
             px = prices.daily(sym, cfg["cache_dir"], refresh=online)
-            vol = prices.daily(cfg["vol_index"].get(sym, "VIX"), cfg["cache_dir"], refresh=online)
+            vol = None
+            for vsym in (cfg["vol_index"].get(sym, "VIX"), "VIX"):
+                try:
+                    vol = prices.daily(vsym, cfg["cache_dir"], refresh=online)
+                    break
+                except Exception:
+                    continue
         except Exception as e:
             if verbose:
                 print(f"[signals] {sym}: price history failed: {e}")

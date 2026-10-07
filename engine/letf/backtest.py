@@ -174,7 +174,10 @@ def load_dataset(symbols: list[str], parents: list[str] | None, cache_dir: str, 
     for s, p in parent_of.items():
         if p not in pxs:
             pxs[p] = load(p)
-            vols[p] = load(VOL_INDEX[p])
+            try:
+                vols[p] = load(VOL_INDEX[p])
+            except FileNotFoundError:
+                vols[p] = load("VIX")  # VXN history unavailable from some sources; VIX is a close proxy
         syms[s] = pxs[p] if s == p else load(s)
     return Dataset.build(pxs, vols, syms, parent_of, start, end)
 

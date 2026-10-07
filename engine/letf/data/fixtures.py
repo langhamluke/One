@@ -28,8 +28,8 @@ class FixtureProvider:
         if os.path.exists(meta):
             with open(meta) as f:
                 m = json.load(f)
-            for k in ("spot", "spot_estimate", "underlying_price"):
-                if k in m:
+            for k in ("spot", "spot_estimate", "underlying_price", "spot_used", "spot_price", "last_trade_price", "underlying_spot"):
+                if k in m and m[k] is not None:
                     return float(m[k])
         df = pd.read_csv(self._latest(symbol))
         # infer spot from the call/put with delta closest to +/-0.5

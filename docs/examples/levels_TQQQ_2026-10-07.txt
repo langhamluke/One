@@ -1,0 +1,13 @@
+#v1;sym=TQQQ;date=2026-10-07;src=QQQ;ratio=0.1099
+flip,79.65,80,Gamma flip
+callwall,84.35,100,Call wall
+lvl,87.64,20,Call GEX
+lvl,86.00,14,Call GEX
+putwall,82.37,100,Put wall
+lvl,81.05,27,Put GEX
+lvl,77.75,20,Put GEX
+maxpain,77.75,50,Max pain
+hvl,87.64,40,Vanna peak
+em_hi,86.09,30,+1σ expected move
+em_lo,80.21,30,-1σ expected move
+catalyst,2026-10-16,Monthly OPEX
