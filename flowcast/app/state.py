@@ -23,7 +23,9 @@ from flowcast.connectors.school import load_school_csv
 from flowcast.connectors.weather import WEATHER_COLUMNS
 from flowcast.features import baseline_4wk, build_features
 from flowcast.forecast import BacktestResult, Forecaster, backtest, daily_wape, intraday_reforecast
+from flowcast.montecarlo import DaySimulation, ErrorPool, order_safety_samples, simulate_day
 from flowcast.synth import StoreConfig, generate_store, synthetic_weather
+from flowcast.tuning import Selection, walk_forward_select
 
 log = logging.getLogger("flowcast.state")
 
@@ -113,6 +115,9 @@ class StoreState:
     summary: pd.DataFrame
     wage: float
     demo_mode: bool
+    selection: Selection
+    pool: ErrorPool
+    sims: dict[pd.Timestamp, DaySimulation] = field(default_factory=dict)
 
     @classmethod
     def build(cls, cfg: StoreConfig, *, data_dir: Path | None = None, wage: float = 16.50,
@@ -162,8 +167,16 @@ class StoreState:
         frame.loc[future, "lag_std_4w"] = frame.loc[future, lag_cols].std(axis=1)
 
         hist = frame[(frame["date"] < today_ts) & frame["actual_known"]]
-        model = Forecaster.fit(hist)
-        bt = backtest(hist, n_folds=folds, min_train_days=120)
+        # Walk-forward selection decides which model (if any) the data supports.
+        selection = walk_forward_select(hist, max_folds=folds)
+        model = Forecaster.fit(hist, **selection.model_kwargs)
+        if selection.predictions is not None:
+            bt = backtest(hist, n_folds=selection.schedule.n_folds, horizon_days=selection.schedule.horizon_days,
+                          min_train_days=selection.schedule.min_train_days, model_kwargs=selection.model_kwargs)
+            pool = ErrorPool.from_predictions(bt.predictions, pred_col="model")
+        else:
+            bt = _empty_backtest(hist)
+            pool = ErrorPool.uninformed(cfg.hours)
         imp = model.feature_importance(hist, n_repeats=2)
 
         week_rows = frame[(frame["date"] >= today_ts) & (frame["date"] <= today_ts + pd.Timedelta(days=6))]
@@ -180,7 +193,25 @@ class StoreState:
         else:
             cards, summary = pd.DataFrame(), pd.DataFrame()
 
-        return cls(cfg, data, frame, today_ts, model, bt, week, imp, cards, summary, wage, demo)
+        state = cls(cfg, data, frame, today_ts, model, bt, week, imp, cards, summary, wage, demo, selection, pool)
+        state.resimulate()
+        return state
+
+    def resimulate(self, n: int = 2000) -> None:
+        """Monte Carlo each day of the week ahead; replace the band with P10-P90."""
+        self.sims = {}
+        for i, d in enumerate(sorted(self.week["date"].unique())):
+            rows = self.week[self.week["date"] == d]
+            if rows["is_closed"].all() or rows["forecast"].sum() <= 0:
+                continue
+            sim = simulate_day(rows, self.pool, n=n, seed=i)
+            self.sims[pd.Timestamp(d)] = sim
+            self.week.loc[rows.index, "low"] = sim.hourly_p10
+            self.week.loc[rows.index, "high"] = sim.hourly_p90
+
+    @property
+    def error_samples(self) -> np.ndarray:
+        return order_safety_samples(self.pool)
 
     # ------------------------------------------------------------------ helpers
     def apply_events(self, extra: pd.DataFrame | None) -> None:
@@ -204,6 +235,7 @@ class StoreState:
         self.week["forecast"] = week["forecast"].to_numpy()
         self.week["low"] = week["low"].to_numpy()
         self.week["high"] = week["high"].to_numpy()
+        self.resimulate()
 
     def day(self, d: pd.Timestamp) -> pd.DataFrame:
         return self.week[self.week["date"] == d].reset_index(drop=True)
@@ -341,6 +373,8 @@ class StoreState:
     # ------------------------------------------------------------------ accuracy
     def accuracy_by_fold(self) -> pd.DataFrame:
         p = self.bt.predictions
+        if p.empty:
+            return pd.DataFrame(columns=["week_start", "baseline", "model"])
         rows = []
         for f, g in p.groupby("fold"):
             rows.append({"week_start": g["date"].min(), "baseline": daily_wape(g, "transactions", "baseline"),
@@ -350,6 +384,9 @@ class StoreState:
     def last_week_labor(self) -> dict:
         """What last week's schedule would have cost under each forecast, scored against actuals."""
         p = self.bt.predictions
+        if p.empty:
+            empty = {"over_hours": 0.0, "under_hours": 0.0, "over_cost": 0.0, "under_hours_pct": 0.0, "scheduled": 0.0}
+            return {"baseline": empty, "model": dict(empty)}
         last = p[p["fold"] == p["fold"].max()]
         actual = last[["ts", "transactions"]]
         out = {}
@@ -365,10 +402,34 @@ class StoreState:
         return ordering.ingredient_usage(ordering.forecast_item_demand(daily, mix))
 
     def orders(self, on_hand: dict[str, float], on_order: dict[str, float]) -> pd.DataFrame:
-        return ordering.suggest_orders(self.usage(), on_hand, on_order, forecast_wape=float(self.bt.summary.loc["model", "daily_wape"]))
+        wape_ = float(self.bt.summary.loc["model", "daily_wape"]) if not np.isnan(self.bt.summary.loc["model", "daily_wape"]) else 0.15
+        return ordering.suggest_orders(self.usage(), on_hand, on_order, forecast_wape=wape_, error_samples=self.error_samples)
+
+    def live_odds(self, as_of_hour: int) -> dict:
+        """Monte Carlo odds for the remaining hours of today, conditioned on the live ratio."""
+        sim = self.sims.get(self.today)
+        if sim is None:
+            return {}
+        live = self.live(as_of_hour)
+        rows = live["table"]
+        remaining = rows[rows["hour"] >= as_of_hour]
+        if remaining.empty:
+            return {}
+        rsim = simulate_day(remaining.rename(columns={"revised": "f"}), self.pool, n=1500, seed=99, forecast_col="f")
+        plan = labor.staffing_plan(remaining[["ts", "forecast"]])
+        plan_hours = float(plan["total"].sum())
+        return {"p_need_more": rsim.prob_labor_at_least(plan_hours, 2), "p_need_fewer": rsim.prob_labor_at_most(plan_hours, 2),
+                "remaining_p10": rsim.total_p["p10"], "remaining_p90": rsim.total_p["p90"], "plan_hours": plan_hours}
 
     def auto_order_eligibility(self) -> dict:
         acc = self.accuracy_by_fold().tail(AUTO_ORDER_WEEKS)
         ok = bool(len(acc) == AUTO_ORDER_WEEKS and (acc["model"] <= AUTO_ORDER_MAX_WAPE).all())
         return {"eligible": ok, "weeks": AUTO_ORDER_WEEKS, "threshold": AUTO_ORDER_MAX_WAPE,
                 "recent": acc["model"].round(3).tolist()}
+
+
+def _empty_backtest(hist: pd.DataFrame) -> BacktestResult:
+    cols = ["ts", "date", "hour", "transactions", "is_closed", "model", "baseline", "fold", "horizon_day"]
+    summary = pd.DataFrame({"hourly_wape": [np.nan, np.nan], "daily_wape": [np.nan, np.nan], "hourly_wape_d1": [np.nan, np.nan],
+                            "peak_hour_wape": [np.nan, np.nan]}, index=pd.Index(["baseline_4wk", "model"], name="method"))
+    return BacktestResult(pd.DataFrame(columns=cols), summary, pd.DataFrame(columns=["hours", "baseline_wape", "model_wape", "improvement"]))

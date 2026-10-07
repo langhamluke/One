@@ -19,51 +19,89 @@ import pandas as pd
 from sklearn.ensemble import HistGradientBoostingRegressor
 from sklearn.inspection import permutation_importance
 
-from flowcast.features import CATEGORICAL, FEATURE_COLUMNS, baseline_4wk, split_xy
+from flowcast.features import CATEGORICAL, FEATURE_COLUMNS, baseline_4wk
+
+DEFAULT_PARAMS = {
+    "learning_rate": 0.05,
+    "max_iter": 600,
+    "max_leaf_nodes": 31,
+    "min_samples_leaf": 20,
+    "l2_regularization": 0.5,
+}
+
+# Feature subsets a thin dataset may prefer. Walk-forward selection picks one.
+EXTERNAL_FEATURES = [
+    "temp_f", "feels_like_f", "precip_in", "rain_in", "snow_in", "weather_code", "wind_mph",
+    "cloud_pct", "is_raining", "heavy_rain", "is_snowing", "is_storm", "extreme_heat",
+    "extreme_cold", "nice_day", "event_pressure_k", "school_status", "school_in_session",
+]
+FEATURE_SETS = {
+    "full": FEATURE_COLUMNS,
+    "no_external": [c for c in FEATURE_COLUMNS if c not in EXTERNAL_FEATURES],
+    "lags_and_clock": ["hour", "hour_sin", "hour_cos", "dow", "dow_hour", "is_weekend",
+                       "lag_1w", "lag_2w", "lag_3w", "lag_4w", "lag_mean_4w", "lag_std_4w", "lag_1d", "lag_1d_total"],
+}
 
 
-def _model(seed: int = 0) -> HistGradientBoostingRegressor:
-    cat_mask = [c in CATEGORICAL for c in FEATURE_COLUMNS]
+def _model(seed: int = 0, params: dict | None = None, features: list[str] | None = None) -> HistGradientBoostingRegressor:
+    features = features or FEATURE_COLUMNS
+    cat_mask = [c in CATEGORICAL for c in features]
+    p = DEFAULT_PARAMS | (params or {})
     return HistGradientBoostingRegressor(
         loss="poisson",
-        learning_rate=0.05,
-        max_iter=600,
-        max_leaf_nodes=31,
-        min_samples_leaf=20,
-        l2_regularization=0.5,
         categorical_features=cat_mask,
         early_stopping=True,
         validation_fraction=0.1,
         n_iter_no_change=40,
         random_state=seed,
+        **p,
     )
 
 
 @dataclass
 class Forecaster:
-    model: HistGradientBoostingRegressor
+    model: HistGradientBoostingRegressor | None
     trained_through: pd.Timestamp
     residual_std_by_hour: pd.Series
+    features: list[str]
+    # Blend with the 4-week baseline: forecast = w * model + (1 - w) * baseline.
+    # Walk-forward selection sets w; thin data pulls it toward 0.
+    blend_w: float = 1.0
 
     @classmethod
-    def fit(cls, frame: pd.DataFrame, seed: int = 0) -> Forecaster:
+    def fit(cls, frame: pd.DataFrame, seed: int = 0, params: dict | None = None,
+            feature_set: str = "full", blend_w: float = 1.0) -> Forecaster:
+        features = FEATURE_SETS[feature_set]
         train = frame[frame["is_closed"] == 0].dropna(subset=["lag_1w"])
-        X, y = split_xy(train)
-        model = _model(seed).fit(X, y)
+        if blend_w <= 0.0 or len(train) < 60:
+            # Baseline-only: not enough history to fit anything trustworthy.
+            return cls(None, frame["date"].max(), pd.Series(dtype=float), features, 0.0)
+        # Thin history leaves some features constant or entirely missing (lag_4w in
+        # week 3). Drop them for this fit; the model remembers what it used.
+        features = [c for c in features if train[c].nunique(dropna=True) >= 2]
+        X, y = train[features], train["transactions"].to_numpy(dtype=float)
+        model = _model(seed, params, features).fit(X, y)
         resid = y - model.predict(X)
         resid_std = pd.Series(resid).groupby(train["hour"].to_numpy()).std().fillna(0.0)
-        return cls(model=model, trained_through=frame["date"].max(), residual_std_by_hour=resid_std)
+        return cls(model, frame["date"].max(), resid_std, features, blend_w)
 
     def predict(self, frame: pd.DataFrame) -> pd.Series:
-        X = frame[FEATURE_COLUMNS]
-        pred = np.clip(self.model.predict(X), 0, None)
+        base = baseline_4wk(frame).to_numpy(dtype=float)
+        if self.model is None:
+            pred = base
+        else:
+            raw = np.clip(self.model.predict(frame[self.features]), 0, None)
+            pred = self.blend_w * raw + (1 - self.blend_w) * base
         pred = np.where(frame["is_closed"].to_numpy() == 1, 0.0, pred)
         return pd.Series(pred, index=frame.index, name="forecast")
 
     def predict_interval(self, frame: pd.DataFrame, z: float = 1.28) -> pd.DataFrame:
         """Point forecast with an ~80% band from hour-specific residual spread."""
         point = self.predict(frame)
-        spread = frame["hour"].map(self.residual_std_by_hour).fillna(0.0).to_numpy() * z
+        if self.residual_std_by_hour.empty:
+            spread = 0.25 * point.to_numpy()  # baseline-only: wide, honest band
+        else:
+            spread = frame["hour"].map(self.residual_std_by_hour).fillna(0.0).to_numpy() * z
         return pd.DataFrame(
             {
                 "ts": frame["ts"],
@@ -74,10 +112,12 @@ class Forecaster:
         )
 
     def feature_importance(self, frame: pd.DataFrame, n_repeats: int = 3, seed: int = 0) -> pd.Series:
+        if self.model is None:
+            return pd.Series({"lag_mean_4w": 1.0})
         sample = frame[frame["is_closed"] == 0].dropna(subset=["lag_1w"]).tail(24 * 90)
-        X, y = split_xy(sample)
+        X, y = sample[self.features], sample["transactions"].to_numpy(dtype=float)
         imp = permutation_importance(self.model, X, y, n_repeats=n_repeats, random_state=seed)
-        return pd.Series(imp.importances_mean, index=FEATURE_COLUMNS).sort_values(ascending=False)
+        return pd.Series(imp.importances_mean, index=self.features).sort_values(ascending=False)
 
 
 # --------------------------------------------------------------------------- metrics
@@ -141,6 +181,7 @@ def backtest(
     horizon_days: int = 7,
     min_train_days: int = 180,
     seed: int = 0,
+    model_kwargs: dict | None = None,
 ) -> BacktestResult:
     """Rolling-origin evaluation that mimics production.
 
@@ -162,7 +203,7 @@ def backtest(
         unknown = test["date"] - pd.Timedelta(days=1) >= cutoff
         test.loc[unknown, "lag_1d"] = test.loc[unknown, "lag_1w"]
         test.loc[unknown, "lag_1d_total"] = np.nan
-        model = Forecaster.fit(train, seed=seed + i)
+        model = Forecaster.fit(train, seed=seed + i, **(model_kwargs or {}))
         keep = ["ts", "date", "hour", "transactions", "is_closed", "is_raining", "is_storm", "nice_day",
                 "event_pressure_k", "school_status", "school_in_session", "is_holiday",
                 "days_to_next_holiday", "days_since_holiday"]

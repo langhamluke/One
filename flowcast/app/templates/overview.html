@@ -14,8 +14,9 @@
     </div>
   </div>
   <div class="kpis">
-    <div class="tile"><div class="label">Today forecast</div><div class="val">{{ '%.0f' % store.day(today).forecast.sum() }}</div><div class="delta">4-wk avg {{ '%.0f' % store.day(today).baseline.sum() }}</div></div>
-    <div class="tile"><div class="label">Daily error, last {{ acc|length }} wks</div><div class="val">{{ '%.1f' % (summary.loc['model','daily_wape']*100) }}%</div><div class="delta good">vs {{ '%.1f' % (summary.loc['baseline_4wk','daily_wape']*100) }}% 4-wk avg</div>{{ spark|safe }}</div>
+    <div class="tile"><div class="label">Today forecast</div><div class="val">{{ '%.0f' % store.day(today).forecast.sum() }}</div><div class="delta">4-wk avg {{ '%.0f' % store.day(today).baseline.sum() }}{% if today_sim %} · 80% range {{ '%.0f' % today_sim.total_p.p10 }}–{{ '%.0f' % today_sim.total_p.p90 }}{% endif %}</div></div>
+    <div class="tile"><div class="label">Forecast confidence</div><div class="val">{{ selection.confidence }}</div><div class="delta">{{ '%.0f' % selection.weeks_of_data }} weeks of data · <a href="/forecast">how it was chosen</a></div></div>
+    {% if acc|length %}<div class="tile"><div class="label">Daily error, last {{ acc|length }} wks</div><div class="val">{{ '%.1f' % (summary.loc['model','daily_wape']*100) }}%</div><div class="delta good">vs {{ '%.1f' % (summary.loc['baseline_4wk','daily_wape']*100) }}% 4-wk avg</div>{{ spark|safe }}</div>{% endif %}
     <div class="tile"><div class="label">This week's labor plan</div><div class="val">{{ '%.0f' % week_hours.model }} h</div><div class="delta">4-wk plan {{ '%.0f' % week_hours.baseline }} h ({{ '%+.0f' % (week_hours.model - week_hours.baseline) }})</div></div>
     <div class="tile"><div class="label">Auto-order</div><div class="val">{{ 'Eligible' if elig.eligible else 'Locked' }}</div><div class="delta">{{ elig.weeks }} wks under {{ '%.0f' % (elig.threshold*100) }}% error</div></div>
   </div>
@@ -40,7 +41,7 @@
   </div>
 </section>
 
-<section class="grid2">
+{% if acc|length %}<section class="grid2">
   <div class="card">{{ week_chart|safe }}
     <details><summary>Table</summary><table class="t"><tr><th>Day</th><th>Forecast</th><th>80% range</th><th>4-wk avg</th></tr>
     {% for r in daily.itertuples() %}<tr><td>{{ r.date.strftime('%a %-m/%-d') }}</td><td>{{ '%.0f' % r.forecast }}</td><td>{{ '%.0f' % r.low }}–{{ '%.0f' % r.high }}</td><td>{{ '%.0f' % r.baseline }}</td></tr>{% endfor %}</table></details>
@@ -49,9 +50,9 @@
     <details><summary>Table</summary><table class="t"><tr><th>Week of</th><th>4-wk avg</th><th>Model</th></tr>
     {% for r in acc.itertuples() %}<tr><td>{{ r.week_start.strftime('%-m/%-d') }}</td><td>{{ '%.1f' % (r.baseline*100) }}%</td><td>{{ '%.1f' % (r.model*100) }}%</td></tr>{% endfor %}</table></details>
   </div>
-</section>
+</section>{% else %}<section class="card">{{ week_chart|safe }}</section>{% endif %}
 
-<section class="card">
+{% if acc|length %}<section class="card">
   <h2>Last week's schedule, scored against what happened</h2>
   <table class="t">
     <tr><th>Plan built from</th><th>Labor hours</th><th>Hours over need</th><th>Wasted</th><th>Hours under need</th></tr>
@@ -59,5 +60,5 @@
     <tr><td>Model</td><td>{{ '%.0f' % lw.model.scheduled }}</td><td>{{ '%.0f' % lw.model.over_hours }}</td><td>${{ '%.0f' % lw.model.over_cost }}</td><td>{{ '%.0f' % lw.model.under_hours }}</td></tr>
   </table>
   <p class="muted small">"Need" is the headcount the actual hourly volume required under the store's labor standards. Over = idle or sent home; under = slow service.</p>
-</section>
+</section>{% endif %}
 {% endblock %}

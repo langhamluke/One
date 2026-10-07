@@ -107,6 +107,18 @@ date,block,employee_id,station,hours,transactions_handled,avg_seconds,error_rate
 - `error_rate`: voids/remakes over orders.
 - Use IDs, not names.
 
+## Check the data before serving it
+
+```bash
+flowcast evaluate --data-dir data/longmont --state CO
+```
+
+Prints which model the walk-forward selection chose and why, its
+out-of-sample error against the 4-week average, the confidence label, and
+Monte Carlo P10/P50/P90 totals for the week ahead. If every candidate ties
+the baseline, the data is not yet long enough for external signals to show;
+keep loading weeks and re-run.
+
 ## Run
 
 ```bash

@@ -7,7 +7,7 @@
     <table class="t"><tr><th>Ingredient</th><th>Usage (5 d)</th><th>Safety</th><th>On hand</th><th>Suggested</th><th>Final cases</th><th>Cost</th><th>Days after</th>{% if session.r in ('gm','admin') %}<th></th>{% endif %}</tr>
     {% for r in orders.itertuples() %}<tr class="{{ 'warn' if r.overridden }}"><td>{{ r.ingredient }} <span class="muted small">{{ r.unit }}</span></td><td>{{ '%.0f' % r.protected_usage }}</td><td>{{ '%.0f' % r.safety_stock }}</td><td>{{ '%.0f' % r.on_hand }}</td><td>{{ r.order_cases }}</td><td><strong>{{ r.final_cases }}</strong>{% if r.overridden %} <span class="muted small">(override)</span>{% endif %}</td><td>${{ '{:,.0f}'.format(r.final_cost) }}</td><td>{{ r.days_of_supply_after }}</td>
       {% if session.r in ('gm','admin') %}<td><form method="post" action="/ordering/override" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="ingredient" value="{{ r.ingredient }}"><input name="cases" type="number" min="0" class="tiny" placeholder="{{ r.order_cases }}"><button class="link">set</button></form></td>{% endif %}</tr>{% endfor %}</table>
-    <p class="muted small">Safety stock = z(95%) × forecast error × usage; shelf life caps perishables. Blank an override to clear it.</p>
+    <p class="muted small">Safety stock is the 95th percentile of 2,000 simulated usage paths (built from the forecast's own walk-forward misses) minus the expected usage; shelf life caps perishables. Blank an override to clear it.</p>
     <h3>Export to the ordering system</h3>
     <form method="get" action="/ordering/export" class="row wrap">
       <label>Template <select name="template">{% for n in templates %}<option value="{{ n }}" {{ 'selected' if n == sel }}>{{ n }}</option>{% endfor %}</select></label>
@@ -18,7 +18,7 @@
   </div>
   <div class="card">
     <h2>Auto-order</h2>
-    <p class="status {{ 'good' if elig.eligible else 'warning' }}"><i>{{ '●' if elig.eligible else '!' }}</i>{% if elig.eligible %}Forecast has stayed under {{ '%.0f' % (elig.threshold*100) }}% daily error for {{ elig.weeks }} weeks. Items can be unlocked.{% else %}Locked until daily error stays under {{ '%.0f' % (elig.threshold*100) }}% for {{ elig.weeks }} straight weeks. Recent: {% for v in elig.recent %}{{ '%.1f' % (v*100) }}%{{ ', ' if not loop.last }}{% endfor %}.{% endif %}</p>
+    <p class="status {{ 'good' if elig.eligible else 'warning' }}"><i>{{ '●' if elig.eligible else '!' }}</i><span>{% if elig.eligible %}Forecast has stayed under {{ '%.0f' % (elig.threshold*100) }}% daily error for {{ elig.weeks }} weeks. Items can be unlocked.{% else %}Locked until daily error stays under {{ '%.0f' % (elig.threshold*100) }}% for {{ elig.weeks }} straight weeks. Recent: {% for v in elig.recent %}{{ '%.1f' % (v*100) }}%{{ ', ' if not loop.last }}{% endfor %}.{% endif %}</span></p>
     {% if session.r in ('gm','admin') %}
     <table class="t">{% for ing in ingredients %}<tr><td>{{ ing }}</td><td>{{ 'auto' if unlocks.get(ing) else 'manual' }}</td><td>
       <form method="post" action="/ordering/unlock" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="ingredient" value="{{ ing }}"><input type="hidden" name="enabled" value="{{ '0' if unlocks.get(ing) else '1' }}"><button class="link" {{ 'disabled' if not elig.eligible and not unlocks.get(ing) }}>{{ 'disable' if unlocks.get(ing) else 'enable' }}</button></form></td></tr>{% endfor %}</table>

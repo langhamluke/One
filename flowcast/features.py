@@ -80,9 +80,24 @@ def baseline_4wk(frame: pd.DataFrame) -> pd.Series:
     """The industry default: average of the same weekday-hour over the last 4 weeks.
 
     This is roughly what a manager (or a scheduling tool without external
-    data) uses. Beating it is the bar.
+    data) uses. Beating it is the bar. With fewer than 4 weeks the mean of
+    whatever lags exist is used; with none, the weekday-hour profile of the
+    known history, then the hour profile. The same fallback applies on both
+    sides of a backtest so it never flatters the model.
     """
-    return frame["lag_mean_4w"].fillna(frame["lag_1w"]).fillna(0.0)
+    base = frame["lag_mean_4w"].fillna(frame["lag_1w"])
+    if base.isna().any():
+        known = frame[frame["transactions"].notna() & (frame.get("is_closed", 0) == 0)]
+        if "actual_known" in frame:
+            known = known[frame.loc[known.index, "actual_known"]]
+        if len(known):
+            prof = known.groupby(["dow", "hour"])["transactions"].mean()
+            keyed = pd.MultiIndex.from_arrays([frame["dow"], frame["hour"]])
+            fill = pd.Series(prof.reindex(keyed).to_numpy(), index=frame.index)
+            hour_prof = known.groupby("hour")["transactions"].mean()
+            fill = fill.fillna(frame["hour"].map(hour_prof))
+            base = base.fillna(fill)
+    return base.fillna(0.0)
 
 
 def split_xy(frame: pd.DataFrame) -> tuple[pd.DataFrame, np.ndarray]:

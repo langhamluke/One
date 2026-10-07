@@ -120,12 +120,16 @@ def suggest_orders(
     coverage_days: int = 3,
     forecast_wape: float = 0.12,
     service_level: float = 0.95,
+    error_samples: np.ndarray | None = None,
 ) -> pd.DataFrame:
     """Order quantity per ingredient for the next delivery.
 
     Protects usage over lead time + coverage window. Safety stock = z * sigma,
     where sigma is the forecast's demonstrated error (WAPE) applied to the
     protected usage, scaled by sqrt(window) because daily errors partly cancel.
+    When `error_samples` (Monte Carlo daily error paths, shape n x >=window)
+    are given, the safety stock is instead the empirical service-level
+    quantile of simulated usage minus its mean: no normality assumed.
     Perishables are capped at shelf life so the suggestion never orders more
     chicken than can be sold before it must be discarded.
     """
@@ -142,8 +146,12 @@ def suggest_orders(
         horizon = min(window, spec.shelf_life_days + lead_time_days, len(daily))
         protected = float(daily[:horizon].sum())
         per_day = protected / max(horizon, 1)
-        sigma = forecast_wape * per_day * np.sqrt(horizon)
-        safety = z * sigma
+        if error_samples is not None and error_samples.shape[1] >= horizon:
+            sim = (daily[:horizon][None, :] * error_samples[:, :horizon]).sum(axis=1)
+            safety = max(float(np.percentile(sim, 100 * service_level) - sim.mean()), 0.0)
+        else:
+            sigma = forecast_wape * per_day * np.sqrt(horizon)
+            safety = z * sigma
         target = protected + safety
         position = on_hand.get(ing, 0.0) + on_order.get(ing, 0.0)
         need = max(target - position, 0.0)

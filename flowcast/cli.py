@@ -115,6 +115,39 @@ def demo(
 
 
 @app.command()
+def evaluate(data_dir: str = typer.Option(None, help="Directory of CSV exports (see docs/05). Omit for the simulated store."),
+             days: int = typer.Option(60, help="Simulated history length when no data dir is given."),
+             state: str = typer.Option("CO"), folds: int = typer.Option(8)) -> None:
+    """First-load report: walk-forward model selection and Monte Carlo bands for the week ahead."""
+    from pathlib import Path
+
+    from flowcast.app.state import StoreState
+
+    cfg = StoreConfig(state=state)
+    st = StoreState.build(cfg, data_dir=Path(data_dir) if data_dir else None, days=days, folds=folds)
+    sel = st.selection
+    _h("Walk-forward model selection")
+    typer.echo(f"history: {sel.weeks_of_data:.1f} weeks | windows: {sel.schedule.n_folds} x {sel.schedule.horizon_days} day(s) | confidence: {sel.confidence}")
+    typer.echo(f"chosen: {sel.chosen} at {sel.blend_w:.0%} model weight")
+    rep = sel.report.copy()
+    for c in ("daily_wape", "hourly_wape"):
+        rep[c] = (rep[c] * 100).round(1).astype(str) + "%"
+    typer.echo(rep.to_string())
+    for n in sel.notes:
+        typer.echo("note: " + n)
+    _h("Monte Carlo, week ahead (2,000 simulated days each)")
+    rows = []
+    for d, sim in st.sims.items():
+        day = st.day(d)
+        rows.append({"day": d.strftime("%a %m/%d"), "forecast": round(day["forecast"].sum()), "4wk_avg": round(day["baseline"].sum()),
+                     "p10": round(sim.total_p["p10"]), "p50": round(sim.total_p["p50"]), "p90": round(sim.total_p["p90"]),
+                     "P(beat 4wk)": f"{100 * sim.prob_total_above(day['baseline'].sum()):.0f}%"})
+    typer.echo(pd.DataFrame(rows).to_string(index=False))
+    for n in st.data.notes:
+        typer.echo("data: " + n)
+
+
+@app.command()
 def serve(host: str = "127.0.0.1", port: int = 8000, insecure_dev: bool = typer.Option(False, help="Allow http (no Secure cookie flag) for local development.")) -> None:
     """Run the web interface. Set FLOWCAST_* environment variables to configure."""
     import os

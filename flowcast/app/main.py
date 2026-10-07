@@ -89,6 +89,8 @@ def create_app(settings: Settings | None = None, *, state: StoreState | None = N
             "data_notes": state.data.notes,
             "message": request.query_params.get("m", "")[:200],
             "nav": name.split(".")[0],
+            "selection": state.selection,
+            "today_sim": state.sims.get(state.today),
         }
         return templates.TemplateResponse(request, name, base | ctx)
 
@@ -181,7 +183,7 @@ def create_app(settings: Settings | None = None, *, state: StoreState | None = N
         days = [s.today + pd.Timedelta(days=i) for i in range(7)]
         contexts = [s.day_context(d) | {"total": float(s.day(d)["forecast"].sum()), "baseline": float(s.day(d)["baseline"].sum())} for d in days]
         d = s.day(sel)
-        return render(request, "forecast.html", sel=sel, days=days, contexts=contexts, day=d, drivers=s.drivers(sel),
+        return render(request, "forecast.html", sel=sel, days=days, contexts=contexts, day=d, drivers=s.drivers(sel), sim=s.sims.get(sel),
                       chart=charts.hourly_chart(d, f"{sel.strftime('%A %-m/%-d')} by hour"),
                       cond_chart=charts.condition_bars(s.bt.by_condition, "Hourly error by condition, last backtest"),
                       importance=s.importance.head(12), manual_events=app.state.db.manual_events(),
@@ -229,7 +231,8 @@ def create_app(settings: Settings | None = None, *, state: StoreState | None = N
         remaining = today_plan[today_plan["hour"] >= as_of]
         delta_hours = int((remaining["revised_total"] - remaining["total"]).sum())
         cards = s.cards[s.cards["sufficient_data"]] if not s.cards.empty else s.cards
-        return render(request, "people.html", live=live, as_of=as_of, hours=list(range(s.cfg.open_hour, s.cfg.close_hour + 1)),
+        odds = s.live_odds(as_of)
+        return render(request, "people.html", live=live, as_of=as_of, odds=odds, hours=list(range(s.cfg.open_hour, s.cfg.close_hour + 1)),
                       today_plan=today_plan, delta_hours=delta_hours, stations=STATIONS,
                       heat=charts.staffing_heat(today_plan, STATIONS, "Today: people needed by hour and station"),
                       live_chart=charts.hourly_chart(s.day(s.today), "Today: forecast, actual, and live revision", revised=live["table"]["revised"]),

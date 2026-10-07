@@ -17,6 +17,7 @@
         {% if delta_hours > 0 %}Revised need is <strong>{{ delta_hours }} more labor hours</strong> than scheduled for the remaining hours.{% elif delta_hours < 0 %}Revised need is <strong>{{ -delta_hours }} fewer labor hours</strong> than scheduled for the remaining hours.{% else %}Revised need matches the schedule.{% endif %}</div>
       </div>
     </div>
+    {% if odds %}<p class="small">Monte Carlo on the remaining hours: {{ '%.0f' % (100 * odds.p_need_more) }}% chance the rest of the day needs 2+ more labor hours than planned, {{ '%.0f' % (100 * odds.p_need_fewer) }}% chance it needs 2+ fewer. Remaining volume 80% range {{ '%.0f' % odds.remaining_p10 }}–{{ '%.0f' % odds.remaining_p90 }}.</p>{% endif %}
     {% if session.r in ('shift_lead', 'gm', 'admin') %}
     <form method="post" action="/people/decision" class="row wrap">
       <input type="hidden" name="csrf_token" value="{{ csrf }}"><input type="hidden" name="as_of" value="{{ as_of }}">

@@ -43,7 +43,9 @@ the forecast says why.
 | `labor.py` | Labor standards to hour x station headcount; plan scoring against actuals | `staffing_plan`, `realized_labor_cost` |
 | `scorecard.py` | Station-relative employee scores, specialist tags, greedy best-fit assignment | `station_scorecards`, `employee_summary`, `assign_stations` |
 | `ordering.py` | Menu mix, bill of materials, error-aware safety stock, case-rounded orders with shelf-life cap | `menu_mix`, `ingredient_usage`, `suggest_orders` |
-| `cli.py` | `flowcast demo` end-to-end; `flowcast weather` live fetch | |
+| `tuning.py` | Walk-forward model selection: candidates x blend weights scored out of sample on an adaptive schedule | `walk_forward_select` |
+| `montecarlo.py` | Error pool from walk-forward misses; simulated days (P10/P50/P90, labor odds); daily error paths for empirical safety stock | `ErrorPool`, `simulate_day` |
+| `cli.py` | `flowcast demo`, `flowcast evaluate` (first-load report), `flowcast serve`, `flowcast weather-history` | |
 
 ## Model choices and why
 
@@ -86,6 +88,27 @@ the forecast says why.
 | `exports.py` | Order export templates: validated JSON specs mapped onto the suggested order |
 | `assistant.py` | Local deterministic assistant; optional self-hosted Ollama backend behind a private-address gate; redaction |
 | `templates/`, `static/` | Jinja2 pages, one stylesheet, one small script. No external assets |
+
+## First load: walk-forward selection and Monte Carlo
+
+A store's first weeks of data are too few to assume the full model wins.
+On every load the system walks forward through history on a schedule that
+adapts to its length (1-day windows under 10 weeks, 3-day to 21 weeks, 7-day
+after) and scores four candidates (all signals, smaller trees, no external
+signals, history-only) blended with the 4-week average at 0/25/50/75/100%
+model weight. The candidate and blend with the lowest out-of-sample daily
+error is used; with under three weeks nothing is fit and the weekday-hour
+average is the forecast. The Forecast page shows the table and a confidence
+label (very low / low / medium / established) from weeks of data and margin
+over the baseline.
+
+Monte Carlo then draws day-level and hour-level misses from that
+walk-forward run (plus Poisson noise) to simulate each day of the week ahead
+2,000 times. Those simulations supply the P10-P90 band on every chart, the
+odds on the Forecast and People pages (beats the 4-week average, needs 2+
+more labor hours), and the empirical safety stock in ordering (95th
+percentile of simulated usage over the protected window). Under four weeks
+of data the error pool is widened on purpose so the bands are honest.
 
 ## What the production system adds
 
