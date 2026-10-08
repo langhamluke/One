@@ -37,7 +37,6 @@ from flowcast.synth import StoreConfig
 
 log = logging.getLogger("flowcast.app")
 HERE = Path(__file__).parent
-STATIONS = [s.station for s in labor.DEFAULT_STANDARDS]
 
 
 def create_app(settings: Settings | None = None, *, state: StoreState | None = None, db: Database | None = None) -> FastAPI:
@@ -163,7 +162,7 @@ def create_app(settings: Settings | None = None, *, state: StoreState | None = N
         elig = s.auto_order_eligibility()
         wp = s.week_plan()
         week_hours = {"model": float(wp["total"].sum()), "baseline": float(wp["baseline_total"].sum())}
-        return render(request, "overview.html", week_hours=week_hours,
+        return render(request, "overview.html", week_hours=week_hours, comparison=s.daily_comparison(),
                       live=live, daily=daily, acc=acc, lw=lw, alerts=alerts, drivers=s.drivers(s.today), ctx=s.day_context(s.today),
                       week_chart=charts.week_columns(daily, "Next 7 days: forecast vs 4-week average"),
                       acc_chart=charts.accuracy_columns(acc, "Daily forecast error by week (lower is better)"),
@@ -226,15 +225,15 @@ def create_app(settings: Settings | None = None, *, state: StoreState | None = N
         today_plan = plan[plan["date"] == s.today].reset_index(drop=True)
         # Decision math: what the revised forecast says the remaining hours need vs the plan.
         revised = live["table"][["ts", "revised"]].rename(columns={"revised": "forecast"})
-        revised_plan = labor.staffing_plan(revised)
+        revised_plan = labor.staffing_plan(revised, s.standards)
         today_plan["revised_total"] = revised_plan["total"].to_numpy()
         remaining = today_plan[today_plan["hour"] >= as_of]
         delta_hours = int((remaining["revised_total"] - remaining["total"]).sum())
         cards = s.cards[s.cards["sufficient_data"]] if not s.cards.empty else s.cards
         odds = s.live_odds(as_of)
         return render(request, "people.html", live=live, as_of=as_of, odds=odds, hours=list(range(s.cfg.open_hour, s.cfg.close_hour + 1)),
-                      today_plan=today_plan, delta_hours=delta_hours, stations=STATIONS,
-                      heat=charts.staffing_heat(today_plan, STATIONS, "Today: people needed by hour and station"),
+                      today_plan=today_plan, delta_hours=delta_hours, stations=s.stations,
+                      heat=charts.staffing_heat(today_plan, s.stations, "Today: people needed by hour and station"),
                       live_chart=charts.hourly_chart(s.day(s.today), "Today: forecast, actual, and live revision", revised=live["table"]["revised"]),
                       summary=s.summary, cards=cards, lineup=s.lineup(), hiring=s.hiring_needs(),
                       overstaff=s.overstaff_warnings(), understaff=s.understaff_warnings(),

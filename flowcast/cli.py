@@ -130,11 +130,19 @@ def evaluate(data_dir: str = typer.Option(None, help="Directory of CSV exports (
     typer.echo(f"history: {sel.weeks_of_data:.1f} weeks | windows: {sel.schedule.n_folds} x {sel.schedule.horizon_days} day(s) | confidence: {sel.confidence}")
     typer.echo(f"chosen: {sel.chosen} at {sel.blend_w:.0%} model weight")
     rep = sel.report.copy()
+    rep["blend_w"] = rep["blend_w"].map(lambda w: "reference" if pd.isna(w) else f"{w:.0%}")
     for c in ("daily_wape", "hourly_wape"):
         rep[c] = (rep[c] * 100).round(1).astype(str) + "%"
     typer.echo(rep.to_string())
     for n in sel.notes:
         typer.echo("note: " + n)
+    comp = st.daily_comparison()
+    if not comp.empty:
+        _h("Daily accuracy, walk-forward, days with real actuals")
+        comp = comp.assign(daily_error=(comp["daily_error"] * 100).round(1).astype(str) + "%")
+        typer.echo(comp.rename(columns={"daily_error": "daily error", "days_off_10": "days off >10%"}).to_string(index=False))
+        if st.data.score_daily_only:
+            typer.echo("Hourly actuals in this data are estimated; judge the model on these daily numbers only.")
     _h("Monte Carlo, week ahead (2,000 simulated days each)")
     rows = []
     for d, sim in st.sims.items():
@@ -145,6 +153,72 @@ def evaluate(data_dir: str = typer.Option(None, help="Directory of CSV exports (
     typer.echo(pd.DataFrame(rows).to_string(index=False))
     for n in st.data.notes:
         typer.echo("data: " + n)
+
+
+@app.command("import-canes")
+def import_canes(
+    root: str = typer.Argument(..., help="Folder holding the weekly workbooks (searched recursively), e.g. 'Canes Project/data'."),
+    out: str = typer.Option("data/longmont", help="Where to write the CSVs the app reads."),
+    weather: bool = typer.Option(True, help="Fetch hourly weather history for the imported dates from Open-Meteo."),
+    lat: float = typer.Option(40.1672, help="Store latitude (default: Longmont, CO)."),
+    lon: float = typer.Option(-105.1019, help="Store longitude."),
+    tz: str = typer.Option("America/Denver"),
+    open_hour: int = typer.Option(10, help="First hour the model covers."),
+    close_hour: int = typer.Option(24, help="Hour after the last one the model covers (24 = midnight)."),
+) -> None:
+    """Import Raising Cane's weekly labor workbooks into a data folder for the app.
+
+    Reads projected and actual customers per day, the store's half-hour forecast,
+    and its planned crew per station. Runs entirely on this computer; only the
+    optional weather step contacts the internet, and it sends nothing but the
+    store's coordinates and a date range.
+    """
+    import json
+    from pathlib import Path
+
+    from flowcast.connectors.canes_workbook import (
+        import_workbooks,
+        school_calendar_frame,
+        write_data_dir,
+    )
+
+    src, dst = Path(root).expanduser(), Path(out).expanduser()
+
+    def progress(i, n, name):
+        typer.echo(f"  [{i:3d}/{n}] {name}")
+
+    typer.echo(f"Reading workbooks under {src} ...")
+    res = import_workbooks(src, open_hour=open_hour, close_hour=close_hour, progress=progress)
+    write_data_dir(res, dst, open_hour=open_hour, close_hour=close_hour)
+    rep = res.report
+    first, last = date.fromisoformat(rep["first_week"]), date.fromisoformat(rep["last_week"]) + timedelta(days=6)
+    school_calendar_frame(first, last + timedelta(days=60)).to_csv(dst / "school.csv", index=False)
+
+    _h("Import summary")
+    typer.echo(f"weeks: {rep['weeks_imported']} ({rep['first_week']} to {rep['last_week']}) | days: {rep['days']}")
+    typer.echo(f"days with actual customers: {rep['days_with_actuals']} | days missing actuals: {rep['days_missing_actuals']}")
+    typer.echo(f"Wednesdays with actuals: {rep['wednesdays_with_actuals']} | closed days: {', '.join(rep['days_closed']) or 'none'}")
+    typer.echo(f"share of forecast guests inside the model window ({rep['model_window']}): {rep['share_of_guests_in_model_window']:.1%}")
+    typer.echo(f"stations learned from the deployment chart: {', '.join(rep['stations_learned']) or 'none'}")
+    if rep["missing_weeks"]:
+        typer.echo(f"weeks with no workbook: {', '.join(rep['missing_weeks'])}")
+    for path, why in rep["skipped_files"] + rep["failed_files"]:
+        typer.echo(f"skipped {path}: {why}")
+    for name, notes in rep["week_notes"].items():
+        typer.echo(f"note {name}: {'; '.join(notes)}")
+
+    if weather:
+        from flowcast.connectors.weather import fetch_history
+
+        try:
+            end = min(last, pd.Timestamp.now(tz=tz).date() - timedelta(days=2))
+            fetch_history(lat, lon, first, end, tz=tz).to_csv(dst / "weather.csv", index=False)
+            typer.echo(f"weather: {first} to {end} saved")
+        except Exception as exc:  # noqa: BLE001 - weather is optional; the import still stands
+            typer.echo(f"weather fetch failed ({type(exc).__name__}); rerun later with: flowcast weather-history {lat} {lon} {first} {last} --tz {tz} --out {dst / 'weather.csv'}")
+    typer.echo(f"\nWrote {dst}. School calendar: bundled St. Vrain dates (check flowcast/reference/st_vrain_school_calendar.csv).")
+    typer.echo(f"Next: flowcast evaluate --data-dir {dst}    then    FLOWCAST_DATA_DIR={dst} flowcast serve")
+    (dst / "import_summary.txt").write_text(json.dumps(rep, indent=2, default=str))
 
 
 @app.command()

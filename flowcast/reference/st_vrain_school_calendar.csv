@@ -1,0 +1,26 @@
+# St. Vrain Valley Schools (Longmont, CO) non-instruction days, Aug 2024 - Jan 2027.
+# Compiled Oct 2026 from third-party calendar listings and the Longmont Leader;
+# the district site (svvsd.org) could not be reached to confirm. "confidence":
+# high = two independent sources agree; low = one source or sources conflict.
+# Verify against the official PDF and edit this file before relying on it.
+# Ranges are inclusive; weekends inside a range are ignored.
+start,end,status,confidence,note
+2024-06-01,2024-08-12,summer,high,first day 2024-25 reported as Aug 13 2024
+2024-11-25,2024-11-29,holiday,low,Thanksgiving week; sources disagree on Mon-Tue
+2024-12-23,2025-01-03,winter_break,high,sources agree Dec 23 - Jan 3 (one starts Dec 20)
+2025-01-20,2025-01-20,holiday,high,MLK Day
+2025-02-17,2025-02-17,holiday,high,Presidents Day
+2025-06-02,2025-08-12,summer,low,last day reported as May 29 or Jun 2; first day 2025-26 Aug 13
+2025-10-10,2025-10-13,teacher_day,high,non-student contact days
+2025-11-24,2025-11-28,holiday,high,Thanksgiving break
+2025-12-22,2026-01-02,winter_break,high,winter break Dec 22 - Jan 1; Jan 2 non-student day
+2026-01-05,2026-01-05,teacher_day,low,non-student day
+2026-01-19,2026-01-19,holiday,high,MLK Day
+2026-02-13,2026-02-13,teacher_day,low,non-student day
+2026-02-16,2026-02-16,holiday,high,Presidents Day
+2026-03-16,2026-03-20,spring_break,high,two sources agree
+2026-05-22,2026-08-17,summer,high,last day May 21 2026; first day 2026-27 Aug 18
+2026-09-07,2026-09-07,holiday,high,Labor Day
+2026-10-16,2026-10-19,teacher_day,low,non-student contact days
+2026-11-23,2026-11-27,holiday,low,Thanksgiving break
+2026-12-21,2027-01-01,winter_break,low,winter break

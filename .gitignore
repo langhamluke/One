@@ -6,5 +6,7 @@ __pycache__/
 dist/
 build/
 *.egg-info/
-data/cache/
+# Store data, imported CSVs, and the app database never belong in git.
+data/
+*.xlsx
 .env

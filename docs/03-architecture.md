@@ -36,6 +36,7 @@ the forecast says why.
 | `calendar_features.py` | Holidays (federal + state), school calendar, cyclical encodings | `daily_calendar_frame`, `SchoolCalendar` |
 | `connectors/weather.py` | Open-Meteo archive + forecast client, derived flags | `fetch_history`, `fetch_forecast`, `weather_features` |
 | `connectors/school.py` | District calendar CSV ingestion | `load_school_csv` |
+| `connectors/canes_workbook.py` | Raising Cane's weekly labor workbooks: daily projected/actual customers, half-hour store forecast, station deployment; writes the data folder | `import_workbooks`, `write_data_dir`, `learn_deployment_standards` |
 | `connectors/events.py` | Events CSV, attendance- and distance-weighted hourly pressure | `hourly_event_pressure` |
 | `synth.py` | Store simulator with the drivers baked in; emits POS, weather, events, item sales, shifts | `generate_store` |
 | `features.py` | Hourly feature matrix with leak-free same-weekday lags; the 4-week baseline | `build_features`, `baseline_4wk` |

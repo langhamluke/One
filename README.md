@@ -24,7 +24,7 @@ Working package name: `flowcast`.
 - `SECURITY.md`: threat model, controls, deployment checklist
 - `flowcast/`: the engine (forecast, intraday, labor, scorecards, ordering)
 - `flowcast/app/`: the self-hosted web interface
-- `tests/`: 40 tests covering the engine and the interface
+- `tests/`: 64 tests covering the engine, the workbook import, and the interface
 
 ## The interface
 
@@ -47,7 +47,10 @@ export FLOWCAST_ADMIN_PASSWORD='pick-Something-Long-1'
 ```
 
 Point `FLOWCAST_DATA_DIR` at real exports to replace the demo store; formats
-are in `docs/05-loading-real-data.md`. On every load the model is chosen by
+are in `docs/05-loading-real-data.md`. For Raising Cane's weekly labor
+workbooks, `flowcast import-canes <folder>` reads them directly: daily actual
+customers, the store's own forecast (used as an input and as the number to
+beat), and the store's deployment chart by station. On every load the model is chosen by
 walk-forward analysis against the 4-week average (so a store with three
 weeks of data gets a blended, honest forecast rather than an overfit one),
 and Monte Carlo over the walk-forward errors supplies the bands, odds, and

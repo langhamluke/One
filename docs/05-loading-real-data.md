@@ -1,5 +1,60 @@
 # Loading real store data
 
+## Raising Cane's weekly labor workbooks (fastest path)
+
+If you have the store's weekly labor workbooks (one `.xlsx` per week, tabs
+`LABOR TRACKER`, `Weds` ... `Tues`), import them directly. Run this on your
+own computer; nothing is uploaded anywhere.
+
+```bash
+git clone https://github.com/langhamluke/One.git && cd One
+python3 -m venv .venv && .venv/bin/pip install -e .
+.venv/bin/flowcast import-canes "~/Desktop/Canes Project copy/data" --out data/longmont
+.venv/bin/flowcast evaluate --data-dir data/longmont
+FLOWCAST_DATA_DIR=data/longmont FLOWCAST_ADMIN_PASSWORD='pick-Something-Long-1' .venv/bin/flowcast serve --insecure-dev
+```
+
+What the import reads, and what it does with it:
+
+| From the workbook | Becomes |
+|---|---|
+| LABOR TRACKER, "Actual Customers" per day | The truth the model is trained and scored on. Zero or blank means the week was not closed out; those days are left out, never filled with the projection. |
+| LABOR TRACKER, "Projected Customers" | The store's own forecast, used as a model input and as the number to beat. |
+| Day tabs, half-hour Time / Sales / Guests | The store forecast by hour, and the within-day shape used to spread each day's actual total across hours. |
+| Day tabs, crew per station (Bird, Board, DT order, ...) | `labor_standards.csv`: the store's deployment chart, learned from every week, replacing the generic staffing standards. |
+| File name and folder (`data/2025/Q1/P2/P2W1 2.5 - 2.11.xlsx`) | The week's dates. Every store week starts on a Wednesday; anything else is flagged. Undated files like `P7W4.xlsx` are dated from sibling weeks. |
+
+Things to know:
+
+- **Accuracy is scored on daily totals only.** The workbooks have actual
+  customers per day, not per hour. Hourly "actuals" are the day's real
+  total spread by the store's own half-hour forecast, so hourly error would
+  only measure the store's shape. `evaluate` and the Overview page show the
+  daily comparison: model vs the store's forecast vs the 4-week average.
+- **Wednesdays are included.** The tab is named `Weds`; earlier notebooks
+  looked for `Wed` and silently dropped every Wednesday.
+- **After-midnight slots** (Fri/Sat late night, stored by Excel as
+  1900-01-01 times) are kept with the right business day. The model covers
+  10:00 to midnight; the import reports what share of guests falls outside
+  that window (about half a percent at Longmont).
+- **Closed days** (no projection and no forecast, e.g. Thanksgiving) are
+  read from the data and marked closed for the model.
+- **School calendar:** a St. Vrain calendar is bundled in
+  `flowcast/reference/st_vrain_school_calendar.csv`. It was compiled from
+  third-party listings because the district site could not be reached;
+  several dates are marked low confidence and 2024-25 spring break is
+  missing. Check it against svvsd.org and edit the file.
+- **Weather** for the imported dates is fetched from Open-Meteo during the
+  import (`--no-weather` to skip). Only the store's coordinates and a date
+  range are sent.
+- `import_report.json` in the output folder lists every week imported, days
+  missing actuals, weeks with no workbook, skipped files and why, and any
+  workbook whose half-hour guests disagree with its daily projection.
+- The `data/` folder is ignored by git, so imported store data cannot be
+  committed by accident.
+
+## Any other POS export
+
 The interface runs on a simulated store until you point it at exports. Put
 CSV files in one directory and set `FLOWCAST_DATA_DIR` to it. Only
 `transactions.csv` is required; the Admin page lists which optional files

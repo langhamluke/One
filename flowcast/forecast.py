@@ -206,8 +206,8 @@ def backtest(
         model = Forecaster.fit(train, seed=seed + i, **(model_kwargs or {}))
         keep = ["ts", "date", "hour", "transactions", "is_closed", "is_raining", "is_storm", "nice_day",
                 "event_pressure_k", "school_status", "school_in_session", "is_holiday",
-                "days_to_next_holiday", "days_since_holiday"]
-        out = test[keep].copy()
+                "days_to_next_holiday", "days_since_holiday", "store_forecast"]
+        out = test[[c for c in keep if c in test]].copy()
         out["model"] = model.predict(test).to_numpy()
         out["baseline"] = baseline_4wk(test).to_numpy()
         out["fold"] = i
@@ -217,7 +217,11 @@ def backtest(
     allp = allp[allp["is_closed"] == 0]
 
     rows = []
-    for name, col in (("baseline_4wk", "baseline"), ("model", "model")):
+    methods = [("baseline_4wk", "baseline"), ("model", "model")]
+    if "store_forecast" in allp and allp["store_forecast"].notna().mean() > 0.9:
+        allp["store_forecast"] = allp["store_forecast"].fillna(allp["baseline"])
+        methods.append(("store_forecast", "store_forecast"))
+    for name, col in methods:
         rows.append(
             {
                 "method": name,

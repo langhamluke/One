@@ -129,6 +129,11 @@ def walk_forward_select(frame: pd.DataFrame, max_folds: int = 8, seed: int = 0,
     report = full.loc[full.groupby("candidate")["daily_wape"].idxmin()].set_index("candidate").sort_values("daily_wape")
     report.loc["baseline"] = {"blend_w": 0.0, "daily_wape": base_err,
                               "hourly_wape": float(full[full["blend_w"] == 0.0]["hourly_wape"].iloc[0]), "folds": int(best["folds"])}
+    ref = next(iter(preds.values()))
+    if "store_forecast" in ref and ref["store_forecast"].notna().mean() > 0.9:
+        sf = ref.assign(sf=ref["store_forecast"].fillna(ref["baseline"]))
+        report.loc["store_forecast"] = {"blend_w": np.nan, "daily_wape": daily_wape(sf, "transactions", "sf"),
+                                        "hourly_wape": wape(sf["transactions"], sf["sf"]), "folds": int(best["folds"])}
     report = report.sort_values("daily_wape")
     chosen = str(best["candidate"])
     w = float(best["blend_w"])

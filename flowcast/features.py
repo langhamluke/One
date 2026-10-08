@@ -38,6 +38,11 @@ def build_features(
         events, pd.DatetimeIndex(frame["ts"])
     ).to_numpy()
     frame["event_pressure_k"] = frame["event_pressure"] / 1000.0
+    # The operator's own forecast for the hour, when the data source has one
+    # (e.g. the store's weekly labor workbook). Known before the week starts,
+    # so it is a legitimate input. All-missing when absent; the model drops it.
+    if "store_forecast" not in frame:
+        frame["store_forecast"] = np.nan
 
     frame["hour_sin"], frame["hour_cos"] = cyclical(frame["hour"], 24)
     frame["doy_sin"], frame["doy_cos"] = cyclical(frame["day_of_year"], 365.25)
@@ -54,7 +59,7 @@ def build_features(
     frame["lag_std_4w"] = frame[lag_cols].std(axis=1)
     # Yesterday's same hour and yesterday's day total capture momentum.
     frame["lag_1d"] = key.reindex(frame["ts"] - pd.Timedelta(days=1)).to_numpy()
-    daily = frame.groupby("date")["transactions"].sum()
+    daily = frame.groupby("date")["transactions"].sum(min_count=1)
     frame["lag_1d_total"] = daily.reindex(frame["date"] - pd.Timedelta(days=1)).to_numpy()
 
     for col in CATEGORICAL:
@@ -72,6 +77,7 @@ FEATURE_COLUMNS = [
     "cloud_pct", "is_raining", "heavy_rain", "is_snowing", "is_storm", "extreme_heat",
     "extreme_cold", "nice_day",
     "event_pressure_k",
+    "store_forecast",
     "lag_1w", "lag_2w", "lag_3w", "lag_4w", "lag_mean_4w", "lag_std_4w", "lag_1d", "lag_1d_total",
 ]
 

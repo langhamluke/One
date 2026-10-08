@@ -9,6 +9,7 @@ Goal: one real store's POS history, one honest number.
 - [x] Staffing plan from labor standards; scorecards; assignment; ordering
 - [x] Self-hosted interface: overview, forecast, people and live decisions, ordering with export templates, assistant; auth, roles, CSRF, CSP, audit log
 - [x] Walk-forward model selection at load and Monte Carlo bands, odds, and safety stock
+- [x] Direct import of Cane's weekly labor workbooks (daily actuals, store forecast, deployment chart)
 - [ ] Get 12+ months of hourly POS exports from one or two stores (any
       brand; a friendly franchisee or independent is faster than corporate)
 - [ ] Replace synthetic weather with Open-Meteo archive for that store's

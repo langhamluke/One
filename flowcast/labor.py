@@ -24,6 +24,46 @@ class LaborStandard:
     # Share of hourly transactions that touch this station (drive-thru vs lobby).
     channel_share: float = 1.0
 
+    def need(self, tx_hour: float) -> int:
+        load = tx_hour * self.channel_share / self.tx_per_labor_hour
+        # Core stations round up: once one person is committed, any
+        # overflow needs a second. Optional stations (min 0) open only
+        # when at least half a person's worth of work exists.
+        n = int(np.ceil(load)) if self.min_staff >= 1 else int(np.ceil(load - 0.5))
+        return int(np.clip(n, self.min_staff, self.max_staff))
+
+
+@dataclass(frozen=True)
+class LookupStandard:
+    """A station staffed from the operator's own deployment chart.
+
+    `bands` maps half-hour guest counts to crew: a sorted tuple of
+    (guests_from, crew). Learned from the store's planned deployment in
+    its weekly workbooks (see connectors.canes_workbook), so the plan uses
+    the same positions and thresholds the store already schedules by.
+    """
+
+    station: str
+    bands: tuple[tuple[float, float], ...]
+
+    def need(self, tx_hour: float) -> int:
+        half_hour = tx_hour / 2.0
+        crew = 0.0
+        for start, c in self.bands:
+            if half_hour >= start:
+                crew = c
+            else:
+                break
+        return int(np.ceil(crew - 1e-9))
+
+
+def standards_from_frame(df: pd.DataFrame) -> list[LookupStandard]:
+    """Build lookup standards from labor_standards.csv (station, guests_from, crew)."""
+    out = []
+    for st, g in df.sort_values(["station", "guests_from"]).groupby("station", sort=False):
+        out.append(LookupStandard(str(st), tuple((float(a), float(b)) for a, b in zip(g["guests_from"], g["crew"], strict=True))))
+    return out
+
 
 DEFAULT_STANDARDS: list[LaborStandard] = [
     LaborStandard("drive_thru_order", 45, 1, 3, channel_share=0.70),
@@ -61,12 +101,7 @@ def staffing_plan(
             continue
         total = MANAGER_PER_HOUR
         for s in standards:
-            load = tx * s.channel_share / s.tx_per_labor_hour
-            # Core stations round up: once one person is committed, any
-            # overflow needs a second. Optional stations (min 0) open only
-            # when at least half a person's worth of work exists.
-            need = int(np.ceil(load)) if s.min_staff >= 1 else int(np.ceil(load - 0.5))
-            need = int(np.clip(need, s.min_staff, s.max_staff))
+            need = s.need(tx)
             plan[s.station] = need
             total += need
         plan["manager"] = MANAGER_PER_HOUR

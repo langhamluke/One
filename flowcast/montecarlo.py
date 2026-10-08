@@ -84,7 +84,7 @@ class DaySimulation:
 
 
 def simulate_day(day_forecast: pd.DataFrame, pool: ErrorPool, n: int = N_SIMS, seed: int = 0,
-                 forecast_col: str = "forecast") -> DaySimulation:
+                 forecast_col: str = "forecast", standards=None) -> DaySimulation:
     """day_forecast: rows for one day with `hour` and a point forecast column."""
     rng = np.random.default_rng(seed)
     hours = [int(h) for h in day_forecast["hour"]]
@@ -99,22 +99,18 @@ def simulate_day(day_forecast: pd.DataFrame, pool: ErrorPool, n: int = N_SIMS, s
     draws = rng.poisson(lam)
     totals = draws.sum(axis=1)
     # Labor need per simulated day, from the same standards the plan uses.
-    labor_hours = np.array([_labor_need(hours, row) for row in draws[: min(n, 600)]])
+    labor_hours = np.array([_labor_need(hours, row, standards) for row in draws[: min(n, 600)]])
     return DaySimulation(hours, np.percentile(draws, 10, axis=0), np.percentile(draws, 50, axis=0),
                          np.percentile(draws, 90, axis=0), totals, labor_hours)
 
 
-def _labor_need(hours: list[int], tx: np.ndarray) -> float:
+def _labor_need(hours: list[int], tx: np.ndarray, standards=None) -> float:
+    standards = standards or labor.DEFAULT_STANDARDS
     total = 0.0
     for v in tx:
         if v <= 0:
             continue
-        need = labor.MANAGER_PER_HOUR
-        for s in labor.DEFAULT_STANDARDS:
-            load = v * s.channel_share / s.tx_per_labor_hour
-            cnt = int(np.ceil(load)) if s.min_staff >= 1 else int(np.ceil(load - 0.5))
-            need += int(np.clip(cnt, s.min_staff, s.max_staff))
-        total += need
+        total += labor.MANAGER_PER_HOUR + sum(s.need(float(v)) for s in standards)
     return total
 
 

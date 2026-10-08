@@ -16,7 +16,7 @@
   <div class="kpis">
     <div class="tile"><div class="label">Today forecast</div><div class="val">{{ '%.0f' % store.day(today).forecast.sum() }}</div><div class="delta">4-wk avg {{ '%.0f' % store.day(today).baseline.sum() }}{% if today_sim %} · 80% range {{ '%.0f' % today_sim.total_p.p10 }}–{{ '%.0f' % today_sim.total_p.p90 }}{% endif %}</div></div>
     <div class="tile"><div class="label">Forecast confidence</div><div class="val">{{ selection.confidence }}</div><div class="delta">{{ '%.0f' % selection.weeks_of_data }} weeks of data · <a href="/forecast">how it was chosen</a></div></div>
-    {% if acc|length %}<div class="tile"><div class="label">Daily error, last {{ acc|length }} wks</div><div class="val">{{ '%.1f' % (summary.loc['model','daily_wape']*100) }}%</div><div class="delta good">vs {{ '%.1f' % (summary.loc['baseline_4wk','daily_wape']*100) }}% 4-wk avg</div>{{ spark|safe }}</div>{% endif %}
+    {% if acc|length %}<div class="tile"><div class="label">Daily error, last {{ acc|length }} wks</div><div class="val">{{ '%.1f' % (summary.loc['model','daily_wape']*100) }}%</div>{% if 'store_forecast' in summary.index %}<div class="delta {{ 'good' if summary.loc['model','daily_wape'] < summary.loc['store_forecast','daily_wape'] else '' }}">vs {{ '%.1f' % (summary.loc['store_forecast','daily_wape']*100) }}% store forecast</div>{% else %}<div class="delta good">vs {{ '%.1f' % (summary.loc['baseline_4wk','daily_wape']*100) }}% 4-wk avg</div>{% endif %}{{ spark|safe }}</div>{% endif %}
     <div class="tile"><div class="label">This week's labor plan</div><div class="val">{{ '%.0f' % week_hours.model }} h</div><div class="delta">4-wk plan {{ '%.0f' % week_hours.baseline }} h ({{ '%+.0f' % (week_hours.model - week_hours.baseline) }})</div></div>
     <div class="tile"><div class="label">Auto-order</div><div class="val">{{ 'Eligible' if elig.eligible else 'Locked' }}</div><div class="delta">{{ elig.weeks }} wks under {{ '%.0f' % (elig.threshold*100) }}% error</div></div>
   </div>
@@ -51,6 +51,13 @@
     {% for r in acc.itertuples() %}<tr><td>{{ r.week_start.strftime('%-m/%-d') }}</td><td>{{ '%.1f' % (r.baseline*100) }}%</td><td>{{ '%.1f' % (r.model*100) }}%</td></tr>{% endfor %}</table></details>
   </div>
 </section>{% else %}<section class="card">{{ week_chart|safe }}</section>{% endif %}
+
+{% if comparison is not none and comparison|length %}<section class="card">
+  <h2>How each forecast did, day by day</h2>
+  <table class="t"><tr><th>Forecast</th><th>Daily error</th><th>Days off by more than 10%</th><th>Days scored</th></tr>
+  {% for r in comparison.itertuples() %}<tr><td>{{ r.forecast }}</td><td>{{ '%.1f' % (r.daily_error*100) }}%</td><td>{{ r.days_off_10 }}</td><td>{{ r.days }}</td></tr>{% endfor %}</table>
+  <p class="muted small">Walk-forward backtest: each window is forecast using only data from before it.{% if store.data.score_daily_only %} Scored on daily totals only, because hourly actuals in this data are estimated from the store's own half-hour forecast.{% endif %}</p>
+</section>{% endif %}
 
 {% if acc|length %}<section class="card">
   <h2>Last week's schedule, scored against what happened</h2>

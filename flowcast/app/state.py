@@ -8,6 +8,7 @@ dicts/DataFrames; templates do no computation.
 
 from __future__ import annotations
 
+import json
 import logging
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -45,6 +46,9 @@ class StoreData:
     shifts: pd.DataFrame | None
     source: str
     notes: list[str] = field(default_factory=list)
+    standards: list | None = None        # labor standards learned from the store's own deployment
+    score_daily_only: bool = False       # hourly shape is an estimate; only daily totals are real
+    meta: dict = field(default_factory=dict)
 
 
 def load_data_dir(path: Path, cfg: StoreConfig) -> StoreData:
@@ -59,9 +63,18 @@ def load_data_dir(path: Path, cfg: StoreConfig) -> StoreData:
                       avg_seconds,error_rate,late_or_noshow                [optional]
     """
     notes: list[str] = []
+    meta = json.loads((path / "meta.json").read_text()) if (path / "meta.json").exists() else {}
+    if meta.get("closed_dates"):
+        cfg.closed_dates = set(cfg.closed_dates) | {date.fromisoformat(d) for d in meta["closed_dates"]}
+    if meta.get("open_hour") is not None:
+        cfg.open_hour, cfg.close_hour = int(meta["open_hour"]), int(meta["close_hour"])
     tx = pd.read_csv(path / "transactions.csv", parse_dates=["ts"]).sort_values("ts")
     if "net_sales" not in tx:
         tx["net_sales"] = np.nan
+    if (path / "store_forecast.csv").exists():
+        sf = pd.read_csv(path / "store_forecast.csv", parse_dates=["ts"])
+        tx = tx.merge(sf, on="ts", how="outer").sort_values("ts").reset_index(drop=True)
+        notes.append("Store's own forecast loaded: used as a model input and scored as the comparison to beat.")
     start, end = tx["ts"].min().date(), tx["ts"].max().date()
     rng = np.random.default_rng(0)
     if (path / "weather.csv").exists():
@@ -87,7 +100,18 @@ def load_data_dir(path: Path, cfg: StoreConfig) -> StoreData:
     shifts = pd.read_csv(path / "shifts.csv", parse_dates=["date"]) if (path / "shifts.csv").exists() else None
     if shifts is None:
         notes.append("shifts.csv not found: employee scorecards unavailable.")
-    return StoreData(tx, weather, events, cal, school, item_sales, shifts, source=f"csv:{path}", notes=notes)
+    standards = None
+    if (path / "labor_standards.csv").exists():
+        std = pd.read_csv(path / "labor_standards.csv")
+        if not std.empty:
+            standards = labor.standards_from_frame(std)
+            notes.append(f"Staffing uses the store's own deployment chart ({len(standards)} stations).")
+    daily_only = bool(meta.get("score_daily_only"))
+    if daily_only:
+        notes.append("Hourly actuals are estimated from daily totals and the store's half-hour forecast. "
+                     "Accuracy is scored on daily totals only.")
+    return StoreData(tx, weather, events, cal, school, item_sales, shifts, source=f"csv:{path}", notes=notes,
+                     standards=standards, score_daily_only=daily_only, meta=meta)
 
 
 def load_synthetic(cfg: StoreConfig, days: int, seed: int, end: date) -> StoreData:
@@ -118,6 +142,15 @@ class StoreState:
     selection: Selection
     pool: ErrorPool
     sims: dict[pd.Timestamp, DaySimulation] = field(default_factory=dict)
+    standards: list = field(default_factory=lambda: list(labor.DEFAULT_STANDARDS))
+
+    @property
+    def stations(self) -> list[str]:
+        return [s.station for s in self.standards]
+
+    @property
+    def has_store_forecast(self) -> bool:
+        return "store_forecast" in self.bt.summary.index
 
     @classmethod
     def build(cls, cfg: StoreConfig, *, data_dir: Path | None = None, wage: float = 16.50,
@@ -126,7 +159,8 @@ class StoreState:
         if data_dir and (data_dir / "transactions.csv").exists():
             data = load_data_dir(data_dir, cfg)
             demo = False
-            last = data.transactions["ts"].max().normalize()
+            known_tx = data.transactions[data.transactions["transactions"].notna()]
+            last = known_tx["ts"].max().normalize()
             today_ts = pd.Timestamp(today) if today else last + pd.Timedelta(days=1)
         else:
             end = today or date(2026, 10, 6)
@@ -149,9 +183,10 @@ class StoreState:
         tx["actual_known"] = tx["transactions"].notna()
         tx.loc[tx["ts"] >= today_ts, "actual_known"] = tx.loc[tx["ts"] >= today_ts, "transactions"].notna()
         known = tx["actual_known"].copy()
-        tx["transactions"] = tx["transactions"].fillna(0.0)
-
-        frame = build_features(tx[["ts", "transactions"]], data.weather, data.calendar, events)
+        # Hours with no data stay missing (NaN) so a gap in the history is never
+        # read as a run of zero-customer hours by the lag features.
+        cols = ["ts", "transactions"] + (["store_forecast"] if "store_forecast" in tx else [])
+        frame = build_features(tx[cols], data.weather, data.calendar, events)
         frame["actual_known"] = known.to_numpy()
         # Lags for the forecast horizon must not peek at future actuals: anything on
         # or after today that depends on a day >= today is replaced by its 1w lag.
@@ -166,7 +201,7 @@ class StoreState:
         frame.loc[future, "lag_mean_4w"] = frame.loc[future, lag_cols].mean(axis=1)
         frame.loc[future, "lag_std_4w"] = frame.loc[future, lag_cols].std(axis=1)
 
-        hist = frame[(frame["date"] < today_ts) & frame["actual_known"]]
+        hist = frame[(frame["date"] < today_ts) & frame["actual_known"] & frame["transactions"].notna()]
         # Walk-forward selection decides which model (if any) the data supports.
         selection = walk_forward_select(hist, max_folds=folds)
         model = Forecaster.fit(hist, **selection.model_kwargs)
@@ -182,6 +217,7 @@ class StoreState:
         week_rows = frame[(frame["date"] >= today_ts) & (frame["date"] <= today_ts + pd.Timedelta(days=6))]
         week = model.predict_interval(week_rows)
         week["baseline"] = baseline_4wk(week_rows).round(1).to_numpy()
+        week["store_forecast"] = week_rows["store_forecast"].to_numpy()
         week["actual"] = np.where(week_rows["actual_known"], week_rows["transactions"], np.nan)
         week["date"] = week_rows["date"].to_numpy()
         week["hour"] = week_rows["hour"].to_numpy()
@@ -194,6 +230,7 @@ class StoreState:
             cards, summary = pd.DataFrame(), pd.DataFrame()
 
         state = cls(cfg, data, frame, today_ts, model, bt, week, imp, cards, summary, wage, demo, selection, pool)
+        state.standards = data.standards or labor.DEFAULT_STANDARDS
         state.resimulate()
         return state
 
@@ -204,7 +241,7 @@ class StoreState:
             rows = self.week[self.week["date"] == d]
             if rows["is_closed"].all() or rows["forecast"].sum() <= 0:
                 continue
-            sim = simulate_day(rows, self.pool, n=n, seed=i)
+            sim = simulate_day(rows, self.pool, n=n, seed=i, standards=self.standards)
             self.sims[pd.Timestamp(d)] = sim
             self.week.loc[rows.index, "low"] = sim.hourly_p10
             self.week.loc[rows.index, "high"] = sim.hourly_p90
@@ -314,8 +351,8 @@ class StoreState:
 
     # ------------------------------------------------------------------ labor
     def week_plan(self) -> pd.DataFrame:
-        plan = labor.staffing_plan(self.week[["ts", "forecast"]])
-        base = labor.staffing_plan(self.week[["ts", "baseline"]], forecast_col="baseline")
+        plan = labor.staffing_plan(self.week[["ts", "forecast"]], self.standards)
+        base = labor.staffing_plan(self.week[["ts", "baseline"]], self.standards, forecast_col="baseline")
         plan["baseline_total"] = base["total"].to_numpy()
         plan["date"] = plan["ts"].dt.normalize()
         plan["hour"] = plan["ts"].dt.hour
@@ -349,7 +386,7 @@ class StoreState:
         plan = self.week_plan()
         rated = self.cards[self.cards["sufficient_data"] & (self.cards["composite"] >= SUFFICIENT_SCORE)]
         out = []
-        for s in labor.DEFAULT_STANDARDS:
+        for s in self.standards:
             peak = int(plan[s.station].max())
             holders = int((rated["station"] == s.station).sum())
             specialists = int(((rated["station"] == s.station) & rated["specialist"]).sum())
@@ -366,7 +403,7 @@ class StoreState:
         row = plan[(plan["date"] == self.today) & (plan["hour"] == hour)]
         if row.empty:
             return pd.DataFrame()
-        needs = {s.station: int(row.iloc[0][s.station]) for s in labor.DEFAULT_STANDARDS}
+        needs = {s.station: int(row.iloc[0][s.station]) for s in self.standards}
         available = self.summary["employee_id"].head(max_available).tolist()
         return scorecard.assign_stations(self.cards, needs, available)
 
@@ -377,8 +414,27 @@ class StoreState:
             return pd.DataFrame(columns=["week_start", "baseline", "model"])
         rows = []
         for f, g in p.groupby("fold"):
-            rows.append({"week_start": g["date"].min(), "baseline": daily_wape(g, "transactions", "baseline"),
-                         "model": daily_wape(g, "transactions", "model")})
+            row = {"week_start": g["date"].min(), "baseline": daily_wape(g, "transactions", "baseline"),
+                   "model": daily_wape(g, "transactions", "model")}
+            if self.has_store_forecast:
+                row["store"] = daily_wape(g, "transactions", "store_forecast")
+            rows.append(row)
+        return pd.DataFrame(rows)
+
+    def daily_comparison(self) -> pd.DataFrame:
+        """Daily error of every forecast the backtest scored, on days with real actuals."""
+        p = self.bt.predictions
+        if p.empty:
+            return pd.DataFrame()
+        cols = [("Model", "model"), ("4-week average", "baseline")]
+        if self.has_store_forecast:
+            cols.insert(1, ("Store's own forecast", "store_forecast"))
+        d = p.groupby("date")[["transactions"] + [c for _, c in cols]].sum()
+        rows = []
+        for name, c in cols:
+            err = (d[c] - d["transactions"]).abs()
+            rows.append({"forecast": name, "daily_error": float(err.sum() / d["transactions"].sum()),
+                         "days_off_10": int((err / d["transactions"] > 0.10).sum()), "days": len(d)})
         return pd.DataFrame(rows)
 
     def last_week_labor(self) -> dict:
@@ -391,8 +447,8 @@ class StoreState:
         actual = last[["ts", "transactions"]]
         out = {}
         for name, col in (("baseline", "baseline"), ("model", "model")):
-            plan = labor.staffing_plan(last[["ts", col]], forecast_col=col)
-            out[name] = labor.realized_labor_cost(actual, plan, wage=self.wage) | {"scheduled": float(plan["total"].sum())}
+            plan = labor.staffing_plan(last[["ts", col]], self.standards, forecast_col=col)
+            out[name] = labor.realized_labor_cost(actual, plan, self.standards, wage=self.wage) | {"scheduled": float(plan["total"].sum())}
         return out
 
     # ------------------------------------------------------------------ ordering
@@ -415,8 +471,9 @@ class StoreState:
         remaining = rows[rows["hour"] >= as_of_hour]
         if remaining.empty:
             return {}
-        rsim = simulate_day(remaining.rename(columns={"revised": "f"}), self.pool, n=1500, seed=99, forecast_col="f")
-        plan = labor.staffing_plan(remaining[["ts", "forecast"]])
+        rsim = simulate_day(remaining.rename(columns={"revised": "f"}), self.pool, n=1500, seed=99, forecast_col="f",
+                            standards=self.standards)
+        plan = labor.staffing_plan(remaining[["ts", "forecast"]], self.standards)
         plan_hours = float(plan["total"].sum())
         return {"p_need_more": rsim.prob_labor_at_least(plan_hours, 2), "p_need_fewer": rsim.prob_labor_at_most(plan_hours, 2),
                 "remaining_p10": rsim.total_p["p10"], "remaining_p90": rsim.total_p["p90"], "plan_hours": plan_hours}

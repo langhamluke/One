@@ -17,6 +17,7 @@ dependencies = [
     "jinja2>=3.1",
     "python-multipart>=0.0.9",
     "itsdangerous>=2.2",
+    "openpyxl>=3.1",
 ]
 
 [project.optional-dependencies]
@@ -31,7 +32,7 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["flowcast"]
-include = ["flowcast/app/templates/*", "flowcast/app/static/*"]
+include = ["flowcast/app/templates/*", "flowcast/app/static/*", "flowcast/reference/*"]
 
 [tool.ruff]
 line-length = 100
