@@ -142,3 +142,57 @@ def realized_labor_cost(
         "over_cost": over * wage,
         "under_hours_pct": under / max(float(merged["total_ideal"].sum()), 1.0),
     }
+
+
+def labor_vs_target(daily: pd.DataFrame, wage: float = 16.50) -> dict | None:
+    """What forecast misses cost, from the store's own labor records.
+
+    `daily` needs: projected, actual (customers), scheduled_hours, actual_hours,
+    target_hours_actual (crew hours the store's labor matrix allows for the
+    customers who actually came). Each day splits into:
+
+      planning gap      = scheduled - allowed   (the schedule was built for the wrong day)
+      manager adjustment = actual - scheduled    (sent home / called in during the day)
+      remaining gap     = actual - allowed      (what was still off at close)
+
+    Days are bucketed by how far the store's projection missed, so the hours
+    tied to forecast misses can be read directly.
+    """
+    need = ["projected", "actual", "scheduled_hours", "actual_hours", "target_hours_actual"]
+    if daily is None or any(c not in daily for c in need):
+        return None
+    d = daily.dropna(subset=need).copy()
+    if len(d) < 14:
+        return None
+    d["planning_gap"] = d["scheduled_hours"] - d["target_hours_actual"]
+    d["adjustment"] = d["actual_hours"] - d["scheduled_hours"]
+    d["remaining_gap"] = d["actual_hours"] - d["target_hours_actual"]
+    d["miss"] = (d["projected"] - d["actual"]) / d["actual"]
+    d["bucket"] = np.select([d["miss"] > 0.10, d["miss"] < -0.10], ["over-forecast >10%", "under-forecast >10%"], "within 10%")
+    rows = []
+    for b in ("over-forecast >10%", "within 10%", "under-forecast >10%"):
+        g = d[d["bucket"] == b]
+        if g.empty:
+            continue
+        rows.append({"days": len(g), "bucket": b, "planning_gap": g["planning_gap"].mean(),
+                     "adjustment": g["adjustment"].mean(), "remaining_gap": g["remaining_gap"].mean()})
+    by_bucket = pd.DataFrame(rows)
+    base = d.loc[d["bucket"] == "within 10%", "remaining_gap"].mean() if (d["bucket"] == "within 10%").any() else 0.0
+    over = d[d["bucket"] == "over-forecast >10%"]
+    under = d[d["bucket"] == "under-forecast >10%"]
+    excess_over = float((over["remaining_gap"] - base).clip(lower=0).sum())
+    short_under = float((base - under["remaining_gap"]).clip(lower=0).sum())
+    span_days = (d.index.max() - d.index.min()).days + 1 if isinstance(d.index, pd.DatetimeIndex) else len(d)
+    per_year = 365.0 / max(span_days, 1)
+    return {
+        "days": len(d),
+        "first": str(d.index.min())[:10] if isinstance(d.index, pd.DatetimeIndex) else "",
+        "last": str(d.index.max())[:10] if isinstance(d.index, pd.DatetimeIndex) else "",
+        "by_bucket": by_bucket,
+        "share_days_missed_10": float((d["bucket"] != "within 10%").mean()),
+        "mean_remaining_gap": float(d["remaining_gap"].mean()),
+        "excess_hours_on_over_forecast_days": excess_over,
+        "short_hours_on_under_forecast_days": short_under,
+        "excess_dollars_per_year": excess_over * wage * per_year,
+        "wage": wage,
+    }

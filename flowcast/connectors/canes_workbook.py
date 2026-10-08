@@ -62,6 +62,20 @@ FALLBACK_LAYOUTS = (
     {"time": 3, "sales": 4, "guests": 5, "crew": 24},
 )
 LATE_NIGHT_CUTOFF = dt.time(5, 0)
+# LABOR TRACKER / WEEKLY RECAP rows read per day, by label prefix. The labor rows let
+# the import put a number on what forecast misses cost: crew hours worked versus the
+# hours the store's own labor matrix allows for the customers who actually came.
+ROW_LABELS = {
+    "projected customers": "projected",
+    "actual customers": "actual",
+    "projected labor target": "target_hours_projected",
+    "projected allowable crew": "target_hours_projected",
+    "scheduled crew hours": "scheduled_hours",
+    "actual labor target": "target_hours_actual",
+    "actual allowable crew": "target_hours_actual",
+    "actual crew hours": "actual_hours",
+}
+DAILY_FIELDS = ("projected", "actual", "target_hours_projected", "scheduled_hours", "target_hours_actual", "actual_hours")
 
 
 # --------------------------------------------------------------------------- file names
@@ -193,14 +207,13 @@ def _daily_customers(rows: list[tuple]) -> dict[str, dict[str, float | None]]:
         if len(found) >= 6:
             day_cols = found
             break
-    out: dict[str, dict[str, float | None]] = {d: {"projected": None, "actual": None} for d in WEEK_DAYS}
+    out: dict[str, dict[str, float | None]] = {d: dict.fromkeys(DAILY_FIELDS) for d in WEEK_DAYS}
     if not day_cols:
         return out
-    targets = {"projected customers": "projected", "actual customers": "actual"}
     done = set()
     for r in rows:
         label = next((_norm(v) for v in r[:4] if isinstance(v, str) and v.strip()), "")
-        key = targets.get(label)
+        key = next((k for prefix, k in ROW_LABELS.items() if label.startswith(prefix)), None)
         if key and key not in done:
             for day, j in day_cols.items():
                 out[day][key] = _num(r[j]) if j < len(r) else None
@@ -263,17 +276,17 @@ def parse_workbook(ref: WeekRef) -> ParsedWeek:
         wb = openpyxl.load_workbook(ref.path, read_only=True, data_only=True)
     try:
         sheets = wb.sheetnames
-        cust = {d: {"projected": None, "actual": None} for d in WEEK_DAYS}
+        cust = {d: dict.fromkeys(DAILY_FIELDS) for d in WEEK_DAYS}
         for tab in ("LABOR TRACKER", "WEEKLY RECAP"):
             name = _find_sheet(sheets, (tab,))
             if not name:
                 continue
             got = _daily_customers(list(wb[name].iter_rows(min_row=1, max_row=80, max_col=30, values_only=True)))
             for d in WEEK_DAYS:
-                for k in ("projected", "actual"):
+                for k in DAILY_FIELDS:
                     if cust[d][k] is None and got[d][k] is not None:
                         cust[d][k] = got[d][k]
-            if all(cust[d]["projected"] is not None for d in WEEK_DAYS):
+            if all(cust[d]["projected"] is not None and cust[d]["actual_hours"] is not None for d in WEEK_DAYS):
                 break
         daily_rows, slot_rows, dep_rows = [], [], []
         for k, day in enumerate(WEEK_DAYS):
@@ -307,6 +320,8 @@ def parse_workbook(ref: WeekRef) -> ParsedWeek:
                 "business_date": bdate, "weekday": day,
                 "projected": proj if proj and proj > 0 else None,
                 "actual": act if act and act > 0 else None,
+                **{k: (cust[day][k] if cust[day][k] and cust[day][k] > 0 else None)
+                   for k in ("target_hours_projected", "scheduled_hours", "target_hours_actual", "actual_hours")},
                 "forecast_sum": day_guests,
             })
     finally:

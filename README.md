@@ -24,7 +24,7 @@ Working package name: `flowcast`.
 - `SECURITY.md`: threat model, controls, deployment checklist
 - `flowcast/`: the engine (forecast, intraday, labor, scorecards, ordering)
 - `flowcast/app/`: the self-hosted web interface
-- `tests/`: 64 tests covering the engine, the workbook import, and the interface
+- `tests/`: 65 tests covering the engine, the workbook import, and the interface
 
 ## The interface
 

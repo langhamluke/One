@@ -143,6 +143,18 @@ def evaluate(data_dir: str = typer.Option(None, help="Directory of CSV exports (
         typer.echo(comp.rename(columns={"daily_error": "daily error", "days_off_10": "days off >10%"}).to_string(index=False))
         if st.data.score_daily_only:
             typer.echo("Hourly actuals in this data are estimated; judge the model on these daily numbers only.")
+    gap = st.labor_vs_target()
+    if gap:
+        _h("What forecast misses cost in labor (store's own records)")
+        typer.echo(f"{gap['days']} days, {gap['first']} to {gap['last']}; projection off by >10% on {gap['share_days_missed_10']:.0%} of days")
+        bb = gap["by_bucket"].copy()
+        for c in ("planning_gap", "adjustment", "remaining_gap"):
+            bb[c] = bb[c].map(lambda v: f"{v:+.1f} h")
+        typer.echo(bb.rename(columns={"planning_gap": "scheduled vs target", "adjustment": "changed in-day",
+                                      "remaining_gap": "worked vs target"}).to_string(index=False))
+        typer.echo(f"extra hours on over-forecast days: {gap['excess_hours_on_over_forecast_days']:.0f} "
+                   f"(~${gap['excess_dollars_per_year']:,.0f}/yr at ${gap['wage']:.2f}/h); "
+                   f"short hours on under-forecast days: {gap['short_hours_on_under_forecast_days']:.0f}")
     _h("Monte Carlo, week ahead (2,000 simulated days each)")
     rows = []
     for d, sim in st.sims.items():

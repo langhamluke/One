@@ -59,6 +59,14 @@
   <p class="muted small">Walk-forward backtest: each window is forecast using only data from before it.{% if store.data.score_daily_only %} Scored on daily totals only, because hourly actuals in this data are estimated from the store's own half-hour forecast.{% endif %}</p>
 </section>{% endif %}
 
+{% if labor_gap %}<section class="card">
+  <h2>What forecast misses cost in labor</h2>
+  <p>From the store's own labor records, {{ labor_gap.first }} to {{ labor_gap.last }} ({{ labor_gap.days }} days). The store's projection was off by more than 10% on {{ '%.0f' % (labor_gap.share_days_missed_10 * 100) }}% of days.</p>
+  <table class="t"><tr><th>Days where the store's forecast was</th><th>Days</th><th>Scheduled vs target</th><th>Changed during the day</th><th>Worked vs target at close</th></tr>
+  {% for r in labor_gap.by_bucket.itertuples() %}<tr><td>{{ r.bucket }}</td><td>{{ r.days }}</td><td>{{ '%+.1f' % r.planning_gap }} h</td><td>{{ '%+.1f' % r.adjustment }} h</td><td><strong>{{ '%+.1f' % r.remaining_gap }} h</strong></td></tr>{% endfor %}</table>
+  <p class="muted small">Hours per day, averaged. "Target" is the crew hours the store's labor matrix allows for the customers who actually came. On over-forecast days the store worked {{ '%.0f' % labor_gap.excess_hours_on_over_forecast_days }} more hours than on accurate days would explain, about ${{ '{:,.0f}'.format(labor_gap.excess_dollars_per_year) }} a year at ${{ '%.2f' % labor_gap.wage }}/h. That is the money a same-day forecast correction goes after.</p>
+</section>{% endif %}
+
 {% if acc|length %}<section class="card">
   <h2>Last week's schedule, scored against what happened</h2>
   <table class="t">

@@ -47,6 +47,7 @@ class StoreData:
     source: str
     notes: list[str] = field(default_factory=list)
     standards: list | None = None        # labor standards learned from the store's own deployment
+    daily_records: pd.DataFrame | None = None  # per-day customers and crew hours from the store's own records
     score_daily_only: bool = False       # hourly shape is an estimate; only daily totals are real
     meta: dict = field(default_factory=dict)
 
@@ -106,12 +107,15 @@ def load_data_dir(path: Path, cfg: StoreConfig) -> StoreData:
         if not std.empty:
             standards = labor.standards_from_frame(std)
             notes.append(f"Staffing uses the store's own deployment chart ({len(standards)} stations).")
+    daily_records = None
+    if (path / "daily_customers.csv").exists():
+        daily_records = pd.read_csv(path / "daily_customers.csv", parse_dates=["date"]).set_index("date")
     daily_only = bool(meta.get("score_daily_only"))
     if daily_only:
         notes.append("Hourly actuals are estimated from daily totals and the store's half-hour forecast. "
                      "Accuracy is scored on daily totals only.")
     return StoreData(tx, weather, events, cal, school, item_sales, shifts, source=f"csv:{path}", notes=notes,
-                     standards=standards, score_daily_only=daily_only, meta=meta)
+                     standards=standards, score_daily_only=daily_only, meta=meta, daily_records=daily_records)
 
 
 def load_synthetic(cfg: StoreConfig, days: int, seed: int, end: date) -> StoreData:
@@ -420,6 +424,10 @@ class StoreState:
                 row["store"] = daily_wape(g, "transactions", "store_forecast")
             rows.append(row)
         return pd.DataFrame(rows)
+
+    def labor_vs_target(self) -> dict | None:
+        """Crew hours vs the store's own labor target, split by how far the store's forecast missed."""
+        return labor.labor_vs_target(self.data.daily_records, wage=self.wage)
 
     def daily_comparison(self) -> pd.DataFrame:
         """Daily error of every forecast the backtest scored, on days with real actuals."""

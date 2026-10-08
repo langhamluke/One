@@ -62,6 +62,7 @@ class Selection:
     confidence: str
     weeks_of_data: float
     notes: list[str] = field(default_factory=list)
+    anchor: str = "baseline"
 
     @property
     def baseline_only(self) -> bool:
@@ -94,6 +95,8 @@ def walk_forward_select(frame: pd.DataFrame, max_folds: int = 8, seed: int = 0,
         report = pd.DataFrame([{"candidate": "baseline", "blend_w": 0.0, "daily_wape": np.nan, "hourly_wape": np.nan, "folds": 0}]).set_index("candidate")
         return Selection("baseline", 0.0, {"blend_w": 0.0}, report, sched, None, "very low", weeks, notes)
 
+    has_store = "store_forecast" in frame and frame["store_forecast"].notna().mean() > 0.9
+    anchor = "store_forecast" if has_store else "baseline"
     rows = []
     preds: dict[str, pd.DataFrame] = {}
     for name, spec in candidates.items():
@@ -105,9 +108,10 @@ def walk_forward_select(frame: pd.DataFrame, max_folds: int = 8, seed: int = 0,
             notes.append(f"{name}: skipped ({exc})")
             continue
         p = bt.predictions
+        p["anchor"] = p["store_forecast"].fillna(p["baseline"]) if has_store else p["baseline"]
         preds[name] = p
         for w in BLEND_GRID:
-            blended = w * p["model"] + (1 - w) * p["baseline"]
+            blended = w * p["model"] + (1 - w) * p["anchor"]
             tmp = p.assign(blend=blended)
             rows.append({
                 "candidate": name, "blend_w": w,
@@ -127,19 +131,24 @@ def walk_forward_select(frame: pd.DataFrame, max_folds: int = 8, seed: int = 0,
     improvement = (base_err - float(best["daily_wape"])) / base_err if base_err else 0.0
     # Report: best blend per candidate plus the baseline row.
     report = full.loc[full.groupby("candidate")["daily_wape"].idxmin()].set_index("candidate").sort_values("daily_wape")
-    report.loc["baseline"] = {"blend_w": 0.0, "daily_wape": base_err,
-                              "hourly_wape": float(full[full["blend_w"] == 0.0]["hourly_wape"].iloc[0]), "folds": int(best["folds"])}
     ref = next(iter(preds.values()))
-    if "store_forecast" in ref and ref["store_forecast"].notna().mean() > 0.9:
-        sf = ref.assign(sf=ref["store_forecast"].fillna(ref["baseline"]))
-        report.loc["store_forecast"] = {"blend_w": np.nan, "daily_wape": daily_wape(sf, "transactions", "sf"),
-                                        "hourly_wape": wape(sf["transactions"], sf["sf"]), "folds": int(best["folds"])}
+    anchor_row = {"blend_w": np.nan, "daily_wape": base_err,
+                  "hourly_wape": float(full[full["blend_w"] == 0.0]["hourly_wape"].iloc[0]), "folds": int(best["folds"])}
+    report.loc["store_forecast" if has_store else "baseline"] = anchor_row
+    if has_store:
+        report.loc["baseline"] = {"blend_w": np.nan, "daily_wape": daily_wape(ref, "transactions", "baseline"),
+                                  "hourly_wape": wape(ref["transactions"], ref["baseline"]), "folds": int(best["folds"])}
+    else:
+        report.loc["baseline", "blend_w"] = 0.0
     report = report.sort_values("daily_wape")
     chosen = str(best["candidate"])
     w = float(best["blend_w"])
     if w == 0.0:
-        notes.append("No candidate beat the weekday-hour average out of sample; forecasting from the baseline until more history accumulates.")
-    kwargs = {"feature_set": candidates[chosen].get("feature_set", "full"), "params": candidates[chosen].get("params"), "blend_w": w}
+        notes.append("No candidate beat the store's own forecast out of sample; using the store's forecast as is."
+                     if has_store else
+                     "No candidate beat the weekday-hour average out of sample; forecasting from the baseline until more history accumulates.")
+    kwargs = {"feature_set": candidates[chosen].get("feature_set", "full"), "params": candidates[chosen].get("params"),
+              "blend_w": w, "anchor": anchor}
     p = preds[chosen].copy()
-    p["blend"] = w * p["model"] + (1 - w) * p["baseline"]
-    return Selection(chosen, w, kwargs, report, sched, p, _confidence(weeks, improvement), weeks, notes)
+    p["blend"] = w * p["model"] + (1 - w) * p["anchor"]
+    return Selection(chosen, w, kwargs, report, sched, p, _confidence(weeks, improvement), weeks, notes, anchor)

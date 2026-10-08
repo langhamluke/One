@@ -55,6 +55,17 @@ def make_workbook(path: Path, projected, actual, layout="new", late_night=True, 
         lt.cell(row=15, column=4 + 2 * k, value=(actual[k] if actual is not None else 0))
     lt.cell(row=7, column=2, value="Projected Customers")
     lt.cell(row=15, column=2, value="Actual Customers")
+    # Labor rows: schedule built for the projection; target follows actual customers.
+    for k in range(7):
+        lt.cell(row=11, column=4 + 2 * k, value=round(projected[k] / 9.5, 1))
+        if actual is not None:
+            lt.cell(row=17, column=4 + 2 * k, value=round(actual[k] / 9.5, 1))
+            lt.cell(row=18, column=4 + 2 * k, value=round(projected[k] / 9.5 * 0.6 + actual[k] / 9.5 * 0.4 + 2, 1))
+    lt.cell(row=11, column=2, value="Scheduled Crew Hours")
+    lt.cell(row=14, column=2, value="Actual Crew Deployment")
+    lt.cell(row=17, column=2, value="Actual Labor Target")
+    lt.cell(row=18, column=2, value="Actual Crew Hours")
+    lt.cell(row=22, column=2, value="Actual vs Operator Forecast")
     slots, share = _shape()
     for k, tab in enumerate(DAY_TABS):
         ws = wb.create_sheet(tab)
@@ -152,6 +163,9 @@ def test_parse_workbook_both_layouts(tmp_path, layout):
     assert list(pw.daily["business_date"]) == [dt.date(2026, 2, 4) + dt.timedelta(days=k) for k in range(7)]
     assert d.loc["Wednesday", "actual"] == actual[0]  # Wednesdays are read ("Weds" tab)
     assert d.loc["Saturday", "projected"] == BASE[3]
+    assert d.loc["Saturday", "scheduled_hours"] == round(BASE[3] / 9.5, 1)
+    assert d.loc["Saturday", "target_hours_actual"] == round(actual[3] / 9.5, 1)
+    assert d.loc["Saturday", "actual_hours"] > 0
     # Subtotal rows are ignored: half-hour guests sum to the projection.
     assert np.allclose(pw.daily["forecast_sum"] / pw.daily["projected"], 1.0, atol=0.01)
     # After-midnight slots belong to the business day but sit on the next calendar day.
@@ -247,6 +261,13 @@ def test_imported_store_runs_in_the_app(tmp_path):
     assert st.stations == sorted(STATIONS) or set(st.stations) == set(STATIONS)
     assert st.data.score_daily_only
     assert "store_forecast" in st.selection.report.index
+    # The store's forecast is the anchor: the chosen forecast is never worse than it out of sample.
+    assert st.selection.anchor == "store_forecast"
+    rep = st.selection.report
+    assert rep.loc[st.selection.chosen, "daily_wape"] <= rep.loc["store_forecast", "daily_wape"] + 1e-12
+    gap = st.labor_vs_target()
+    assert gap is not None and gap["days"] >= 60
+    assert set(gap["by_bucket"]["bucket"]) <= {"over-forecast >10%", "within 10%", "under-forecast >10%"}
     comp = st.daily_comparison()
     assert "Store's own forecast" in set(comp["forecast"])
     assert comp["days"].iloc[0] > 0
@@ -261,4 +282,24 @@ def test_imported_store_runs_in_the_app(tmp_path):
         assert r.status_code == 200, path
     home = c.get("/").text
     assert "store forecast" in home and "How each forecast did" in home
+    assert "What forecast misses cost in labor" in home
     assert "DTOrd" in c.get("/people").text
+
+
+def test_labor_vs_target_attributes_hours_to_forecast_misses():
+    idx = pd.date_range("2026-01-01", periods=60, freq="D")
+    rng = np.random.default_rng(0)
+    actual = rng.integers(1000, 1600, len(idx)).astype(float)
+    projected = actual * np.where(np.arange(len(idx)) % 5 == 0, 1.2, 1.0)  # every 5th day over-forecast 20%
+    target = actual / 9.5
+    scheduled = projected / 9.5
+    worked = scheduled - 0.3 * (scheduled - target)  # managers claw back 30% in-day
+    df = pd.DataFrame({"projected": projected, "actual": actual, "scheduled_hours": scheduled,
+                       "actual_hours": worked, "target_hours_actual": target}, index=idx)
+    g = labor.labor_vs_target(df, wage=16.0)
+    bb = g["by_bucket"].set_index("bucket")
+    assert abs(bb.loc["within 10%", "remaining_gap"]) < 1e-9
+    over = bb.loc["over-forecast >10%"]
+    assert over["planning_gap"] > 0 and over["adjustment"] < 0 and over["remaining_gap"] > 0
+    assert g["excess_hours_on_over_forecast_days"] > 0 and g["excess_dollars_per_year"] > 0
+    assert labor.labor_vs_target(df.drop(columns="actual_hours")) is None

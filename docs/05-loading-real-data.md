@@ -22,6 +22,7 @@ What the import reads, and what it does with it:
 | LABOR TRACKER, "Projected Customers" | The store's own forecast, used as a model input and as the number to beat. |
 | Day tabs, half-hour Time / Sales / Guests | The store forecast by hour, and the within-day shape used to spread each day's actual total across hours. |
 | Day tabs, crew per station (Bird, Board, DT order, ...) | `labor_standards.csv`: the store's deployment chart, learned from every week, replacing the generic staffing standards. |
+| LABOR TRACKER, scheduled crew hours, actual crew hours, actual labor target | "What forecast misses cost in labor": hours scheduled and worked versus what the store's own labor matrix allows for the customers who came, split by how far the projection missed. |
 | File name and folder (`data/2025/Q1/P2/P2W1 2.5 - 2.11.xlsx`) | The week's dates. Every store week starts on a Wednesday; anything else is flagged. Undated files like `P7W4.xlsx` are dated from sibling weeks. |
 
 Things to know:
@@ -31,6 +32,10 @@ Things to know:
   total spread by the store's own half-hour forecast, so hourly error would
   only measure the store's shape. `evaluate` and the Overview page show the
   daily comparison: model vs the store's forecast vs the 4-week average.
+- **The store's forecast is the anchor.** Every model is blended with the
+  store's own forecast, and walk-forward selection can choose 0% model. If
+  nothing beats the store out of sample, the app uses the store's number as
+  is rather than something worse.
 - **Wednesdays are included.** The tab is named `Weds`; earlier notebooks
   looked for `Wed` and silently dropped every Wednesday.
 - **After-midnight slots** (Fri/Sat late night, stored by Excel as

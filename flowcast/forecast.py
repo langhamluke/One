@@ -64,18 +64,21 @@ class Forecaster:
     trained_through: pd.Timestamp
     residual_std_by_hour: pd.Series
     features: list[str]
-    # Blend with the 4-week baseline: forecast = w * model + (1 - w) * baseline.
-    # Walk-forward selection sets w; thin data pulls it toward 0.
+    # Blend with an anchor forecast: forecast = w * model + (1 - w) * anchor.
+    # The anchor is the store's own forecast when the data has one (it is the
+    # number to beat), otherwise the 4-week average. Walk-forward selection
+    # sets w; w = 0 means "the anchor is still the best forecast".
     blend_w: float = 1.0
+    anchor: str = "baseline"
 
     @classmethod
     def fit(cls, frame: pd.DataFrame, seed: int = 0, params: dict | None = None,
-            feature_set: str = "full", blend_w: float = 1.0) -> Forecaster:
+            feature_set: str = "full", blend_w: float = 1.0, anchor: str = "baseline") -> Forecaster:
         features = FEATURE_SETS[feature_set]
         train = frame[frame["is_closed"] == 0].dropna(subset=["lag_1w"])
         if blend_w <= 0.0 or len(train) < 60:
-            # Baseline-only: not enough history to fit anything trustworthy.
-            return cls(None, frame["date"].max(), pd.Series(dtype=float), features, 0.0)
+            # Anchor only: no model beat it, or not enough history to fit anything trustworthy.
+            return cls(None, frame["date"].max(), pd.Series(dtype=float), features, 0.0, anchor)
         # Thin history leaves some features constant or entirely missing (lag_4w in
         # week 3). Drop them for this fit; the model remembers what it used.
         features = [c for c in features if train[c].nunique(dropna=True) >= 2]
@@ -83,10 +86,10 @@ class Forecaster:
         model = _model(seed, params, features).fit(X, y)
         resid = y - model.predict(X)
         resid_std = pd.Series(resid).groupby(train["hour"].to_numpy()).std().fillna(0.0)
-        return cls(model, frame["date"].max(), resid_std, features, blend_w)
+        return cls(model, frame["date"].max(), resid_std, features, blend_w, anchor)
 
     def predict(self, frame: pd.DataFrame) -> pd.Series:
-        base = baseline_4wk(frame).to_numpy(dtype=float)
+        base = anchor_forecast(frame, self.anchor).to_numpy(dtype=float)
         if self.model is None:
             pred = base
         else:
@@ -118,6 +121,14 @@ class Forecaster:
         X, y = sample[self.features], sample["transactions"].to_numpy(dtype=float)
         imp = permutation_importance(self.model, X, y, n_repeats=n_repeats, random_state=seed)
         return pd.Series(imp.importances_mean, index=self.features).sort_values(ascending=False)
+
+
+def anchor_forecast(frame: pd.DataFrame, anchor: str = "baseline") -> pd.Series:
+    """The forecast a model is blended with: the store's own where it exists, else the 4-week average."""
+    base = baseline_4wk(frame)
+    if anchor == "store_forecast" and "store_forecast" in frame:
+        return frame["store_forecast"].fillna(base)
+    return base
 
 
 # --------------------------------------------------------------------------- metrics

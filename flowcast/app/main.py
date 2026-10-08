@@ -162,7 +162,7 @@ def create_app(settings: Settings | None = None, *, state: StoreState | None = N
         elig = s.auto_order_eligibility()
         wp = s.week_plan()
         week_hours = {"model": float(wp["total"].sum()), "baseline": float(wp["baseline_total"].sum())}
-        return render(request, "overview.html", week_hours=week_hours, comparison=s.daily_comparison(),
+        return render(request, "overview.html", week_hours=week_hours, comparison=s.daily_comparison(), labor_gap=s.labor_vs_target(),
                       live=live, daily=daily, acc=acc, lw=lw, alerts=alerts, drivers=s.drivers(s.today), ctx=s.day_context(s.today),
                       week_chart=charts.week_columns(daily, "Next 7 days: forecast vs 4-week average"),
                       acc_chart=charts.accuracy_columns(acc, "Daily forecast error by week (lower is better)"),
