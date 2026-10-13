@@ -1,0 +1,767 @@
+<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0;font:14px system-ui,sans-serif}img{max-width:100%}[hidden]{display:none!important}</style></head><body>
+<title>Slopecycle GEO Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: sticky masthead and one filter row that scopes every panel; a 12 column main grid; the chat rail is docked right on wide screens and becomes a bottom sheet on phones. */
+:root{
+  --bg:#f2f4f7; --surface:#fcfcfb; --surface-2:#e9edf2; --ink:#0b0b0b; --ink-2:#52514e; --muted:#898781;
+  --grid:#e1e0d9; --axis:#c3c2b7; --border:rgba(11,11,11,.10);
+  --accent:#2a78d6; --accent-soft:#cde2fb; --c2:#eb6834; --c3:#1baf7a; --c4:#eda100; --c5:#e87ba4; --c6:#008300; --de:#c3c2b7;
+  --neg:#e34948; --mid:#f0efec; --good:#0ca30c; --warn:#fab219; --serious:#ec835a; --crit:#d03b3b; --good-text:#006300;
+  --seq-lo:#cde2fb; --seq-hi:#0d366b;
+  --font:"Figtree",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --radius:10px; --chat-w:360px;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0e1012; --surface:#1a1a19; --surface-2:#232524; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+    --accent:#3987e5; --accent-soft:#184f95; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c6:#008300; --de:#4a4a47;
+    --neg:#e66767; --mid:#383835; --good-text:#0ca30c;
+    --seq-lo:#184f95; --seq-hi:#9ec5f4;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0e1012; --surface:#1a1a19; --surface-2:#232524; --ink:#f0efec; --ink-2:#c3c2b7; --muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --border:rgba(255,255,255,.10);
+  --accent:#3987e5; --accent-soft:#184f95; --c2:#d95926; --c3:#199e70; --c4:#c98500; --c5:#d55181; --c6:#008300; --de:#4a4a47;
+  --neg:#e66767; --mid:#383835; --good-text:#0ca30c;
+  --seq-lo:#184f95; --seq-hi:#9ec5f4;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--font);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+a{color:var(--accent)}
+h1,h2,h3{margin:0;text-wrap:balance}
+.mono{font-family:var(--mono);font-size:12px}
+
+/* masthead */
+.mast{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--border)}
+.mast-in{display:flex;flex-wrap:wrap;align-items:center;gap:10px 18px;padding:10px 16px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand-mark{width:28px;height:28px;border-radius:8px;background:var(--accent);display:grid;place-items:center;color:#fff;font-weight:700;font-size:15px}
+.brand h1{font-size:17px;font-weight:700;letter-spacing:-.01em}
+.brand .sub{color:var(--ink-2);font-size:13px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.chip{border:1px solid var(--border);background:var(--surface);border-radius:999px;padding:4px 10px;font-size:12.5px;color:var(--ink-2);line-height:1.2;display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--accent-soft);border-color:transparent;color:var(--ink)}
+.chip:focus-visible,button:focus-visible,select:focus-visible,textarea:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.chip .dot{width:8px;height:8px;border-radius:50%;background:var(--de)}
+.flabel{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-right:2px}
+.fgroup{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.filters{display:flex;flex-wrap:wrap;gap:8px 18px;padding:8px 16px 10px;border-top:1px solid var(--border);align-items:center}
+select.sel{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:4px 8px;font-size:12.5px;color:var(--ink)}
+.toggle{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-2)}
+.status{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--ink-2)}
+.status .dot{width:8px;height:8px;border-radius:50%}
+.status.live .dot{background:var(--good)}
+.status.snap .dot{background:var(--warn)}
+.status.err .dot{background:var(--crit)}
+.btn{border:1px solid var(--border);background:var(--surface);border-radius:8px;padding:5px 10px;font-size:12.5px;color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:transparent;color:#fff;font-weight:600}
+.btn:disabled{opacity:.5;cursor:default}
+
+/* page */
+.layout{display:grid;grid-template-columns:minmax(0,1fr) var(--chat-w);gap:0;align-items:start}
+main{min-width:0;padding:16px 16px 40px;display:grid;gap:18px}
+section.sec{display:grid;gap:10px}
+.sec-h{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.sec-h h2{font-size:16px;font-weight:700}
+.sec-h p{margin:0;color:var(--ink-2);font-size:13px;max-width:70ch}
+.grid{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px}
+.card{grid-column:span 6;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px 10px;min-width:0;display:grid;gap:8px;align-content:start}
+.card.w12{grid-column:span 12}
+.card.w4{grid-column:span 4}
+.card.w8{grid-column:span 8}
+.card-h{display:flex;align-items:flex-start;justify-content:space-between;gap:8px}
+.card-h h3{font-size:14px;font-weight:600}
+.card-h .meta{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:3px}
+.tag{font-family:var(--mono);font-size:10.5px;letter-spacing:.02em;border-radius:5px;padding:2px 6px;background:var(--surface-2);color:var(--ink-2)}
+.tag.live{background:color-mix(in srgb,var(--good) 18%,var(--surface));color:var(--ink)}
+.tag.sample{background:color-mix(in srgb,var(--warn) 22%,var(--surface));color:var(--ink)}
+.card-tools{display:flex;gap:4px;flex-shrink:0}
+.icon-btn{border:1px solid var(--border);background:transparent;border-radius:7px;padding:3px 7px;font-size:11.5px;color:var(--ink-2)}
+.icon-btn.on{background:var(--surface-2);color:var(--ink)}
+.card-body{min-width:0}
+.card-body .tbl{display:none;overflow-x:auto}
+.card.show-table .chart{display:none}
+.card.show-table .tbl{display:block}
+.chart{min-width:0}
+.chart svg{display:block;width:100%;height:auto;overflow:visible}
+.chart text{font-family:var(--font);fill:var(--ink-2);font-size:11.5px}
+.chart text.val{fill:var(--ink);font-weight:600}
+.chart text.axis{fill:var(--muted);font-size:10.5px;font-variant-numeric:tabular-nums}
+.chart text.inside{font-weight:600;font-size:10.5px}
+.chart .grid-line{stroke:var(--grid);stroke-width:1}
+.chart .base{stroke:var(--axis);stroke-width:1}
+.chart .hit{fill:transparent;cursor:default}
+.chart .hit:hover+.mark,.chart .mark:hover{filter:brightness(1.08)}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--ink-2);margin-top:2px}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend i{width:12px;height:12px;border-radius:3px;display:inline-block}
+.legend i.line{height:2px;width:14px;border-radius:1px}
+.note{font-size:12px;color:var(--muted);margin:0}
+table.data{border-collapse:collapse;width:100%;font-size:12.5px}
+table.data th,table.data td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--grid);vertical-align:top}
+table.data th{color:var(--muted);font-weight:600;font-size:11px;letter-spacing:.04em;text-transform:uppercase}
+table.data td.num,table.data th.num{text-align:right;font-variant-numeric:tabular-nums}
+.pill{display:inline-block;border-radius:999px;padding:1px 8px;font-size:11.5px;font-weight:600}
+.pill.ok{background:color-mix(in srgb,var(--good) 20%,transparent)}
+.pill.bad{background:color-mix(in srgb,var(--crit) 20%,transparent)}
+.pill.warn{background:color-mix(in srgb,var(--warn) 30%,transparent)}
+.pill.neutral{background:var(--surface-2)}
+.seg{display:inline-flex;border:1px solid var(--border);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:transparent;padding:3px 9px;font-size:11.5px;color:var(--ink-2)}
+.seg button.on{background:var(--surface-2);color:var(--ink);font-weight:600}
+
+/* KPI tiles */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:grid;gap:4px;min-width:0}
+.tile .lab{font-size:12px;color:var(--ink-2)}
+.tile .val{font-size:26px;font-weight:600;line-height:1.1;letter-spacing:-.01em}
+.tile .delta{font-size:12px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+.tile .delta b{font-weight:600}
+.tile .delta.up b{color:var(--good-text)}
+.tile .delta.down b{color:var(--crit)}
+.tile svg{display:block;width:100%;height:26px;overflow:visible}
+.tile .src{font-family:var(--mono);font-size:10px;color:var(--muted)}
+
+/* insights */
+.ins{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.ins-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px 14px;display:grid;gap:6px;border-left:4px solid var(--accent)}
+.ins-card.live{border-left-color:var(--good)}
+.ins-card h4{margin:0;font-size:14px;font-weight:600}
+.ins-card p{margin:0;font-size:12.5px;color:var(--ink-2)}
+.ins-card .ev{font-family:var(--mono);font-size:11px;color:var(--ink)}
+.ins-card .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-top:2px}
+.ins-card .kpi{font-size:11.5px;color:var(--muted)}
+
+/* chat rail */
+.chat{position:sticky;top:calc(env(safe-area-inset-top,0px) + 0px);height:100vh;height:100dvh;border-left:1px solid var(--border);background:var(--surface);display:flex;flex-direction:column;min-width:0}
+.chat-h{padding:12px 14px 8px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.chat-h h2{font-size:14px;font-weight:700}
+.chat-log{flex:1;overflow:auto;padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.msg{max-width:95%;border-radius:12px;padding:8px 11px;font-size:13px;white-space:pre-wrap;word-wrap:break-word}
+.msg.user{align-self:flex-end;background:var(--accent-soft)}
+.msg.ai{align-self:flex-start;background:var(--surface-2)}
+.msg .cite{display:block;margin-top:6px;font-family:var(--mono);font-size:10.5px;color:var(--muted)}
+.sugg{display:flex;flex-wrap:wrap;gap:6px;padding:0 14px 8px}
+.sugg button{border:1px solid var(--border);background:transparent;border-radius:999px;padding:4px 9px;font-size:11.5px;color:var(--ink-2);text-align:left}
+.chat-in{display:grid;grid-template-columns:1fr auto;gap:6px;padding:10px 14px calc(12px + env(safe-area-inset-bottom,0px));border-top:1px solid var(--border)}
+.chat-in textarea{resize:none;border:1px solid var(--border);border-radius:8px;padding:8px;min-height:40px;max-height:120px;background:var(--surface);min-width:0}
+.chat-in .acts{display:grid;gap:4px}
+.chat-fab{display:none}
+
+/* tooltip */
+#tip{position:fixed;z-index:50;pointer-events:none;background:var(--ink);color:var(--surface);border-radius:8px;padding:6px 9px;font-size:12px;max-width:260px;box-shadow:0 4px 14px rgba(0,0,0,.18);opacity:0;transition:opacity .08s}
+#tip.on{opacity:1}
+#tip b{font-weight:700}
+#tip .r{display:flex;gap:8px;justify-content:space-between;align-items:center}
+#tip .k{display:inline-block;width:12px;height:3px;border-radius:2px;margin-right:4px;vertical-align:middle}
+#tip .h{color:color-mix(in srgb,var(--surface) 70%,var(--ink));font-size:11px;margin-bottom:2px}
+
+@media (max-width:1100px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .chat{position:fixed;left:0;right:0;bottom:0;height:80vh;height:80dvh;border-left:0;border-top:1px solid var(--border);border-radius:16px 16px 0 0;transform:translateY(100%);transition:transform .25s;z-index:40;box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+  .chat.open{transform:none}
+  .chat-fab{display:inline-flex;position:fixed;right:16px;bottom:calc(16px + env(safe-area-inset-bottom,0px));z-index:39;background:var(--accent);color:#fff;border:0;border-radius:999px;padding:10px 16px;font-weight:600;box-shadow:0 4px 14px rgba(0,0,0,.25)}
+  .card,.card.w4,.card.w8{grid-column:span 12}
+}
+@media (min-width:1101px) and (max-width:1400px){
+  .card.w4{grid-column:span 6}
+}
+@media (max-width:640px){
+  .tile .val{font-size:22px}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important}
+}
+</style>
+<header class="mast">
+  <div class="mast-in">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">S</div>
+      <div>
+        <h1>Slopecycle GEO Dashboard</h1>
+        <div class="sub">Generative Engine Optimization: where Slopecycle appears, how it compares, and where the signal comes from</div>
+      </div>
+    </div>
+    <div class="chips" style="margin-left:auto">
+      <span class="status snap" id="liveStatus"><span class="dot"></span><span id="liveStatusText">Snapshot from the Slopecycle app</span></span>
+      <button class="btn" id="refreshBtn" type="button" hidden>Refresh live data</button>
+      <span class="tag sample">Sample = feed not connected</span>
+      <span class="tag live">Live = Slopecycle app</span>
+    </div>
+  </div>
+  <div class="filters" role="group" aria-label="Filters">
+    <div class="fgroup"><span class="flabel">Date</span><div class="chips" id="rangeChips">
+      <button class="chip" type="button" data-range="7">7d</button>
+      <button class="chip on" type="button" data-range="30">30d</button>
+      <button class="chip" type="button" data-range="90">90d</button>
+      <button class="chip" type="button" data-range="0">All</button>
+    </div></div>
+    <div class="fgroup"><span class="flabel">Engine</span><div class="chips" id="engineChips"></div></div>
+    <div class="fgroup"><span class="flabel">Region</span><select class="sel" id="regionSel"><option value="ALL">All regions</option></select></div>
+    <div class="fgroup"><span class="flabel">Platform</span><div class="chips" id="platformChips"></div></div>
+    <div class="fgroup"><span class="flabel">Competitor</span><div class="chips" id="catChips"></div></div>
+    <label class="toggle"><input type="checkbox" id="hideTest" checked> Hide test records</label>
+  </div>
+</header>
+
+<div class="layout">
+<main>
+  <div class="kpis" id="kpis"></div>
+
+  <section class="sec" id="s-presence">
+    <div class="sec-h"><h2>1. Site presence</h2><p>Every place Slopecycle is named, and how often AI engines surface it for the prompts parents actually ask.</p></div>
+    <div class="grid">
+      <div class="card w4" data-panel="presencePlatform"><div class="card-h"><div><h3>Presence by platform type</h3><div class="meta"><span class="tag sample">Sample</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w8" data-panel="promptCoverage"><div class="card-h"><div><h3>Prompt coverage</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Share of selected engines naming Slopecycle versus any competitor</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="coverageGrid"><div class="card-h"><div><h3>Presence coverage grid</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Slopecycle mentions per platform type by week</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="inventory"><div class="card-h"><div><h3>Presence inventory</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Listing accuracy drives the fix-listings insight</span></div></div><div class="card-tools"><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="tbl" style="display:block"></div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s-compare">
+    <div class="sec-h"><h2>2. Slopecycle versus the competitor set</h2><p>Ski clothing brands, rental companies (KitLender, SportsBasement), second-hand sites and stores, hand-me-down groups, and similar companies and forums.</p></div>
+    <div class="grid">
+      <div class="card w6" data-panel="sov"><div class="card-h"><div><h3>Share of voice by category</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Mentions segmented by platform type</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="trend"><div class="card-h"><div><h3>Mention trend</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Weekly mentions</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="h2h"><div class="card-h"><div><h3>Head to head: Slopecycle, KitLender, SportsBasement</h3><div class="meta"><span class="tag sample">Sample</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="attrs"><div class="card-h"><div><h3>Attribute comparison</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Net sentiment per attribute, shown as points above or below the attribute average</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w12" data-panel="phrases"><div class="card-h"><div><h3>Top consumer phrases</h3><div class="meta"><span class="tag sample">Sample</span></div></div><div class="card-tools"><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="tbl" style="display:block"></div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s-sentiment">
+    <div class="sec-h"><h2>3. AI sentiment toward Slopecycle</h2><p>What AI engines say when they name Slopecycle, what drives it, and which claims are wrong.</p></div>
+    <div class="grid">
+      <div class="card w6" data-panel="sentSplit"><div class="card-h"><div><h3>Sentiment split by engine</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Unfavorable left, neutral center, favorable right</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="sentTrend"><div class="card-h"><div><h3>Net AI sentiment trend</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Favorable minus unfavorable, percent of AI mentions per week</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="dumbbell"><div class="card-h"><div><h3>Slopecycle versus competitor set, by engine</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Net sentiment, percent</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="drivers"><div class="card-h"><div><h3>Driver breakdown</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Attributes pulling sentiment favorable (right) or unfavorable (left)</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w12" data-panel="claims"><div class="card-h"><div><h3>Claim ledger</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Inaccurate unfavorable claims become correction tasks; accurate ones become product or messaging tasks</span></div></div><div class="card-tools"><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="tbl" style="display:block"></div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s-geo">
+    <div class="sec-h"><h2>4. Geographic and source origin</h2><p>Where mentions come from, by state and by platform, next to the live referrer and waitlist feeds from the Slopecycle app.</p></div>
+    <div class="grid">
+      <div class="card w8" data-panel="map"><div class="card-h"><div><h3>Mention map</h3><div class="meta"><span class="tag sample">Sample</span><span class="seg" id="mapMode"><button type="button" class="on" data-mode="count">Mentions</button><button type="button" data-mode="net">Net sentiment</button></span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w4" data-panel="regionRank"><div class="card-h"><div><h3>Region ranking</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Top 10 by Slopecycle mentions</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="sourceOrigin"><div class="card-h"><div><h3>Source origin</h3><div class="meta"><span class="tag sample">Sample</span><span class="note">Platform type per region, top 8 regions</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="referrers"><div class="card-h"><div><h3>Referrer and UTM feed</h3><div class="meta"><span class="tag live">Live</span><span class="note" id="refNote">PageVisit entity</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="visitsTrend"><div class="card-h"><div><h3>Daily visits</h3><div class="meta"><span class="tag live">Live</span><span class="note">Tagged versus untagged traffic</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+      <div class="card w6" data-panel="waitlist"><div class="card-h"><div><h3>Waitlist origin</h3><div class="meta"><span class="tag live">Live</span><span class="note">WaitlistSignup entity, by source and kid age bracket</span></div></div><div class="card-tools"><button class="icon-btn tbl-btn" type="button">Table</button><button class="icon-btn ask-btn" type="button">Ask AI</button></div></div><div class="card-body"><div class="chart"></div><div class="tbl"></div></div></div>
+    </div>
+  </section>
+
+  <section class="sec" id="s-insights">
+    <div class="sec-h"><h2>5. Actionable insights</h2><p>Generated from the same data the panels use. Cards marked Live come from the Slopecycle app; the rest will update when their feeds connect.</p></div>
+    <div class="ins" id="insights"></div>
+  </section>
+
+  <p class="note">Reference example: <a href="https://www.beaconsignals.ai/" target="_blank" rel="noopener">https://www.beaconsignals.ai/</a>. Competitor set is limited to the five supplied categories. Sample panels use generated placeholder data until the site-presence, AI answer, consumer sentiment and source metadata feeds are connected.</p>
+</main>
+
+<aside class="chat" id="chat" aria-label="Ask the data">
+  <div class="chat-h"><h2>Ask the data</h2><div class="status" id="chatStatus"><span class="dot" style="background:var(--de)"></span><span id="chatStatusText">Local answers</span></div><button class="icon-btn" id="chatClose" type="button" style="display:none">Close</button></div>
+  <div class="chat-log" id="chatLog"></div>
+  <div class="sugg" id="sugg"></div>
+  <form class="chat-in" id="chatForm">
+    <textarea id="chatInput" rows="2" placeholder="Ask about visibility, sentiment, competitors or traffic" aria-label="Question"></textarea>
+    <div class="acts"><button class="btn primary" id="sendBtn" type="submit">Ask</button><button class="btn" id="stopBtn" type="button" disabled>Stop</button></div>
+  </form>
+</aside>
+</div>
+<button class="chat-fab" id="chatFab" type="button">Ask AI</button>
+<div id="tip" role="tooltip"></div>
+<script>
+const SNAP = {takenAt:"2026-10-13T22:30:00Z", visits:
+[{"d":"2026-09-13","r":"","s":"","n":6},{"d":"2026-09-13","r":"","s":"claude_check","n":1},{"d":"2026-09-13","r":"","s":"test","n":1},{"d":"2026-09-13","r":"app.base44.com","s":"","n":5},{"d":"2026-09-14","r":"","s":"","n":15},{"d":"2026-09-14","r":"","s":"pitch","n":1},{"d":"2026-09-14","r":"app.base44.com","s":"","n":19},{"d":"2026-09-15","r":"","s":"","n":48},{"d":"2026-09-15","r":"","s":"pitch","n":1},{"d":"2026-09-15","r":"app.base44.com","s":"","n":98},{"d":"2026-09-15","r":"www.google.com","s":"","n":1},{"d":"2026-09-16","r":"","s":"","n":3},{"d":"2026-09-17","r":"","s":"","n":3},{"d":"2026-09-18","r":"","s":"","n":2},{"d":"2026-09-20","r":"","s":"","n":2},{"d":"2026-09-21","r":"","s":"","n":1},{"d":"2026-09-23","r":"","s":"","n":2},{"d":"2026-09-23","r":"app.base44.com","s":"","n":4},{"d":"2026-09-26","r":"","s":"","n":1},{"d":"2026-09-27","r":"","s":"","n":3},{"d":"2026-09-27","r":"","s":"pitch","n":1},{"d":"2026-09-28","r":"","s":"","n":5},{"d":"2026-09-28","r":"","s":"pitch","n":4},{"d":"2026-09-29","r":"","s":"pitch","n":14},{"d":"2026-09-30","r":"","s":"","n":2},{"d":"2026-09-30","r":"","s":"pitch","n":6},{"d":"2026-10-04","r":"","s":"","n":1},{"d":"2026-10-05","r":"","s":"","n":1},{"d":"2026-10-05","r":"app.base44.com","s":"","n":6},{"d":"2026-10-07","r":"","s":"pitch","n":2},{"d":"2026-10-09","r":"","s":"pitch","n":2},{"d":"2026-10-10","r":"","s":"","n":1},{"d":"2026-10-10","r":"","s":"pitch","n":12},{"d":"2026-10-10","r":"app.base44.com","s":"","n":18},{"d":"2026-10-11","r":"","s":"","n":7},{"d":"2026-10-11","r":"","s":"pitch","n":1},{"d":"2026-10-11","r":"app.base44.com","s":"","n":68},{"d":"2026-10-12","r":"","s":"","n":56},{"d":"2026-10-12","r":"","s":"pitch","n":1},{"d":"2026-10-12","r":"app.base44.com","s":"","n":148},{"d":"2026-10-13","r":"","s":"","n":63},{"d":"2026-10-13","r":"","s":"pitch","n":2},{"d":"2026-10-13","r":"app.base44.com","s":"","n":151},{"d":"2026-10-13","r":"l.instagram.com","s":"ig","n":1},{"d":"2026-10-13","r":"www.facebook.com","s":"","n":2}]
+, waitlist:
+[{"d":"2026-10-12","age":"","src":""},{"d":"2026-10-10","age":"5 to 8","src":"claude_check"},{"d":"2026-10-10","age":"","src":""},{"d":"2026-10-10","age":"","src":"pitch"},{"d":"2026-10-10","age":"9 to 12","src":"pitch"},{"d":"2026-10-10","age":"5 to 8","src":"pitch"},{"d":"2026-10-10","age":"5 to 8","src":"pitch"},{"d":"2026-09-29","age":"2 to 4","src":"pitch"},{"d":"2026-09-14","age":"2 to 4","src":""},{"d":"2026-09-13","age":"13+","src":""},{"d":"2026-09-13","age":"5 to 8","src":""},{"d":"2026-09-13","age":"13+","src":"claude_check"},{"d":"2026-09-13","age":"5 to 8","src":"test-run"}]
+};
+(function(){
+"use strict";
+const $=s=>document.querySelector(s), $$=s=>Array.from(document.querySelectorAll(s));
+const NS="http://www.w3.org/2000/svg";
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+
+/* ---------- reference data ---------- */
+const SC="Slopecycle";
+const CATS=["Ski clothing brands","Rental companies","Second-hand sites and stores","Hand-me-down groups","Similar companies and forums"];
+const CAT_VAR={"Ski clothing brands":"--c2","Rental companies":"--c3","Second-hand sites and stores":"--c4","Hand-me-down groups":"--c5","Similar companies and forums":"--c6"};
+const RENTALS=["KitLender","SportsBasement"];
+const ENGINES=["ChatGPT","Gemini","Perplexity","Claude","Google AI Overviews"];
+const ENGINE_SHORT={"Google AI Overviews":"Google AIO"};
+const PLATFORMS=["AI engine","Search","Marketplace","Social","Forum","Review site","Directory","News"];
+const PLATFORM_VAR=["--accent","--c2","--c3","--c4","--c5","--c6","--de","--axis"];
+const PROMPTS=[
+ "best way to get ski clothes for a growing kid",
+ "kids ski jacket rental versus buying",
+ "where to find used kids ski gear",
+ "hand me down ski clothes for toddlers",
+ "kids ski gear subscription",
+ "cheapest way to outfit kids for a ski trip",
+ "KitLender versus buying kids ski clothes",
+ "SportsBasement kids ski rental review"];
+const ATTRS=["Price","Fit","Condition","Convenience","Sustainability","Sizing as kids grow","Availability"];
+const STATES=[["AK","Alaska",0,0,2],["ME","Maine",10,0,3],["VT","Vermont",9,1,6],["NH","New Hampshire",10,1,5],
+["WA","Washington",0,2,5],["ID","Idaho",1,2,4],["MT","Montana",2,2,4],["ND","North Dakota",3,2,1],["MN","Minnesota",4,2,4],["IL","Illinois",5,2,3],["WI","Wisconsin",6,2,3],["MI","Michigan",7,2,4],["NY","New York",8,2,6],["RI","Rhode Island",9,2,1],["MA","Massachusetts",10,2,5],
+["OR","Oregon",0,3,4],["NV","Nevada",1,3,2],["WY","Wyoming",2,3,3],["SD","South Dakota",3,3,1],["IA","Iowa",4,3,1],["IN","Indiana",5,3,1],["OH","Ohio",6,3,2],["PA","Pennsylvania",7,3,4],["NJ","New Jersey",8,3,3],["CT","Connecticut",9,3,3],
+["CA","California",0,4,8],["UT","Utah",1,4,7],["CO","Colorado",2,4,10],["NE","Nebraska",3,4,1],["MO","Missouri",4,4,1],["KY","Kentucky",5,4,1],["WV","West Virginia",6,4,2],["VA","Virginia",7,4,2],["MD","Maryland",8,4,2],["DE","Delaware",9,4,1],
+["AZ","Arizona",1,5,2],["NM","New Mexico",2,5,3],["KS","Kansas",3,5,1],["AR","Arkansas",4,5,1],["TN","Tennessee",5,5,1],["NC","North Carolina",6,5,2],["SC","South Carolina",7,5,1],["DC","District of Columbia",8,5,1],
+["OK","Oklahoma",3,6,1],["LA","Louisiana",4,6,1],["MS","Mississippi",5,6,1],["AL","Alabama",6,6,1],["GA","Georgia",7,6,1],
+["HI","Hawaii",0,7,1],["TX","Texas",3,7,3],["FL","Florida",8,7,2]];
+const STATE_NAME=Object.fromEntries(STATES.map(s=>[s[0],s[1]]));
+const WEEKS=12;
+const ANCHOR=new Date(SNAP.takenAt);
+const TEST_SOURCES=new Set(["test","test-run","claude_check"]);
+
+const CLAIMS=[
+ {claim:"Slopecycle is a rental service for a single ski trip",pol:-1,engine:"ChatGPT",freq:14,accurate:false,src:"Third-party directory listing"},
+ {claim:"Slopecycle helps parents cycle kids ski clothing as children grow",pol:1,engine:"Claude",freq:22,accurate:true,src:"Slopecycle app page"},
+ {claim:"Slopecycle only operates in Colorado",pol:-1,engine:"Perplexity",freq:9,accurate:false,src:"Parent forum thread"},
+ {claim:"Slopecycle gear is second-hand and may show wear",pol:0,engine:"Gemini",freq:11,accurate:true,src:"Social post"},
+ {claim:"Slopecycle is cheaper than buying new for one season",pol:1,engine:"Google AI Overviews",freq:17,accurate:true,src:"Slopecycle app page"},
+ {claim:"Slopecycle has no sizes for kids over 12",pol:-1,engine:"ChatGPT",freq:6,accurate:false,src:"Outdated listing"},
+ {claim:"Slopecycle is still waitlist only",pol:0,engine:"Perplexity",freq:13,accurate:true,src:"Slopecycle app page"},
+ {claim:"Slopecycle pickup requires a store visit",pol:-1,engine:"Gemini",freq:5,accurate:false,src:"Review site comment"}];
+const INVENTORY=[
+ {domain:"Slopecycle app (Base44)",platform:"Directory",first:"2026-09-13",last:"2026-10-13",acc:"Correct"},
+ {domain:"facebook.com page",platform:"Social",first:"2026-09-20",last:"2026-10-12",acc:"Correct"},
+ {domain:"instagram.com profile",platform:"Social",first:"2026-09-22",last:"2026-10-11",acc:"Outdated"},
+ {domain:"google.com business listing",platform:"Search",first:"2026-09-25",last:"2026-10-10",acc:"Missing"},
+ {domain:"Hand-me-down group thread (Facebook)",platform:"Forum",first:"2026-10-01",last:"2026-10-09",acc:"Correct"},
+ {domain:"Parent forum thread",platform:"Forum",first:"2026-09-28",last:"2026-10-08",acc:"Outdated"},
+ {domain:"Ski resort directory",platform:"Directory",first:"2026-10-03",last:"2026-10-12",acc:"Missing"},
+ {domain:"Local news mention",platform:"News",first:"2026-10-06",last:"2026-10-06",acc:"Correct"},
+ {domain:"Marketplace listing",platform:"Marketplace",first:"2026-10-02",last:"2026-10-13",acc:"Outdated"},
+ {domain:"Review site profile",platform:"Review site",first:"2026-10-04",last:"2026-10-12",acc:"Correct"}];
+const PHRASES=[
+ {phrase:"outgrew it in one season",entity:"Ski clothing brands",pol:-1},
+ {phrase:"cheaper than buying for a growing kid",entity:SC,pol:1},
+ {phrase:"waitlist only right now",entity:SC,pol:0},
+ {phrase:"easy pickup and return",entity:"KitLender",pol:1},
+ {phrase:"rental fee per trip adds up",entity:"Rental companies",pol:-1},
+ {phrase:"sizes sold out by December",entity:"Second-hand sites and stores",pol:-1},
+ {phrase:"free hand me downs if you ask early",entity:"Hand-me-down groups",pol:1},
+ {phrase:"condition is hit or miss",entity:"Second-hand sites and stores",pol:-1},
+ {phrase:"good for a one time trip",entity:"SportsBasement",pol:1},
+ {phrase:"thread got no replies",entity:"Similar companies and forums",pol:-1}];
+
+/* ---------- sample data generator (seeded) ---------- */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
+const rnd=mulberry32(20261013);
+function pickW(arr,w){let s=0;for(const x of w)s+=x;let r=rnd()*s;for(let i=0;i<arr.length;i++){r-=w[i];if(r<=0)return arr[i]}return arr[arr.length-1]}
+function polar(f,n){const r=rnd();return r<f?1:(r<f+n?0:-1)}
+const STATE_W=STATES.map(s=>s[4]);
+const FAV={[SC]:0.62,"KitLender":0.58,"SportsBasement":0.56,"Ski clothing brands":0.55,"Second-hand sites and stores":0.42,"Hand-me-down groups":0.6,"Similar companies and forums":0.48};
+const NEU={[SC]:0.25,"KitLender":0.3,"SportsBasement":0.3,"Ski clothing brands":0.33,"Second-hand sites and stores":0.3,"Hand-me-down groups":0.3,"Similar companies and forums":0.37};
+const ATTR_W={[SC]:[4,2,2,3,3,5,2],"KitLender":[3,2,2,5,1,2,3],"SportsBasement":[3,2,2,4,1,2,4],"Ski clothing brands":[4,4,1,2,2,3,2],"Second-hand sites and stores":[5,2,5,2,3,2,3],"Hand-me-down groups":[4,2,3,2,4,3,3],"Similar companies and forums":[3,2,2,2,2,2,3]};
+function catOf(e){return e===SC?SC:(RENTALS.includes(e)?"Rental companies":e)}
+const ANSWERS=[], MENTIONS=[];
+(function gen(){
+ for(let wk=0;wk<WEEKS;wk++){
+  const lift=wk/(WEEKS-1);
+  for(const engine of ENGINES) for(const prompt of PROMPTS) for(let k=0;k<3;k++){
+   const region=pickW(STATES,STATE_W)[0];
+   const a={wk,engine,prompt,region,names:[],cited:false};
+   let pSC=0.2+0.28*lift+(/growing|subscription|hand me down/.test(prompt)?0.14:0)-(engine==="Gemini"?0.1:0)-(/KitLender|SportsBasement/.test(prompt)?0.12:0);
+   const add=(entity,cited)=>{const m={wk,engine,platform:"AI engine",region,entity,cat:catOf(entity),pol:polar(FAV[entity],NEU[entity]),attr:pickW(ATTRS,ATTR_W[entity]),cited,prompt};MENTIONS.push(m);a.names.push(entity);if(entity===SC&&cited)a.cited=true;};
+   if(rnd()<pSC) add(SC,(engine==="Gemini"||engine==="Google AI Overviews")?false:rnd()<0.38);
+   if(rnd()<0.55) add("Ski clothing brands",rnd()<0.6);
+   if(rnd()<(/KitLender|SportsBasement|rental/.test(prompt)?0.85:0.42)) add(rnd()<0.5?"KitLender":"SportsBasement",rnd()<0.5);
+   if(rnd()<0.45) add("Second-hand sites and stores",rnd()<0.45);
+   if(rnd()<(/hand me down|cheapest/.test(prompt)?0.55:0.22)) add("Hand-me-down groups",rnd()<0.2);
+   if(rnd()<0.3) add("Similar companies and forums",rnd()<0.3);
+   ANSWERS.push(a);
+  }
+  for(const platform of PLATFORMS){ if(platform==="AI engine")continue;
+   const n=7+Math.floor(rnd()*9);
+   for(let i=0;i<n;i++){
+    let region=pickW(STATES,STATE_W)[0];
+    const r=rnd(); let entity;
+    if(r<0.12+0.1*lift) entity=SC; else if(r<0.4) entity="Ski clothing brands"; else if(r<0.56) entity=rnd()<0.5?"KitLender":"SportsBasement"; else if(r<0.72) entity="Second-hand sites and stores"; else if(r<0.88) entity="Hand-me-down groups"; else entity="Similar companies and forums";
+    if(entity==="Hand-me-down groups"&&rnd()<0.5) region=pickW(["VT","NH","MA","MN","MI","WI"],[3,2,2,2,2,1]);
+    MENTIONS.push({wk,engine:null,platform,region,entity,cat:catOf(entity),pol:polar(FAV[entity],NEU[entity]),attr:pickW(ATTRS,ATTR_W[entity]),cited:false,prompt:null});
+   }
+  }
+ }
+})();
+
+/* ---------- state ---------- */
+const state={range:30,engines:new Set(ENGINES),region:"ALL",platforms:new Set(PLATFORMS),cats:new Set(CATS),hideTest:true,mapMode:"count"};
+let LIVE={visits:SNAP.visits,waitlist:SNAP.waitlist,source:"snapshot",at:SNAP.takenAt};
+const view={}; // computed aggregates, reused by chat and insights
+const weekLabel=wk=>{const d=new Date(ANCHOR);d.setUTCDate(d.getUTCDate()-(WEEKS-1-wk)*7);return (d.getUTCMonth()+1)+"/"+d.getUTCDate()};
+function weeksInRange(){return state.range===0?WEEKS:Math.max(1,Math.min(WEEKS,Math.ceil(state.range/7)))}
+function inRangeWk(wk){return wk>=WEEKS-weeksInRange()}
+function prevRangeWk(wk){const n=weeksInRange();return wk<WEEKS-n&&wk>=WEEKS-2*n}
+function entityOn(e){return e===SC||state.cats.has(catOf(e))}
+function filtM(pred){return MENTIONS.filter(m=>pred(m.wk)&&(m.engine===null||state.engines.has(m.engine))&&(state.region==="ALL"||m.region===state.region)&&state.platforms.has(m.platform)&&entityOn(m.entity))}
+function filtA(pred){return ANSWERS.filter(a=>pred(a.wk)&&state.engines.has(a.engine)&&(state.region==="ALL"||a.region===state.region)&&state.platforms.has("AI engine"))}
+function liveDate(s){const d=new Date(s.length>10?s:s+"T12:00:00Z");return d}
+function dayInRange(dstr){if(state.range===0)return true;const d=liveDate(dstr);const from=new Date(ANCHOR_LIVE());from.setUTCDate(from.getUTCDate()-state.range+1);from.setUTCHours(0,0,0,0);return d>=from}
+function ANCHOR_LIVE(){return new Date(LIVE.at)}
+function filtVisits(){return LIVE.visits.filter(v=>dayInRange(v.d)&&!(state.hideTest&&TEST_SOURCES.has(v.s)))}
+function filtWait(){return LIVE.waitlist.filter(w=>dayInRange(w.d)&&!(state.hideTest&&TEST_SOURCES.has(w.src)))}
+const sum=(arr,f)=>arr.reduce((s,x)=>s+(f?f(x):x),0);
+const pct=(a,b)=>b?Math.round(100*a/b):0;
+const fmtPct=v=>(v>0?"+":"")+v;
+const counts=(arr,key)=>{const o={};for(const x of arr){const k=key(x);o[k]=(o[k]||0)+1}return o};
+
+/* ---------- svg helpers ---------- */
+function svg(w,h){const s=document.createElementNS(NS,"svg");s.setAttribute("viewBox","0 0 "+w+" "+h);s.setAttribute("width",w);s.setAttribute("height",h);s.style.width="100%";s.style.height="auto";return s}
+function el(n,a,p){const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);if(p)p.appendChild(e);return e}
+function text(p,x,y,str,cls,anchor){const t=el("text",{x,y,"dominant-baseline":"middle","text-anchor":anchor||"start"},p);if(cls)t.setAttribute("class",cls);t.textContent=str;return t}
+function barPath(x,y,w,h,r){if(w<=0)return "";r=Math.min(r,w,h/2);return "M"+x+" "+y+"H"+(x+w-r)+"q"+r+" 0 "+r+" "+r+"V"+(y+h-r)+"q0 "+r+" -"+r+" "+r+"H"+x+"Z"}
+function barPathL(x,y,w,h,r){if(w<=0)return "";r=Math.min(r,w,h/2);return "M"+(x+w)+" "+y+"H"+(x+r)+"q-"+r+" 0 -"+r+" "+r+"V"+(y+h-r)+"q0 "+r+" "+r+" "+r+"H"+(x+w)+"Z"}
+function widthOf(c){return Math.max(280,c.clientWidth||c.parentElement.clientWidth||600)}
+function measure(str,size){return str.length*(size||11.5)*0.56}
+function nice(max){if(max<=0)return 1;const p=Math.pow(10,Math.floor(Math.log10(max)));const m=max/p;const n=m<=1?1:m<=2?2:m<=2.5?2.5:m<=5?5:10;return n*p}
+function fmtN(v){return Math.abs(v)>=1000?(v/1000).toFixed(1).replace(/\.0$/,"")+"K":String(Math.round(v))}
+function hexToRgb(h){h=h.replace("#","");if(h.length===3)h=h.split("").map(c=>c+c).join("");return [parseInt(h.slice(0,2),16),parseInt(h.slice(2,4),16),parseInt(h.slice(4,6),16)]}
+function mix(a,b,t){const A=hexToRgb(a),B=hexToRgb(b);return "rgb("+A.map((x,i)=>Math.round(x+(B[i]-x)*t)).join(",")+")"}
+function lum(rgbStr){const m=rgbStr.match(/\d+/g).map(Number);const f=c=>{c/=255;return c<=0.03928?c/12.92:Math.pow((c+0.055)/1.055,2.4)};return 0.2126*f(m[0])+0.7152*f(m[1])+0.0722*f(m[2])}
+function inkOn(fill){return lum(fill)>0.4?"#0b0b0b":"#ffffff"}
+function tipAttr(e,html){e.setAttribute("data-tip",html)}
+function esc(s){return String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]))}
+
+/* horizontal bars */
+function hbars(c,rows,o){o=o||{};c.textContent="";const W=widthOf(c),rowH=o.rowH||28,barH=Math.min(18,rowH-8),labW=Math.min(Math.max(90,W*0.36),o.labW||220);
+ const max=o.max||nice(Math.max(1,...rows.map(r=>r.value)));const x0=labW+8,x1=W-52;const H=rows.length*rowH+6;const s=svg(W,H);
+ el("line",{x1:x0,y1:2,x2:x0,y2:H-2,class:"base"},s);
+ rows.forEach((r,i)=>{const y=i*rowH+(rowH-barH)/2+3;const w=(x1-x0)*r.value/max;const color=r.color||css("--accent");
+  const lab=text(s,labW,y+barH/2,r.label,null,"end");if(measure(r.label)>labW-6){lab.textContent=r.label.slice(0,Math.floor((labW-10)/6.4))+"…"}
+  if(r.ghost!=null){const gw=(x1-x0)*r.ghost/max;el("path",{d:barPath(x0,y+barH*0.15,gw,barH*0.7,4),fill:css("--de"),class:"mark",opacity:.6},s)}
+  el("path",{d:barPath(x0,y,w,barH,4),fill:color,class:"mark"},s);
+  text(s,x0+w+6,y+barH/2,o.fmt?o.fmt(r.value):fmtN(r.value),"val");
+  const hit=el("rect",{x:0,y:i*rowH+3,width:W,height:rowH,class:"hit"},s);tipAttr(hit,"<b>"+esc(o.fmt?o.fmt(r.value):r.value)+"</b> "+esc(r.label)+(r.ghost!=null?"<div class='h'>Competitor set: "+esc(o.fmt?o.fmt(r.ghost):r.ghost)+"</div>":""));
+ });
+ c.appendChild(s);
+ if(o.legend){const l=document.createElement("div");l.className="legend";for(const it of o.legend){const sp=document.createElement("span");const i=document.createElement("i");i.style.background=it[1];sp.append(i,it[0]);l.appendChild(sp)}c.appendChild(l)}
+}
+/* stacked horizontal bars */
+function stacked(c,rows,keys,colors,o){o=o||{};c.textContent="";const W=widthOf(c),rowH=o.rowH||30,barH=18,labW=Math.min(Math.max(90,W*0.36),220);
+ const totals=rows.map(r=>sum(keys,k=>r.seg[k]||0));const max=nice(Math.max(1,...totals));const x0=labW+8,x1=W-48;const H=rows.length*rowH+6;const s=svg(W,H);
+ el("line",{x1:x0,y1:2,x2:x0,y2:H-2,class:"base"},s);
+ rows.forEach((r,i)=>{const y=i*rowH+(rowH-barH)/2+3;let x=x0;const lab=text(s,labW,y+barH/2,r.label,null,"end");if(measure(r.label)>labW-6)lab.textContent=r.label.slice(0,Math.floor((labW-10)/6.4))+"…";
+  const segs=keys.map((k,ki)=>({k,v:r.seg[k]||0,color:colors[ki]})).filter(sg=>sg.v>0);
+  segs.forEach((sg,si)=>{const w=(x1-x0)*sg.v/max;const last=si===segs.length-1;const gw=Math.max(0,w-(last?0:2));
+   const p=el("path",{d:last?barPath(x,y,gw,barH,4):"M"+x+" "+y+"h"+gw+"v"+barH+"h-"+gw+"Z",fill:sg.color,class:"mark"},s);
+   tipAttr(p,"<b>"+sg.v+"</b> "+esc(sg.k)+"<div class='h'>"+esc(r.label)+", total "+totals[i]+"</div>");x+=w});
+  text(s,x+6,y+barH/2,fmtN(totals[i]),"val")});
+ c.appendChild(s);
+ const l=document.createElement("div");l.className="legend";keys.forEach((k,i)=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.style.background=colors[i];sp.append(ii,k);l.appendChild(sp)});c.appendChild(l);
+}
+/* multi line chart with crosshair */
+function lines(c,series,labels,o){o=o||{};c.textContent="";const W=widthOf(c),H=o.h||210,padL=38,padR=o.padR||70,padT=12,padB=24;const s=svg(W,H);
+ const all=series.flatMap(sr=>sr.values);let max=nice(Math.max(1,...all)),min=0;if(o.zeroCenter){const m=nice(Math.max(1,...all.map(Math.abs)));max=m;min=-m}
+ const n=labels.length;const xs=i=>padL+(W-padL-padR)*(n>1?i/(n-1):0.5);const ys=v=>padT+(H-padT-padB)*(1-(v-min)/(max-min));
+ const ticks=o.zeroCenter?[min,min/2,0,max/2,max]:[0,max/4,max/2,max*3/4,max];
+ ticks.forEach(t=>{el("line",{x1:padL,x2:W-padR,y1:ys(t),y2:ys(t),class:t===0?"base":"grid-line"},s);text(s,padL-6,ys(t),(o.fmt?o.fmt(t):fmtN(t)),"axis","end")});
+ const step=Math.max(1,Math.ceil(n/Math.floor((W-padL-padR)/48)));labels.forEach((l,i)=>{if(i%step===0||i===n-1)text(s,xs(i),H-8,l,"axis","middle")});
+ series.forEach(sr=>{const d=sr.values.map((v,i)=>(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)).join("");
+  if(sr.area)el("path",{d:d+"L"+xs(n-1)+" "+ys(0)+"L"+xs(0)+" "+ys(0)+"Z",fill:sr.color,opacity:.1},s);
+  el("path",{d,fill:"none",stroke:sr.color,"stroke-width":2,"stroke-linejoin":"round","stroke-linecap":"round"},s);
+  const lx=xs(n-1),ly=ys(sr.values[n-1]);el("circle",{cx:lx,cy:ly,r:4,fill:sr.color,stroke:css("--surface"),"stroke-width":2},s);sr._ly=ly});
+ /* direct end labels when they do not collide */
+ const sorted=series.slice().sort((a,b)=>a._ly-b._ly);let ok=true;for(let i=1;i<sorted.length;i++)if(sorted[i]._ly-sorted[i-1]._ly<13)ok=false;
+ if(ok&&series.length<=4&&padR>=60)series.forEach(sr=>text(s,W-padR+8,sr._ly,sr.short||sr.name,null,"start"));
+ /* crosshair */
+ const ch=el("line",{x1:0,x2:0,y1:padT,y2:H-padB,stroke:css("--axis"),"stroke-width":1,opacity:0},s);const dots=series.map(sr=>el("circle",{r:4,fill:sr.color,stroke:css("--surface"),"stroke-width":2,opacity:0},s));
+ const hit=el("rect",{x:padL,y:0,width:W-padL-padR,height:H,class:"hit"},s);
+ hit.addEventListener("pointermove",ev=>{const r=s.getBoundingClientRect();const sx=(ev.clientX-r.left)*(W/r.width);let i=Math.round((sx-padL)/((W-padL-padR)/(n>1?n-1:1)));i=Math.max(0,Math.min(n-1,i));ch.setAttribute("x1",xs(i));ch.setAttribute("x2",xs(i));ch.setAttribute("opacity",1);dots.forEach((d,k)=>{d.setAttribute("cx",xs(i));d.setAttribute("cy",ys(series[k].values[i]));d.setAttribute("opacity",1)});
+  showTip(ev,"<div class='h'>"+esc(labels[i])+"</div>"+series.map(sr=>"<div class='r'><span><span class='k' style='background:"+sr.color+"'></span>"+esc(sr.name)+"</span><b>"+esc(o.fmt?o.fmt(sr.values[i]):sr.values[i])+"</b></div>").join(""))});
+ hit.addEventListener("pointerleave",()=>{ch.setAttribute("opacity",0);dots.forEach(d=>d.setAttribute("opacity",0));hideTip()});
+ c.appendChild(s);
+ if(series.length>=2){const l=document.createElement("div");l.className="legend";series.forEach(sr=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.className="line";ii.style.background=sr.color;sp.append(ii,sr.name);l.appendChild(sp)});c.appendChild(l)}
+}
+/* heatmap */
+function heat(c,rows,cols,get,o){o=o||{};c.textContent="";const W=widthOf(c),labW=Math.min(Math.max(80,W*0.3),170),cellH=o.cellH||28,top=22;const cw=(W-labW-4)/cols.length;const H=top+rows.length*cellH+4;const s=svg(W,H);
+ const vals=rows.flatMap((r,ri)=>cols.map((cl,ci)=>get(ri,ci)));const max=Math.max(1,...vals.map(v=>o.div?Math.abs(v):v));
+ const lo=css("--seq-lo"),hi=css("--seq-hi"),neg=css("--neg"),pos=css("--accent"),mid=css("--mid");
+ cols.forEach((cl,ci)=>{const t=text(s,labW+4+ci*cw+cw/2,10,o.colShort?o.colShort(cl):cl,"axis","middle");if(measure(t.textContent,10.5)>cw-4)t.textContent=t.textContent.slice(0,Math.max(3,Math.floor(cw/6.2)))+"…"});
+ rows.forEach((r,ri)=>{const lab=text(s,labW-2,top+ri*cellH+cellH/2,r,null,"end");if(measure(r)>labW-6)lab.textContent=r.slice(0,Math.floor((labW-8)/6.4))+"…";
+  cols.forEach((cl,ci)=>{const v=get(ri,ci);let fill;if(o.div){const t=Math.min(1,Math.abs(v)/max);fill=v>=0?mix(mid.startsWith("#")?mid:"#f0efec",pos,t):mix(mid.startsWith("#")?mid:"#f0efec",neg,t)}else fill=mix(lo,hi,Math.min(1,v/max));
+   const x=labW+4+ci*cw+1,y=top+ri*cellH+1;const rc=el("rect",{x,y,width:cw-2,height:cellH-2,rx:4,fill,class:"mark"},s);tipAttr(rc,"<b>"+esc(o.fmt?o.fmt(v):v)+"</b> "+esc(cl)+"<div class='h'>"+esc(r)+(o.extra?" "+esc(o.extra(ri,ci)):"")+"</div>");
+   if(cw>34){const t=text(s,x+(cw-2)/2,y+(cellH-2)/2,o.fmt?o.fmt(v):v,"inside","middle");t.style.fill=inkOn(fill);t.style.pointerEvents="none"}})});
+ c.appendChild(s);
+}
+/* diverging stacked (unfav | neutral | fav) */
+function divStack(c,rows){c.textContent="";const W=widthOf(c),rowH=30,barH=18,labW=Math.min(Math.max(80,W*0.3),160);const x0=labW+8,x1=W-8,cx=(x0+x1)/2;const max=Math.max(1,...rows.map(r=>Math.max(r.neg+r.neu/2,r.pos+r.neu/2)));const sc=(x1-cx)/max;const H=rows.length*rowH+6;const s=svg(W,H);
+ el("line",{x1:cx,x2:cx,y1:2,y2:H-2,class:"base"},s);const neg=css("--neg"),pos=css("--accent"),mid=css("--de");
+ rows.forEach((r,i)=>{const y=i*rowH+(rowH-barH)/2+3;const tot=r.neg+r.neu+r.pos;text(s,labW,y+barH/2,r.label,null,"end");
+  const nw=r.neu*sc,nx=cx-nw/2;if(r.neu>0){const p=el("rect",{x:nx,y,width:Math.max(0,nw),height:barH,fill:mid,class:"mark"},s);tipAttr(p,"<b>"+r.neu+"</b> neutral ("+pct(r.neu,tot)+"%)<div class='h'>"+esc(r.label)+"</div>")}
+  if(r.neg>0){const w=r.neg*sc-2;const p=el("path",{d:barPathL(nx-2-w,y,w,barH,4),fill:neg,class:"mark"},s);tipAttr(p,"<b>"+r.neg+"</b> unfavorable ("+pct(r.neg,tot)+"%)<div class='h'>"+esc(r.label)+"</div>")}
+  if(r.pos>0){const w=r.pos*sc-2;const p=el("path",{d:barPath(nx+nw+2,y,w,barH,4),fill:pos,class:"mark"},s);tipAttr(p,"<b>"+r.pos+"</b> favorable ("+pct(r.pos,tot)+"%)<div class='h'>"+esc(r.label)+"</div>")}
+  text(s,nx+nw+2+Math.max(0,r.pos*sc-2)+6,y+barH/2,fmtPct(pct(r.pos-r.neg,tot))+"%","val")});
+ c.appendChild(s);const l=document.createElement("div");l.className="legend";[["Unfavorable",neg],["Neutral",mid],["Favorable",pos]].forEach(it=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.style.background=it[1];sp.append(ii,it[0]);l.appendChild(sp)});c.appendChild(l);
+}
+/* dumbbell */
+function dumbbell(c,rows,aName,bName){c.textContent="";const W=widthOf(c),rowH=30,labW=Math.min(Math.max(80,W*0.3),160);const x0=labW+12,x1=W-16;const xs=v=>x0+(x1-x0)*(v+100)/200;const H=rows.length*rowH+24;const s=svg(W,H);
+ [-100,-50,0,50,100].forEach(t=>{el("line",{x1:xs(t),x2:xs(t),y1:4,y2:H-20,class:t===0?"base":"grid-line"},s);text(s,xs(t),H-8,fmtPct(t)+"%","axis","middle")});
+ const ca=css("--accent"),cb=css("--de");
+ rows.forEach((r,i)=>{const y=i*rowH+rowH/2+2;text(s,labW,y,r.label,null,"end");el("line",{x1:xs(r.a),x2:xs(r.b),y1:y,y2:y,stroke:css("--axis"),"stroke-width":2},s);
+  const db=el("circle",{cx:xs(r.b),cy:y,r:5,fill:cb,stroke:css("--surface"),"stroke-width":2,class:"mark"},s);tipAttr(db,"<b>"+fmtPct(r.b)+"%</b> "+esc(bName)+"<div class='h'>"+esc(r.label)+"</div>");
+  const da=el("circle",{cx:xs(r.a),cy:y,r:5,fill:ca,stroke:css("--surface"),"stroke-width":2,class:"mark"},s);tipAttr(da,"<b>"+fmtPct(r.a)+"%</b> "+esc(aName)+"<div class='h'>"+esc(r.label)+"</div>");
+  const hit=el("rect",{x:0,y:i*rowH+2,width:W,height:rowH,class:"hit"},s);tipAttr(hit,"<div class='h'>"+esc(r.label)+"</div><div class='r'><span>"+esc(aName)+"</span><b>"+fmtPct(r.a)+"%</b></div><div class='r'><span>"+esc(bName)+"</span><b>"+fmtPct(r.b)+"%</b></div>")});
+ c.appendChild(s);const l=document.createElement("div");l.className="legend";[[aName,ca],[bName,cb]].forEach(it=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.style.borderRadius="50%";ii.style.background=it[1];sp.append(ii,it[0]);l.appendChild(sp)});c.appendChild(l);
+}
+/* diverging bars around zero */
+function divBars(c,rows){c.textContent="";const W=widthOf(c),rowH=28,barH=18,labW=Math.min(Math.max(80,W*0.3),160);const x0=labW+12,x1=W-40,cx=(x0+x1)/2;const max=nice(Math.max(1,...rows.map(r=>Math.abs(r.value))));const sc=(x1-cx)/max;const H=rows.length*rowH+6;const s=svg(W,H);
+ el("line",{x1:cx,x2:cx,y1:2,y2:H-2,class:"base"},s);
+ rows.forEach((r,i)=>{const y=i*rowH+(rowH-barH)/2+3;text(s,labW,y+barH/2,r.label,null,"end");const w=Math.abs(r.value)*sc;
+  const p=el("path",{d:r.value>=0?barPath(cx+1,y,w,barH,4):barPathL(cx-1-w,y,w,barH,4),fill:r.value>=0?css("--accent"):css("--neg"),class:"mark"},s);tipAttr(p,"<b>"+fmtPct(r.value)+"</b> net ("+r.pos+" favorable, "+r.neg+" unfavorable)<div class='h'>"+esc(r.label)+"</div>");
+  text(s,r.value>=0?cx+w+6:cx-w-6,y+barH/2,fmtPct(r.value),"val",r.value>=0?"start":"end")});
+ c.appendChild(s);
+}
+/* US tile map */
+function tilemap(c,vals,o){o=o||{};c.textContent="";const W=widthOf(c);const cell=Math.min(44,Math.floor((W-4)/11));const H=cell*8+4;const s=svg(cell*11+4,H);s.style.maxWidth=(cell*11+4)+"px";s.style.margin="0 auto";
+ const lo=css("--seq-lo"),hi=css("--seq-hi"),neg=css("--neg"),pos=css("--accent"),midc=css("--mid"),blank=css("--surface-2");
+ const nums=STATES.map(st=>vals[st[0]]).filter(v=>v!=null);const max=Math.max(1,...nums.map(v=>o.div?Math.abs(v):v));
+ STATES.forEach(st=>{const v=vals[st[0]];let fill=blank;if(v!=null){if(o.div){const t=Math.min(1,Math.abs(v)/max);fill=v>=0?mix(midc,pos,t):mix(midc,neg,t)}else fill=mix(lo,hi,Math.min(1,v/max))}
+  const x=2+st[2]*cell,y=2+st[3]*cell;const r=el("rect",{x:x+1,y:y+1,width:cell-2,height:cell-2,rx:5,fill,class:"mark"},s);tipAttr(r,"<b>"+(v==null?"No data":esc(o.fmt?o.fmt(v):v))+"</b> "+esc(st[1])+(o.extra&&v!=null?"<div class='h'>"+esc(o.extra(st[0]))+"</div>":""));
+  const t=text(s,x+cell/2,y+cell/2,st[0],"inside","middle");t.style.fill=v==null?css("--muted"):inkOn(fill);t.style.pointerEvents="none";if(cell<30)t.style.fontSize="9px"});
+ c.appendChild(s);
+ const l=document.createElement("div");l.className="legend";if(o.div){[["Unfavorable",neg],["Neutral",midc],["Favorable",pos]].forEach(it=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.style.background=it[1];sp.append(ii,it[0]);l.appendChild(sp)})}else{[["Few",lo],["Many",hi]].forEach(it=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.style.background=it[1];sp.append(ii,it[0]);l.appendChild(sp)})}
+ const sp=document.createElement("span");const ii=document.createElement("i");ii.style.background=blank;sp.append(ii,"No data");l.appendChild(sp);c.appendChild(l);
+}
+/* table */
+function table(c,cols,rows){c.textContent="";const t=document.createElement("table");t.className="data";const th=t.createTHead().insertRow();cols.forEach(col=>{const h=document.createElement("th");h.textContent=col.label;if(col.num)h.className="num";th.appendChild(h)});const tb=t.createTBody();rows.forEach(r=>{const tr=tb.insertRow();cols.forEach(col=>{const td=tr.insertCell();const v=col.get?col.get(r):r[col.key];if(col.render)col.render(td,v,r);else td.textContent=v==null?"":v;if(col.num)td.className="num"})});c.appendChild(t)}
+function sparkSVG(values,color){const w=100,h=24,n=values.length;const max=Math.max(1,...values),min=Math.min(0,...values);const xs=i=>n>1?i*w/(n-1):w/2,ys=v=>2+(h-4)*(1-(v-min)/(max-min||1));const s=svg(w,h);s.setAttribute("preserveAspectRatio","none");s.style.height="26px";const d=values.map((v,i)=>(i?"L":"M")+xs(i).toFixed(1)+" "+ys(v).toFixed(1)).join("");el("path",{d:d+"L"+w+" "+h+"L0 "+h+"Z",fill:color,opacity:.1},s);el("path",{d,fill:"none",stroke:css("--de"),"stroke-width":1.5},s);const k=n-1;el("path",{d:"M"+xs(k-1>=0?k-1:0).toFixed(1)+" "+ys(values[k-1>=0?k-1:0]).toFixed(1)+"L"+xs(k).toFixed(1)+" "+ys(values[k]).toFixed(1),fill:"none",stroke:color,"stroke-width":2},s);el("circle",{cx:xs(k),cy:ys(values[k]),r:3,fill:color},s);return s}
+
+/* tooltip */
+const tip=$("#tip");
+function showTip(ev,html){tip.innerHTML=html;tip.classList.add("on");const pad=12;let x=ev.clientX+pad,y=ev.clientY+pad;const r=tip.getBoundingClientRect();if(x+r.width>innerWidth-8)x=ev.clientX-r.width-pad;if(y+r.height>innerHeight-8)y=ev.clientY-r.height-pad;tip.style.left=x+"px";tip.style.top=y+"px"}
+function hideTip(){tip.classList.remove("on")}
+document.addEventListener("pointerover",ev=>{const t=ev.target.closest&&ev.target.closest("[data-tip]");if(t)showTip(ev,t.getAttribute("data-tip"))});
+document.addEventListener("pointermove",ev=>{const t=ev.target.closest&&ev.target.closest("[data-tip]");if(t&&tip.classList.contains("on"))showTip(ev,t.getAttribute("data-tip"))});
+document.addEventListener("pointerout",ev=>{const t=ev.target.closest&&ev.target.closest("[data-tip]");if(t)hideTip()});
+
+/* ---------- panels ---------- */
+const panel=id=>{const card=document.querySelector('[data-panel="'+id+'"]');return {card,chart:card.querySelector(".chart"),tbl:card.querySelector(".tbl"),title:card.querySelector("h3").textContent}};
+const P={};
+function catColor(cat){return css(CAT_VAR[cat]||"--accent")}
+
+function renderKPIs(){
+ const n=weeksInRange();const cur=filtA(inRangeWk),prev=filtA(prevRangeWk);const mCur=filtM(inRangeWk),mPrev=filtM(prevRangeWk);
+ const vis=a=>pct(a.filter(x=>x.names.includes(SC)).length,a.length);const cit=a=>pct(a.filter(x=>x.cited).length,a.length);
+ const sov=m=>pct(m.filter(x=>x.entity===SC).length,m.length);const net=m=>{const sc=m.filter(x=>x.entity===SC&&x.platform==="AI engine");return pct(sum(sc,x=>x.pol>0?1:0)-sum(sc,x=>x.pol<0?1:0),sc.length)};
+ const sites=INVENTORY.filter(i=>state.platforms.has(i.platform)).length;const regions=m=>new Set(m.filter(x=>x.entity===SC).map(x=>x.region)).size;
+ const wk=f=>Array.from({length:WEEKS},(_,w)=>f(w));
+ const tiles=[
+  {lab:"AI visibility score",val:vis(cur),prev:vis(prev),fmt:v=>v,spark:wk(w=>vis(filtA(x=>x===w))),src:"Sample"},
+  {lab:"Share of voice",val:sov(mCur),prev:sov(mPrev),fmt:v=>v+"%",spark:wk(w=>sov(filtM(x=>x===w))),src:"Sample"},
+  {lab:"Citation rate",val:cit(cur),prev:cit(prev),fmt:v=>v+"%",spark:wk(w=>cit(filtA(x=>x===w))),src:"Sample"},
+  {lab:"Net AI sentiment",val:net(mCur),prev:net(mPrev),fmt:v=>fmtPct(v)+" pts",spark:wk(w=>net(filtM(x=>x===w))),src:"Sample"},
+  {lab:"Sites with presence",val:sites,prev:null,fmt:v=>v,spark:null,src:"Sample"},
+  {lab:"Regions reached",val:regions(mCur),prev:regions(mPrev),fmt:v=>v,spark:wk(w=>regions(filtM(x=>x===w))),src:"Sample"}];
+ view.kpis=tiles.map(t=>({label:t.lab,value:t.val,previous:t.prev}));
+ const box=$("#kpis");box.textContent="";
+ tiles.forEach(t=>{const d=document.createElement("div");d.className="tile";const lab=document.createElement("div");lab.className="lab";lab.textContent=t.lab;const val=document.createElement("div");val.className="val";val.textContent=t.fmt(t.val);d.append(lab,val);
+  if(t.prev!=null){const delta=t.val-t.prev;const dv=document.createElement("div");dv.className="delta "+(delta>0?"up":delta<0?"down":"");const b=document.createElement("b");b.textContent=(delta>0?"+":"")+delta+(t.lab.includes("sentiment")?" pts":t.lab.includes("score")||t.lab.includes("Regions")?"":" pts");dv.append(b," vs prior "+(n*7)+"d");d.appendChild(dv)}
+  if(t.spark)d.appendChild(sparkSVG(t.spark,css("--accent")));const src=document.createElement("div");src.className="src";src.textContent=t.src==="Sample"?"sample feed":"live";d.appendChild(src);box.appendChild(d)});
+}
+function renderPresence(){
+ const m=filtM(inRangeWk).filter(x=>x.entity===SC);
+ const byPl=counts(m,x=>x.platform);const rows=PLATFORMS.filter(p=>state.platforms.has(p)).map(p=>({label:p,value:byPl[p]||0})).sort((a,b)=>b.value-a.value);
+ view.presenceByPlatform=rows;hbars(P.presencePlatform.chart,rows);table(P.presencePlatform.tbl,[{label:"Platform type",key:"label"},{label:"Slopecycle mentions",key:"value",num:true}],rows);
+ /* prompt coverage */
+ const A=filtA(inRangeWk);const eng=ENGINES.filter(e=>state.engines.has(e));
+ const prow=PROMPTS.map(p=>{const sc=eng.filter(e=>A.some(a=>a.engine===e&&a.prompt===p&&a.names.includes(SC))).length;const comp=eng.filter(e=>A.some(a=>a.engine===e&&a.prompt===p&&a.names.some(nm=>nm!==SC&&entityOn(nm)))).length;return {label:p,value:pct(sc,eng.length),ghost:pct(comp,eng.length)}}).sort((a,b)=>b.value-a.value);
+ view.promptCoverage=prow;hbars(P.promptCoverage.chart,prow,{max:100,fmt:v=>v+"%",labW:260,legend:[["Slopecycle",css("--accent")],["Any competitor",css("--de")]]});
+ table(P.promptCoverage.tbl,[{label:"Prompt",key:"label"},{label:"Engines naming Slopecycle",get:r=>r.value+"%",num:true},{label:"Engines naming a competitor",get:r=>r.ghost+"%",num:true}],prow);
+ /* coverage grid */
+ const n=weeksInRange();const wks=Array.from({length:n},(_,i)=>WEEKS-n+i);const pls=PLATFORMS.filter(p=>state.platforms.has(p));
+ const grid=pls.map(p=>wks.map(w=>m.filter(x=>x.platform===p&&x.wk===w).length));view.coverageGrid={platforms:pls,weeks:wks.map(weekLabel),grid};
+ heat(P.coverageGrid.chart,pls,wks.map(weekLabel),(r,c)=>grid[r][c],{extra:(r,c)=>"week of "+weekLabel(wks[c])});
+ table(P.coverageGrid.tbl,[{label:"Platform",get:r=>r.p},...wks.map((w,i)=>({label:weekLabel(w),get:r=>r.v[i],num:true}))],pls.map((p,i)=>({p,v:grid[i]})));
+ /* inventory */
+ const inv=INVENTORY.filter(i=>state.platforms.has(i.platform));view.inventory=inv;
+ table(P.inventory.tbl,[{label:"Domain or page",key:"domain"},{label:"Platform",key:"platform"},{label:"First seen",key:"first"},{label:"Last seen",key:"last"},{label:"Accuracy",key:"acc",render:(td,v)=>{const s=document.createElement("span");s.className="pill "+(v==="Correct"?"ok":v==="Outdated"?"warn":"bad");s.textContent=v;td.appendChild(s)}}],inv);
+}
+function renderCompare(){
+ const m=filtM(inRangeWk);const pls=PLATFORMS.filter(p=>state.platforms.has(p));
+ const ents=[SC,...CATS.filter(c=>state.cats.has(c))];
+ const rows=ents.map(e=>{const seg={};for(const p of pls)seg[p]=m.filter(x=>x.cat===e&&x.platform===p).length;return {label:e,seg}});
+ view.shareOfVoice=rows.map(r=>({entity:r.label,mentions:sum(pls,p=>r.seg[p])}));
+ stacked(P.sov.chart,rows,pls,pls.map(p=>css(PLATFORM_VAR[PLATFORMS.indexOf(p)])));
+ table(P.sov.tbl,[{label:"Entity",key:"label"},...pls.map(p=>({label:p,get:r=>r.seg[p],num:true})),{label:"Total",get:r=>sum(pls,p=>r.seg[p]),num:true}],rows);
+ /* trend */
+ const n=weeksInRange();const wks=Array.from({length:n},(_,i)=>WEEKS-n+i);
+ const series=ents.map(e=>({name:e,short:e===SC?SC:e.split(" ")[0],color:e===SC?css("--accent"):catColor(e),values:wks.map(w=>m.filter(x=>x.cat===e&&x.wk===w).length)}));
+ view.trend={weeks:wks.map(weekLabel),series:series.map(s=>({name:s.name,values:s.values}))};
+ lines(P.trend.chart,series,wks.map(weekLabel),{padR:16});
+ table(P.trend.tbl,[{label:"Week of",get:r=>r.w},...ents.map((e,i)=>({label:e,get:r=>r.v[i],num:true}))],wks.map((w,i)=>({w:weekLabel(w),v:series.map(s=>s.values[i])})));
+ /* head to head */
+ const A=filtA(inRangeWk);const h2=[SC,...RENTALS].map(e=>{const me=m.filter(x=>x.entity===e);const ai=me.filter(x=>x.platform==="AI engine");return {entity:e,sov:pct(me.length,m.length),cite:pct(A.filter(a=>a.names.includes(e)&&(e===SC?a.cited:true)).length,A.length),net:pct(sum(ai,x=>x.pol>0?1:0)-sum(ai,x=>x.pol<0?1:0),ai.length),mentions:me.length}});
+ view.headToHead=h2;
+ const metrics=[["Share of voice","sov","%"],["Citation rate","cite","%"],["Net sentiment","net"," pts"]];
+ const h2rows=[];metrics.forEach(mt=>h2.forEach(r=>h2rows.push({label:mt[0]+": "+r.entity,value:r[mt[1]],color:r.entity===SC?css("--accent"):css("--c3"),unit:mt[2]})));
+ (function(){const c=P.h2h.chart;c.textContent="";const W=widthOf(c),groupH=3*20+16,barH=14,labW=Math.min(Math.max(80,W*0.3),150);const x0=labW+8,x1=W-52;const H=metrics.length*groupH+6;const s=svg(W,H);el("line",{x1:x0,x2:x0,y1:2,y2:H-2,class:"base"},s);
+  const cols=[css("--accent"),css("--c3"),css("--c4")];const max=nice(Math.max(1,...h2rows.map(r=>Math.abs(r.value))));
+  metrics.forEach((mt,mi)=>{text(s,labW,mi*groupH+groupH/2+2,mt[0],null,"end");h2.forEach((r,ri)=>{const y=mi*groupH+8+ri*20;const v=r[mt[1]];const w=Math.max(0,(x1-x0)*Math.max(0,v)/max);const p=el("path",{d:barPath(x0,y,w,barH,4),fill:cols[ri],class:"mark"},s);tipAttr(p,"<b>"+esc(fmtPct(v)+mt[2])+"</b> "+esc(r.entity)+"<div class='h'>"+esc(mt[0])+"</div>");text(s,x0+w+6,y+barH/2,(mt[1]==="net"?fmtPct(v):v)+mt[2].trim(),"val")})});
+  c.appendChild(s);const l=document.createElement("div");l.className="legend";h2.forEach((r,i)=>{const sp=document.createElement("span");const ii=document.createElement("i");ii.style.background=cols[i];sp.append(ii,r.entity);l.appendChild(sp)});c.appendChild(l)})();
+ table(P.h2h.tbl,[{label:"Entity",key:"entity"},{label:"Share of voice",get:r=>r.sov+"%",num:true},{label:"Citation rate",get:r=>r.cite+"%",num:true},{label:"Net sentiment",get:r=>fmtPct(r.net)+" pts",num:true},{label:"Mentions",key:"mentions",num:true}],h2);
+ /* attributes */
+ const netOf=arr=>pct(sum(arr,x=>x.pol>0?1:0)-sum(arr,x=>x.pol<0?1:0),arr.length);
+ const amat=ATTRS.map(at=>ents.map(e=>{const arr=m.filter(x=>x.attr===at&&x.cat===e);return arr.length?netOf(arr):0}));
+ const avg=amat.map(r=>Math.round(sum(r)/r.length));view.attributes={attrs:ATTRS,entities:ents,net:amat,avg};
+ heat(P.attrs.chart,ATTRS,ents,(r,c)=>amat[r][c]-avg[r],{div:true,fmt:v=>fmtPct(v),colShort:e=>({[SC]:SC,"Ski clothing brands":"Ski brands","Rental companies":"Rental","Second-hand sites and stores":"Second-hand","Hand-me-down groups":"Hand me down","Similar companies and forums":"Forums"}[e]||e),extra:(r,c)=>"net "+fmtPct(amat[r][c])+", attribute average "+fmtPct(avg[r])});
+ table(P.attrs.tbl,[{label:"Attribute",get:r=>r.a},...ents.map((e,i)=>({label:e,get:r=>fmtPct(r.v[i]),num:true})),{label:"Average",get:r=>fmtPct(r.g),num:true}],ATTRS.map((a,i)=>({a,v:amat[i],g:avg[i]})));
+ /* phrases */
+ const ph=PHRASES.filter(p=>entityOn(p.entity)).map(p=>({...p,count:Math.max(1,Math.round(m.filter(x=>x.entity===p.entity).length*0.12))})).sort((a,b)=>b.count-a.count);view.phrases=ph;
+ table(P.phrases.tbl,[{label:"Phrase",key:"phrase"},{label:"About",key:"entity"},{label:"Count",key:"count",num:true},{label:"Sentiment",key:"pol",render:(td,v)=>{const s=document.createElement("span");s.className="pill "+(v>0?"ok":v<0?"bad":"neutral");s.textContent=v>0?"Favorable":v<0?"Unfavorable":"Neutral";td.appendChild(s)}},{label:"Example source",get:r=>r.pol<0?"Forum thread":"Review site"}],ph);
+}
+function renderSentiment(){
+ const m=filtM(inRangeWk);const ai=m.filter(x=>x.platform==="AI engine");const sc=ai.filter(x=>x.entity===SC);const eng=ENGINES.filter(e=>state.engines.has(e));
+ const split=eng.map(e=>{const a=sc.filter(x=>x.engine===e);return {label:ENGINE_SHORT[e]||e,engine:e,neg:a.filter(x=>x.pol<0).length,neu:a.filter(x=>x.pol===0).length,pos:a.filter(x=>x.pol>0).length}});view.sentimentByEngine=split;
+ divStack(P.sentSplit.chart,split);table(P.sentSplit.tbl,[{label:"Engine",key:"engine"},{label:"Favorable",key:"pos",num:true},{label:"Neutral",key:"neu",num:true},{label:"Unfavorable",key:"neg",num:true},{label:"Net",get:r=>fmtPct(pct(r.pos-r.neg,r.pos+r.neu+r.neg))+" pts",num:true}],split);
+ const n=weeksInRange();const wks=Array.from({length:n},(_,i)=>WEEKS-n+i);const netOf=arr=>arr.length?pct(sum(arr,x=>x.pol>0?1:0)-sum(arr,x=>x.pol<0?1:0),arr.length):0;
+ const tv=wks.map(w=>netOf(filtM(x=>x===w).filter(x=>x.entity===SC&&x.platform==="AI engine")));view.sentimentTrend={weeks:wks.map(weekLabel),net:tv};
+ lines(P.sentTrend.chart,[{name:"Net AI sentiment",color:css("--accent"),values:tv,area:true}],wks.map(weekLabel),{zeroCenter:true,fmt:v=>fmtPct(v)+"%",padR:16});
+ table(P.sentTrend.tbl,[{label:"Week of",get:r=>r.w},{label:"Net sentiment",get:r=>fmtPct(r.v)+"%",num:true}],wks.map((w,i)=>({w:weekLabel(w),v:tv[i]})));
+ const db=eng.map(e=>({label:ENGINE_SHORT[e]||e,a:netOf(sc.filter(x=>x.engine===e)),b:netOf(ai.filter(x=>x.engine===e&&x.entity!==SC))}));view.engineVsCompetitors=db;
+ dumbbell(P.dumbbell.chart,db,SC,"Competitor set average");table(P.dumbbell.tbl,[{label:"Engine",key:"label"},{label:"Slopecycle net",get:r=>fmtPct(r.a)+"%",num:true},{label:"Competitor set net",get:r=>fmtPct(r.b)+"%",num:true}],db);
+ const dr=ATTRS.map(at=>{const a=sc.filter(x=>x.attr===at);return {label:at,pos:a.filter(x=>x.pol>0).length,neg:a.filter(x=>x.pol<0).length,value:a.filter(x=>x.pol>0).length-a.filter(x=>x.pol<0).length}}).sort((a,b)=>b.value-a.value);view.drivers=dr;
+ divBars(P.drivers.chart,dr);table(P.drivers.tbl,[{label:"Attribute",key:"label"},{label:"Favorable",key:"pos",num:true},{label:"Unfavorable",key:"neg",num:true},{label:"Net",get:r=>fmtPct(r.value),num:true}],dr);
+ const cl=CLAIMS.filter(c=>state.engines.has(c.engine)).sort((a,b)=>b.freq-a.freq);view.claims=cl;
+ table(P.claims.tbl,[{label:"Claim",key:"claim"},{label:"Polarity",key:"pol",render:(td,v)=>{const s=document.createElement("span");s.className="pill "+(v>0?"ok":v<0?"bad":"neutral");s.textContent=v>0?"Favorable":v<0?"Unfavorable":"Neutral";td.appendChild(s)}},{label:"Engine",key:"engine"},{label:"Frequency",key:"freq",num:true},{label:"Accurate",key:"accurate",render:(td,v)=>{const s=document.createElement("span");s.className="pill "+(v?"ok":"bad");s.textContent=v?"Yes":"No";td.appendChild(s)}},{label:"Source cited by engine",key:"src"}],cl);
+}
+function renderGeo(){
+ const m=filtM(inRangeWk);const sc=m.filter(x=>x.entity===SC);const netOf=arr=>arr.length?pct(sum(arr,x=>x.pol>0?1:0)-sum(arr,x=>x.pol<0?1:0),arr.length):null;
+ const byR=counts(sc,x=>x.region);const vals={};const netv={};STATES.forEach(st=>{const a=sc.filter(x=>x.region===st[0]);if(a.length){vals[st[0]]=a.length;netv[st[0]]=netOf(a)}});
+ view.regions=STATES.map(st=>({state:st[1],code:st[0],mentions:vals[st[0]]||0,net:netv[st[0]]})).filter(r=>r.mentions>0).sort((a,b)=>b.mentions-a.mentions);
+ if(state.mapMode==="net")tilemap(P.map.chart,netv,{div:true,fmt:v=>fmtPct(v)+"%",extra:c=>(vals[c]||0)+" mentions"});else tilemap(P.map.chart,vals,{fmt:v=>v+" mentions",extra:c=>"net sentiment "+fmtPct(netv[c])+"%"});
+ table(P.map.tbl,[{label:"State",key:"state"},{label:"Mentions",key:"mentions",num:true},{label:"Net sentiment",get:r=>r.net==null?"":fmtPct(r.net)+"%",num:true}],view.regions);
+ const top=view.regions.slice(0,10).map(r=>({label:r.state,value:r.mentions}));hbars(P.regionRank.chart,top,{labW:150});table(P.regionRank.tbl,[{label:"State",key:"label"},{label:"Mentions",key:"value",num:true}],top);
+ const pls=PLATFORMS.filter(p=>state.platforms.has(p));const top8=view.regions.slice(0,8);
+ const so=top8.map(r=>{const seg={};pls.forEach(p=>seg[p]=sc.filter(x=>x.region===r.code&&x.platform===p).length);return {label:r.state,seg}});view.sourceOrigin=so;
+ stacked(P.sourceOrigin.chart,so,pls,pls.map(p=>css(PLATFORM_VAR[PLATFORMS.indexOf(p)])));table(P.sourceOrigin.tbl,[{label:"State",key:"label"},...pls.map(p=>({label:p,get:r=>r.seg[p],num:true}))],so);
+ /* live: referrers and UTM */
+ const V=filtVisits();const total=sum(V,v=>v.n);const byRef={};const bySrc={};for(const v of V){const r=v.r||"(direct, no referrer)";byRef[r]=(byRef[r]||0)+v.n;const s=v.s||"(no utm_source)";bySrc[s]=(bySrc[s]||0)+v.n}
+ const refRows=Object.entries(byRef).map(([label,value])=>({label,value})).sort((a,b)=>b.value-a.value);const srcRows=Object.entries(bySrc).map(([label,value])=>({label,value,color:label.startsWith("(")?css("--de"):css("--accent")})).sort((a,b)=>b.value-a.value);
+ view.traffic={total,referrers:refRows,utmSources:srcRows,untaggedPct:pct(bySrc["(no utm_source)"]||0,total)};
+ const rc=P.referrers.chart;rc.textContent="";const h1=document.createElement("p");h1.className="note";h1.textContent="Visits by referrer host ("+total+" visits in range)";rc.appendChild(h1);const d1=document.createElement("div");rc.appendChild(d1);hbars(d1,refRows,{labW:180});
+ const h2=document.createElement("p");h2.className="note";h2.textContent="Visits by utm_source. Untagged traffic is shown in gray so the gap is visible.";rc.appendChild(h2);const d2=document.createElement("div");rc.appendChild(d2);hbars(d2,srcRows,{labW:180});
+ table(P.referrers.tbl,[{label:"Dimension",key:"dim"},{label:"Value",key:"label"},{label:"Visits",key:"value",num:true},{label:"Share",get:r=>pct(r.value,total)+"%",num:true}],[...refRows.map(r=>({dim:"Referrer",...r})),...srcRows.map(r=>({dim:"utm_source",...r}))]);
+ $("#refNote").textContent=LIVE.source==="live"?"PageVisit entity, refreshed "+new Date(LIVE.at).toLocaleString():"PageVisit entity, snapshot "+new Date(LIVE.at).toLocaleDateString();
+ /* daily visits */
+ const days={};for(const v of V){const d=days[v.d]||(days[v.d]={t:0,u:0});if(v.s)d.t+=v.n;else d.u+=v.n}const dk=Object.keys(days).sort();
+ const fillDays=[];if(dk.length){const start=new Date(dk[0]+"T00:00:00Z"),end=new Date(dk[dk.length-1]+"T00:00:00Z");for(let d=new Date(start);d<=end;d.setUTCDate(d.getUTCDate()+1)){const k=d.toISOString().slice(0,10);fillDays.push(k)}}
+ const lab=fillDays.map(k=>(parseInt(k.slice(5,7)))+"/"+parseInt(k.slice(8,10)));
+ const ser=[{name:"Tagged (has utm_source)",color:css("--accent"),values:fillDays.map(k=>(days[k]||{t:0}).t)},{name:"Untagged",color:css("--de"),values:fillDays.map(k=>(days[k]||{u:0}).u)}];view.dailyVisits={days:fillDays,tagged:ser[0].values,untagged:ser[1].values};
+ if(fillDays.length)lines(P.visitsTrend.chart,ser,lab,{padR:16});else P.visitsTrend.chart.textContent="No visits in range.";
+ table(P.visitsTrend.tbl,[{label:"Day",get:r=>r.d},{label:"Tagged",get:r=>r.t,num:true},{label:"Untagged",get:r=>r.u,num:true}],fillDays.map((k,i)=>({d:k,t:ser[0].values[i],u:ser[1].values[i]})));
+ /* waitlist */
+ const Wl=filtWait();const ages=["2 to 4","5 to 8","9 to 12","13+","(not given)"];const srcs=Array.from(new Set(Wl.map(w=>w.src||"(no source)")));
+ const wrows=srcs.map(s=>{const seg={};ages.forEach(a=>seg[a]=Wl.filter(w=>(w.src||"(no source)")===s&&((w.age||"(not given)")===a)).length);return {label:s,seg}}).sort((a,b)=>sum(ages,k=>b.seg[k])-sum(ages,k=>a.seg[k]));
+ view.waitlist={total:Wl.length,bySource:wrows.map(r=>({source:r.label,count:sum(ages,k=>r.seg[k])})),byAge:ages.map(a=>({age:a,count:Wl.filter(w=>(w.age||"(not given)")===a).length}))};
+ if(wrows.length)stacked(P.waitlist.chart,wrows,ages,[css("--accent"),css("--c2"),css("--c3"),css("--c4"),css("--de")],{rowH:32});else P.waitlist.chart.textContent="No signups in range.";
+ table(P.waitlist.tbl,[{label:"Source",key:"label"},...ages.map(a=>({label:a,get:r=>r.seg[a],num:true})),{label:"Total",get:r=>sum(ages,k=>r.seg[k]),num:true}],wrows);
+}
+/* ---------- insights ---------- */
+let STATUS={};try{STATUS=JSON.parse(localStorage.getItem("sc-geo-status")||"{}")}catch(e){STATUS={}}
+function saveStatus(){try{localStorage.setItem("sc-geo-status",JSON.stringify(STATUS))}catch(e){}}
+function buildInsights(){
+ const out=[];const t=view.traffic;const V=LIVE.visits.filter(v=>dayInRange(v.d));const tests=sum(V.filter(v=>TEST_SOURCES.has(v.s)),v=>v.n)+LIVE.waitlist.filter(w=>dayInRange(w.d)&&TEST_SOURCES.has(w.src)).length;
+ if(t&&t.total)out.push({id:"utm",live:true,title:"Tag all outbound links",ev:t.untaggedPct+"% of "+t.total+" visits in range carry no utm_source",action:"Add utm_source, utm_medium and utm_campaign to every social post, pitch link and directory listing.",kpi:"Source origin panels populate within one week",sev:t.untaggedPct>50?"high":"medium"});
+ if(tests>0)out.push({id:"test",live:true,title:"Separate test data from real data",ev:tests+" test records in range (sources test, test-run, claude_check)",action:"Add an is_test flag on PageVisit and WaitlistSignup and exclude it by default.",kpi:"Waitlist origin reflects real demand",sev:"medium"});
+ const pitchV=sum(V.filter(v=>v.s==="pitch"),v=>v.n);const pitchW=filtWait().filter(w=>w.src==="pitch").length;if(pitchV)out.push({id:"pitch",live:true,title:"Make pitch traffic a trackable channel",ev:pitchV+" pitch visits and "+pitchW+" pitch waitlist signups ("+pct(pitchW,pitchV)+"% conversion)",action:"Give each pitch audience its own utm_campaign so the dashboard can rank audiences.",kpi:"Waitlist signups per pitch audience",sev:"medium"});
+ const wl=view.waitlist;if(wl&&wl.total){const top=wl.byAge.filter(a=>a.age!=="(not given)").sort((a,b)=>b.count-a.count)[0];if(top&&top.count)out.push({id:"age",live:true,title:"Target the age bracket that converts",ev:top.count+" of "+wl.total+" signups are in the "+top.age+" bracket",action:"Publish one landing section and one FAQ per bracket so engines answer bracket-specific prompts with Slopecycle.",kpi:"AI visibility score on bracket prompts",sev:"medium"})}
+ const A=filtA(inRangeWk);const zero=ENGINES.filter(e=>state.engines.has(e)).filter(e=>A.some(a=>a.engine===e&&a.names.includes(SC))&&!A.some(a=>a.engine===e&&a.cited));if(zero.length)out.push({id:"cite",title:"Close the citation gap",ev:zero.join(", ")+" name Slopecycle but never link to it",action:"Publish a plain, crawlable page stating what Slopecycle is, who it serves and pricing, so engines have a canonical source to cite.",kpi:"Citation rate",sev:"high"});
+ const bad=(view.claims||[]).filter(c=>!c.accurate&&c.pol<0);if(bad.length)out.push({id:"claims",title:"Correct inaccurate AI claims",ev:bad.length+" inaccurate unfavorable claims, most frequent: \""+bad[0].claim+"\" ("+bad[0].engine+", "+bad[0].freq+"x)",action:"Publish a correction page for each claim and ask the cited third-party source to update.",kpi:"Net AI sentiment",sev:"high"});
+ const at=view.attributes;if(at){const sh=at.entities.indexOf("Second-hand sites and stores");const sci=at.entities.indexOf(SC);if(sh>=0){const weak=at.attrs.map((a,i)=>({a,v:at.net[i][sh],sc:at.net[i][sci]})).filter(x=>x.v<0&&x.sc>x.v).sort((a,b)=>a.v-b.v);if(weak.length)out.push({id:"attr",title:"Win the attributes second-hand sites lose on",ev:weak.slice(0,2).map(x=>x.a+" ("+fmtPct(x.v)+" vs Slopecycle "+fmtPct(x.sc)+")").join("; "),action:"Publish content that addresses exactly these attributes with Slopecycle's process.",kpi:"Share of voice",sev:"medium"})}}
+ const m=filtM(inRangeWk);const hmd={};const scr={};for(const x of m){if(x.cat==="Hand-me-down groups")hmd[x.region]=(hmd[x.region]||0)+1;if(x.entity===SC)scr[x.region]=(scr[x.region]||0)+1}const gaps=Object.entries(hmd).filter(([r,n])=>n>=6&&!(scr[r]>1)).sort((a,b)=>b[1]-a[1]);if(gaps.length)out.push({id:"hmd",title:"Be present where hand-me-down groups talk",ev:gaps.slice(0,3).map(g=>STATE_NAME[g[0]]+" ("+g[1]+" group mentions, "+(scr[g[0]]||0)+" Slopecycle)").join("; "),action:"Join or partner with these groups and seed answers to the common questions.",kpi:"Regions reached",sev:"medium"});
+ const rentalMissing=A.filter(a=>a.names.some(nm=>RENTALS.includes(nm))&&!a.names.includes(SC));if(A.length)out.push({id:"rental",title:"Match rental messaging in rental comparisons",ev:rentalMissing.length+" of "+A.filter(a=>a.names.some(nm=>RENTALS.includes(nm))).length+" answers naming KitLender or SportsBasement leave Slopecycle out",action:"Add comparison content explaining how Slopecycle differs from a per-trip rental.",kpi:"AI visibility score",sev:rentalMissing.length>20?"high":"medium"});
+ const n=weeksInRange();if(n>=2){const netOf=arr=>arr.length?pct(sum(arr,x=>x.pol>0?1:0)-sum(arr,x=>x.pol<0?1:0),arr.length):null;const drops=[];for(const st of STATES){const cur=m.filter(x=>x.entity===SC&&x.region===st[0]&&x.wk>=WEEKS-1);const prev=m.filter(x=>x.entity===SC&&x.region===st[0]&&x.wk===WEEKS-2);if(cur.length>=3&&prev.length>=3){const d=netOf(cur)-netOf(prev);if(d<=-15)drops.push([st[1],d])}}if(drops.length)out.push({id:"drop",title:"Watch regional sentiment swings",ev:drops.map(d=>d[0]+" "+fmtPct(d[1])+" pts week over week").join("; "),action:"Route the driver breakdown for these regions to an owner this week.",kpi:"Net AI sentiment",sev:"high"})}
+ const inv=(view.inventory||[]).filter(i=>i.acc!=="Correct");if(inv.length)out.push({id:"listings",title:"Fix outdated and missing listings",ev:inv.length+" listings flagged: "+inv.map(i=>i.domain+" ("+i.acc.toLowerCase()+")").slice(0,3).join(", "),action:"Update each listing with the canonical description, pricing and service area.",kpi:"Sites with presence",sev:"medium"});
+ return out;
+}
+function renderInsights(){const box=$("#insights");box.textContent="";const ins=buildInsights();view.insights=ins.map(i=>({title:i.title,evidence:i.ev,action:i.action,status:STATUS[i.id]||"new"}));
+ ins.forEach(i=>{const d=document.createElement("div");d.className="ins-card"+(i.live?" live":"");d.style.borderLeftColor=i.sev==="high"?css("--crit"):i.live?css("--good"):css("--accent");
+  const h=document.createElement("h4");h.textContent=i.title;const ev=document.createElement("div");ev.className="ev";ev.textContent=i.ev;const p=document.createElement("p");p.textContent=i.action;const row=document.createElement("div");row.className="row";const k=document.createElement("span");k.className="kpi";k.textContent="Moves: "+i.kpi+(i.live?" (live data)":" (sample data)");
+  const sel=document.createElement("select");sel.className="sel";sel.id="status-"+i.id;["new","in progress","done"].forEach(o=>{const op=document.createElement("option");op.value=o;op.textContent=o[0].toUpperCase()+o.slice(1);sel.appendChild(op)});sel.value=STATUS[i.id]||"new";sel.addEventListener("change",()=>{STATUS[i.id]=sel.value;saveStatus()});row.append(k,sel);d.append(h,ev,p,row);box.appendChild(d)});
+ if(!ins.length){const p=document.createElement("p");p.className="note";p.textContent="No insights for the current filters.";box.appendChild(p)}
+}
+/* ---------- render ---------- */
+function render(){renderKPIs();renderPresence();renderCompare();renderSentiment();renderGeo();renderInsights()}
+let rt;addEventListener("resize",()=>{clearTimeout(rt);rt=setTimeout(render,150)});
+/* ---------- filters ---------- */
+function chipGroup(id,items,set,colorOf){const box=$(id);box.textContent="";items.forEach(it=>{const b=document.createElement("button");b.type="button";b.className="chip"+(set.has(it)?" on":"");if(colorOf){const d=document.createElement("span");d.className="dot";d.style.background=colorOf(it);b.appendChild(d)}b.append(it);b.addEventListener("click",()=>{if(set.has(it)){if(set.size>1)set.delete(it)}else set.add(it);b.classList.toggle("on",set.has(it));render()});box.appendChild(b)})}
+chipGroup("#engineChips",ENGINES,state.engines);chipGroup("#platformChips",PLATFORMS,state.platforms,p=>css(PLATFORM_VAR[PLATFORMS.indexOf(p)]));chipGroup("#catChips",CATS,state.cats,c=>catColor(c));
+$$("#rangeChips .chip").forEach(b=>b.addEventListener("click",()=>{$$("#rangeChips .chip").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.range=+b.dataset.range;render()}));
+const rs=$("#regionSel");STATES.slice().sort((a,b)=>a[1].localeCompare(b[1])).forEach(st=>{const o=document.createElement("option");o.value=st[0];o.textContent=st[1];rs.appendChild(o)});rs.addEventListener("change",()=>{state.region=rs.value;render()});
+$("#hideTest").addEventListener("change",e=>{state.hideTest=e.target.checked;render()});
+$$("#mapMode button").forEach(b=>b.addEventListener("click",()=>{$$("#mapMode button").forEach(x=>x.classList.remove("on"));b.classList.add("on");state.mapMode=b.dataset.mode;renderGeo()}));
+$$(".tbl-btn").forEach(b=>b.addEventListener("click",()=>{const card=b.closest(".card");card.classList.toggle("show-table");b.classList.toggle("on",card.classList.contains("show-table"));b.textContent=card.classList.contains("show-table")?"Chart":"Table"}));
+["presencePlatform","promptCoverage","coverageGrid","inventory","sov","trend","h2h","attrs","phrases","sentSplit","sentTrend","dumbbell","drivers","claims","map","regionRank","sourceOrigin","referrers","visitsTrend","waitlist"].forEach(id=>P[id]=panel(id));
+
+/* ---------- chat ---------- */
+const log=$("#chatLog"),input=$("#chatInput"),sendBtn=$("#sendBtn"),stopBtn=$("#stopBtn");let sampleFn=null,ctl=null;const turns=[];let panelCtx=null;
+function addMsg(role,txt,cite){const d=document.createElement("div");d.className="msg "+role;d.textContent=txt;if(cite){const c=document.createElement("span");c.className="cite";c.textContent=cite;d.appendChild(c)}log.appendChild(d);log.scrollTop=log.scrollHeight;return d}
+function setChatStatus(txt,color){$("#chatStatusText").textContent=txt;$("#chatStatus .dot").style.background=color}
+function scopeLine(){const parts=[state.range===0?"all weeks":"last "+state.range+" days"];if(state.region!=="ALL")parts.push(STATE_NAME[state.region]);if(state.engines.size<ENGINES.length)parts.push([...state.engines].join(", "));return "Scope: "+parts.join(", ")+". Panels used: "+(panelCtx?panelCtx.title:"KPI row, sentiment, competitors, traffic")+"."}
+function digest(){return {asOf:LIVE.at,scope:{range:state.range||"all",region:state.region,engines:[...state.engines],platforms:[...state.platforms],competitorCategories:[...state.cats]},kpis:view.kpis,shareOfVoice:view.shareOfVoice,headToHead:view.headToHead,attributes:view.attributes,sentimentByEngine:view.sentimentByEngine,sentimentTrend:view.sentimentTrend,engineVsCompetitors:view.engineVsCompetitors,drivers:view.drivers,claims:view.claims,promptCoverage:view.promptCoverage,topRegions:(view.regions||[]).slice(0,10),traffic:view.traffic,dailyVisits:view.dailyVisits,waitlist:view.waitlist,inventory:view.inventory,insights:view.insights,dataStatus:{live:["traffic","dailyVisits","waitlist"],sample:["everything else: feeds not connected yet"]}}}
+const RULES="You are the analyst inside the Slopecycle GEO dashboard (GEO means Generative Engine Optimization: visibility of Slopecycle in AI generated answers). Answer only from the JSON data provided. Rules: cite the panel names and the scope you used; never invent competitors, regions or numbers; the competitor set is exactly these categories: Ski clothing brands, Rental companies (KitLender, SportsBasement), Second-hand sites and stores, Hand-me-down groups, Similar companies and forums; when data is marked sample, say it is sample data from a feed that is not connected yet; when data is missing (for example untagged traffic), say so and recommend the fix rather than estimating; keep answers under 180 words, plain sentences, no em-dashes, no markdown headers; if the answer suggests an action, end with one line starting with 'Action:'.";
+function localAnswer(q){const d=digest();const k=Object.fromEntries((d.kpis||[]).map(x=>[x.label,x]));const ql=q.toLowerCase();const S=[];
+ const kpi=(n,unit)=>{const x=k[n];return x?n+" "+x.value+(unit||"")+(x.previous!=null?" ("+fmtPct(x.value-x.previous)+" vs prior period)":""):""};
+ if(/kitlender|sportsbasement|rental/.test(ql)){(d.headToHead||[]).forEach(h=>S.push(h.entity+": share of voice "+h.sov+"%, citation rate "+h.cite+"%, net sentiment "+fmtPct(h.net)+" pts, "+h.mentions+" mentions."));S.push("Sample data: the AI answer and consumer feeds are not connected yet.");const ins=(d.insights||[]).find(i=>i.title.startsWith("Match rental"));if(ins)S.push("Action: "+ins.action)}
+ else if(/attribute|win on|second.hand|lose/.test(ql)){const a=d.attributes;if(a){a.attrs.forEach((at,i)=>{const best=a.entities.map((e,j)=>[e,a.net[i][j]]).sort((x,y)=>y[1]-x[1])[0];S.push(at+": best is "+best[0]+" at "+fmtPct(best[1])+", Slopecycle "+fmtPct(a.net[i][0])+".")});S.push("Sample data, Attribute comparison panel.")}}
+ else if(/hand.me.down|group/.test(ql)){const ins=(d.insights||[]).find(i=>i.title.startsWith("Be present"));S.push(ins?ins.evidence+". Action: "+ins.action:"No region in the current scope has high hand-me-down group activity with no Slopecycle presence.");S.push("Sample data, Mention map and Source origin panels.")}
+ else if(/inaccurate|claim|wrong/.test(ql)){const bad=(d.claims||[]).filter(c=>!c.accurate);if(bad.length)bad.forEach(c=>S.push('"'+c.claim+'" ('+c.engine+", "+c.freq+"x, source: "+c.src+")."));else S.push("No inaccurate claims in scope.");S.push("Claim ledger panel, sample data. Action: publish a correction page per claim and ask the cited source to update.")}
+ else if(/cite|citation|link/.test(ql)){const pc=d.kpis.find(x=>x.label==="Citation rate");S.push("Citation rate is "+(pc?pc.value:0)+"%.");const z=(d.insights||[]).find(i=>i.title.startsWith("Close the citation"));if(z)S.push(z.evidence+". Action: "+z.action);S.push("Prompt coverage and KPI panels, sample data.")}
+ else if(/traffic|referr|utm|visit|source/.test(ql)){const t=d.traffic;if(t){S.push(t.total+" visits in scope. Top referrers: "+t.referrers.slice(0,3).map(r=>r.label+" "+r.value).join(", ")+".");S.push("utm_source: "+t.utmSources.map(r=>r.label+" "+r.value).join(", ")+". "+t.untaggedPct+"% untagged, so source attribution is not possible for most traffic.");S.push("Live data from the Slopecycle app PageVisit entity. Action: add UTM parameters to every outbound link.")}}
+ else if(/waitlist|signup|age|bracket/.test(ql)){const w=d.waitlist;if(w){S.push(w.total+" waitlist signups in scope. By source: "+w.bySource.map(r=>r.source+" "+r.count).join(", ")+". By age: "+w.byAge.filter(a=>a.count).map(a=>a.age+" "+a.count).join(", ")+".");S.push("Live data from the WaitlistSignup entity.")}}
+ else if(/sentiment|favorable|unfavorable|driver/.test(ql)){S.push(kpi("Net AI sentiment"," pts")+".");(d.sentimentByEngine||[]).forEach(e=>S.push(e.engine+": "+e.pos+" favorable, "+e.neu+" neutral, "+e.neg+" unfavorable."));const dr=d.drivers||[];if(dr.length)S.push("Strongest favorable driver: "+dr[0].label+" ("+fmtPct(dr[0].value)+"); weakest: "+dr[dr.length-1].label+" ("+fmtPct(dr[dr.length-1].value)+").");S.push("Sentiment panels, sample data.")}
+ else if(/summar|visib|week|overview|how are we|status/.test(ql)){S.push(kpi("AI visibility score")+".");S.push(kpi("Share of voice","%")+".");S.push(kpi("Citation rate","%")+".");S.push(kpi("Net AI sentiment"," pts")+".");if(d.traffic)S.push("Live traffic: "+d.traffic.total+" visits, "+d.traffic.untaggedPct+"% untagged.");S.push("KPI row (sample data) and Referrer feed (live). Action: "+((d.insights||[])[0]||{action:"connect the AI answer feed."}).action)}
+ else{S.push("I can answer from the dashboard data about: visibility and KPIs, KitLender and SportsBasement comparisons, attributes, hand-me-down group regions, inaccurate claims, citations, live traffic and referrers, waitlist signups, and sentiment drivers.");S.push(kpi("AI visibility score")+", "+kpi("Share of voice","%")+".")}
+ return S.filter(Boolean).join("\n")}
+async function ask(q){if(!q.trim())return;addMsg("user",q);input.value="";sendBtn.disabled=true;const out=addMsg("ai","Thinking...");
+ if(!sampleFn){await new Promise(r=>setTimeout(r,250));out.textContent=localAnswer(q);const c=document.createElement("span");c.className="cite";c.textContent=scopeLine()+" Local answer computed from the loaded data.";out.appendChild(c);panelCtx=null;sendBtn.disabled=false;return}
+ ctl=new AbortController();stopBtn.disabled=false;
+ const data=JSON.stringify(digest());const ctx=panelCtx?"\nThe viewer pressed Ask AI on the panel \""+panelCtx.title+"\". Focus on it.":"";
+ turns.push({role:"user",content:q});const msgs=[{role:"user",content:RULES+"\n\nDashboard data (JSON):\n"+data.slice(0,180000)+ctx},...turns.slice(-8)];
+ try{const r=await sampleFn(msgs,{cache:false,signal:ctl.signal,onText:({text})=>{out.textContent=text;log.scrollTop=log.scrollHeight}});turns.push({role:"assistant",content:r.text});const c=document.createElement("span");c.className="cite";c.textContent=scopeLine()+(r.truncated?" Answer was cut short.":"");out.appendChild(c)}
+ catch(e){const code=e&&e.code;if(code==="cancelled"){out.textContent=(e.text||"")+"\n(stopped)";}else if(code==="not_granted"||code==="sampling_disabled"||code==="not_declared"||code==="capability_disabled"){sampleFn=null;setChatStatus("Local answers","var(--de)");out.textContent=localAnswer(q)}else if(code==="rate_limited"){out.textContent="Claude is busy right now. Try again in a moment."}else{out.textContent=(e&&e.text?e.text+"\n":"")+"The answer was interrupted. Ask again to retry."}turns.pop()}
+ finally{panelCtx=null;ctl=null;stopBtn.disabled=true;sendBtn.disabled=false}}
+$("#chatForm").addEventListener("submit",e=>{e.preventDefault();ask(input.value)});input.addEventListener("keydown",e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();ask(input.value)}});
+stopBtn.addEventListener("click",()=>{if(ctl)ctl.abort()});
+const SUGG=["Summarize Slopecycle visibility this week versus last.","Compare our AI sentiment to KitLender and SportsBasement.","Which attributes do second-hand sites win on?","Where are hand-me-down groups most active and are we present there?","List inaccurate claims AI engines make about us.","Why is most of our traffic untagged?"];
+SUGG.forEach(s=>{const b=document.createElement("button");b.type="button";b.textContent=s;b.addEventListener("click",()=>ask(s));$("#sugg").appendChild(b)});
+$$(".ask-btn").forEach(b=>b.addEventListener("click",()=>{const card=b.closest(".card");const title=card.querySelector("h3").textContent;panelCtx={title};openChat();input.value="Explain the "+title+" panel and what I should do about it.";input.focus()}));
+const chat=$("#chat");function openChat(){chat.classList.add("open")}$("#chatFab").addEventListener("click",()=>{chat.classList.toggle("open")});$("#chatClose").addEventListener("click",()=>chat.classList.remove("open"));
+const mq=matchMedia("(max-width:1100px)");function syncClose(){$("#chatClose").style.display=mq.matches?"":"none"}mq.addEventListener("change",syncClose);syncClose();
+addMsg("ai","Ask about visibility, sentiment, competitors, traffic or the waitlist. Answers cite the panels and scope they use.");
+
+/* ---------- live data through the Slopecycle connector ---------- */
+let mcp=null;const liveEl=$("#liveStatus"),liveTxt=$("#liveStatusText"),refreshBtn=$("#refreshBtn");
+function setLive(kind,txt){liveEl.className="status "+kind;liveTxt.textContent=txt}
+function hostOf(r){return (r||"").replace(/^https?:\/\//,"").replace(/\/.*$/,"")}
+function aggVisits(recs){const o={};for(const r of recs){const k=(r.created_date||"").slice(0,10)+"|"+hostOf(r.referrer)+"|"+(r.utm_source||"");o[k]=(o[k]||0)+1}return Object.entries(o).map(([k,n])=>{const [d,r,s]=k.split("|");return {d,r,s,n}}).sort((a,b)=>a.d<b.d?-1:1)}
+function payloadOf(res){let p=res&&res.payload;if(typeof p==="string"){try{p=JSON.parse(p)}catch(e){p=null}}if(!p&&res&&res.content&&res.content[0]&&res.content[0].text){try{p=JSON.parse(res.content[0].text)}catch(e){p=null}}return p||{}}
+async function refreshLive(){if(!mcp)return;refreshBtn.disabled=true;setLive("snap","Refreshing from the Slopecycle app...");
+ try{const visits=[];let skip=0;for(let i=0;i<20;i++){const res=await mcp.callTool("Slopecycle","query_pagevisit",{limit:500,skip,sort:"-created_date",fields:["referrer","utm_source","created_date"]},{cache:{staleTime:60000}});const recs=payloadOf(res).records||[];visits.push(...recs);if(recs.length<500)break;skip+=500}
+  const wres=await mcp.callTool("Slopecycle","query_waitlistsignup",{limit:500,sort:"-created_date",fields:["kid_age_bracket","source","created_date"]},{cache:{staleTime:60000}});const wl=(payloadOf(wres).records||[]).map(w=>({d:(w.created_date||"").slice(0,10),age:(w.kid_age_bracket||"").replace(/[\u2013\u2014-]/g," to "),src:w.source||""}));
+  const now=new Date().toISOString();LIVE={visits:aggVisits(visits),waitlist:wl,source:"live",at:now};setLive("live","Live from the Slopecycle app, "+visits.length+" visits, "+wl.length+" signups");render()}
+ catch(e){const code=e&&e.code;const copy={needs_reauth:"Reconnect Slopecycle in claude.ai Settings, Connectors. Showing snapshot.",server_not_connected:"Add the Slopecycle connector in claude.ai Settings, Connectors. Showing snapshot.",not_in_manifest:"Slopecycle connector not allowed for this page. Showing snapshot.",blocked_by_policy:"Slopecycle connector blocked by policy. Showing snapshot.",approval_required:"Approve the Slopecycle connector call to refresh. Showing snapshot.",tool_error:"The Slopecycle app returned an error. Showing snapshot."}[code]||"Live refresh failed ("+(code||"unknown")+"). Showing snapshot from "+new Date(SNAP.takenAt).toLocaleDateString()+".";setLive("err",copy)}
+ finally{refreshBtn.disabled=false}}
+refreshBtn.addEventListener("click",refreshLive);
+render();
+if(window.claude&&typeof window.claude.use==="function"){
+ window.claude.use("sample").then(f=>{if(f){sampleFn=f;setChatStatus("Claude connected","var(--good)")}}).catch(()=>{});
+ window.claude.use("mcp").then(m=>{if(!m)return;mcp=m;refreshBtn.hidden=false;refreshLive()}).catch(()=>{});
+}
+})();
+</script>
+
+</body></html>

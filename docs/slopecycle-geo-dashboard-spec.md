@@ -296,3 +296,7 @@ Each block lists the feed, its owner, the refresh cadence and the fields the das
 ## 10. Conflict resolution
 
 Where any requirement conflicts, priority is: constraints and do-nots first, then output format, then actionable insights, then visual design. One applied case: the dataviz series ladder would allow a seventh line on the mention trend chart, but the "no added categories" constraint keeps it at the five supplied categories plus Slopecycle.
+
+## 11. Prototype
+
+A working single-page prototype lives at `prototype/index.html`. The three Slopecycle app panels are fed by a live snapshot and refresh through the Slopecycle connector when the page runs as a published artifact; every other panel uses labeled sample data until its feed is connected. See `prototype/README.md`.
