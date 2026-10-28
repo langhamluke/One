@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #0B0F14;
+  --panel: #121821;
+  --edge: #243042;
+  --ok: #3DDC84;
+  --sel: #4FD1FF;
+  --plan: #FF4FD8;
+  --caution: #FFB020;
+  --warn: #FF4D4D;
+  color-scheme: dark;
+}
+
+html, body, #root { background: var(--bg); }
+body {
+  @apply font-sans text-white antialiased;
+  font-size: 14px;
+  letter-spacing: 0.01em;
+}
+
+/* Numbers: B612 Mono, tabular */
+.num { font-family: 'B612 Mono', ui-monospace, monospace; font-variant-numeric: tabular-nums; letter-spacing: 0; }
+
+@layer components {
+/* Panels */
+.panel {
+  @apply bg-panel border border-edge rounded-md shadow-bezel;
+}
+.panel-title {
+  @apply text-[11px] tracking-[0.14em] uppercase text-dim font-bold;
+}
+
+/* Inputs: cyan = selectable/editable */
+.inp {
+  @apply bg-[#0B1118] border border-edge rounded px-2 py-1.5 text-sel num w-full outline-none transition-colors;
+}
+.inp:hover { border-color: #33506b; }
+.inp:focus-visible { border-color: var(--sel); box-shadow: 0 0 0 1px var(--sel); }
+select.inp { font-family: 'B612', sans-serif; }
+select.inp option { background: #0B1118; color: #fff; }
+
+.btn {
+  @apply inline-flex items-center gap-2 px-3 py-1.5 rounded border border-edge text-[12px] tracking-wider uppercase text-white bg-[#16202B] transition-colors;
+}
+.btn:hover { border-color: var(--sel); color: var(--sel); }
+.btn:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+.btn-primary { @apply border-sel text-sel; }
+
+}
+
+*:focus-visible { outline: 2px solid var(--sel); outline-offset: 2px; }
+
+input[type='range'] { accent-color: var(--sel); }
+input[type='range'].plan-range { accent-color: var(--plan); }
+input[type='checkbox'] { accent-color: var(--sel); }
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: var(--bg); }
+::-webkit-scrollbar-thumb { background: #243042; border-radius: 6px; border: 2px solid var(--bg); }
+
+.recharts-cartesian-axis-tick-value { font-family: 'B612 Mono', monospace; }
+.recharts-tooltip-wrapper { outline: none; }
+
+/* ------------------------------------------------------------ PRINT (Briefing) */
+@page { size: letter; margin: 0.45in; }
+.print-only { display: none; }
+@media print {
+  html, body, #root { background: #fff !important; }
+  body { color: #111; font-size: 10px; }
+  .no-print { display: none !important; }
+  .print-only { display: block; }
+  .briefing-page { box-shadow: none !important; border: none !important; margin: 0 !important; padding: 0 !important; width: auto !important; }
+  * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+}
