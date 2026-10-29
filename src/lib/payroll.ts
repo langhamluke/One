@@ -139,7 +139,7 @@ export function buildCareer(inp: CareerInput): Career {
   if (majorHire !== NEVER) {
     majorCA = isCaStage(inp.stage) && isMajorStage(inp.stage) ? -NEVER : Math.max(majorHire + m.majorCaUpgrade + delay, isMajorStage(inp.stage) ? 1 : majorHire);
     const maj = major ? AIRLINES[major] : null;
-    if (maj?.widebody && m.widebody > 0) widebodyCA = (majorCA === -NEVER ? Math.max(1, majorHire + m.majorCaUpgrade + m.widebody) : majorCA + m.widebody);
+    if (maj?.widebody && m.widebody > 0) widebodyCA = (majorCA === -NEVER ? majorHire + m.majorCaUpgrade + m.widebody : majorCA + m.widebody); // already-CA pilots may already be on the widebody
   }
 
   // Furlough: N years of zero pay starting at major hire (or next year if already at a major); seniority/longevity freezes.

@@ -53,7 +53,7 @@ export function AltitudeChart({ data, retireAge, target, waypoints = [], height 
           <ReferenceLine x={retireAge} stroke="#8A99AD" strokeWidth={1} />
           {target !== undefined && target > 0 && (
             <ReferenceLine y={target} stroke="#FF4FD8" strokeDasharray="6 4" strokeOpacity={0.8}
-              label={compact ? undefined : { value: `REQUIRED ${fmtK(target)}`, position: 'insideTopLeft', fill: '#FF4FD8', fontSize: 10, fontFamily: 'B612 Mono' }} />
+              label={compact ? undefined : { value: `REQUIRED ${fmtK(target)}`, position: 'insideTopRight', fill: '#FF4FD8', fontSize: 10, fontFamily: 'B612 Mono' }} />
           )}
           {atRet && (
             <ReferenceDot x={atRet.age} y={atRet.p50} r={4} fill="#FF4FD8" stroke="#0B0F14" strokeWidth={2}
@@ -69,11 +69,17 @@ function AltReadout({ value, viewBox }: { value: number; viewBox?: { x: number; 
   if (!viewBox) return null;
   const text = fmtK(value);
   const w = 14 + text.length * 8.6;
-  const x = viewBox.x - w - 10, y = viewBox.y - 13;
+  const y = viewBox.y - 13;
+  // Point the box at the dot from the left; flip to the right when the landing is near the chart's left edge.
+  const left = viewBox.x - w - 10 > 70;
+  const x = left ? viewBox.x - w - 10 : viewBox.x + 10;
+  const d = left
+    ? `M ${x} ${y} h ${w} l 8 13 l -8 13 h ${-w} z`
+    : `M ${x + 8} ${y} h ${w} v 26 h ${-w} l -8 -13 z`;
   return (
     <g>
-      <path d={`M ${x} ${y} h ${w} l 8 13 l -8 13 h ${-w} z`} fill="#080B10" stroke="#FF4FD8" strokeWidth="1.5" />
-      <text x={x + 7} y={y + 17.5} fill="#FF4FD8" fontSize="14" fontFamily="B612 Mono">{text}</text>
+      <path d={d} fill="#080B10" stroke="#FF4FD8" strokeWidth="1.5" />
+      <text x={left ? x + 7 : x + 15} y={y + 17.5} fill="#FF4FD8" fontSize="14" fontFamily="B612 Mono">{text}</text>
     </g>
   );
 }

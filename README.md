@@ -32,7 +32,7 @@ node scripts/screenshots.mjs screenshots 1440 900      # MODES=client,advisor PR
 
 | Phase | What it does |
 |---|---|
-| PREFLIGHT | Intake: profile, career position, milestones per path, balance sheet, insurance, savings. Three demo pilots load from the header. |
+| PREFLIGHT | Intake: profile, career position, milestones per path, balance sheet, insurance, savings. Five demo pilots load from the header: Fresh CFI (23), Regional FO (27), Cargo FO (34), Senior Captain about to retire (59), and "Steve Jobs" (a real Denver flight student, entered under a pseudonym). |
 | CHECKLIST | The 10-question FNCE 2830 questionnaire, one card at a time. Includes an attitude-indicator gauge, a score card, and a separately-scored Pilot Supplement. |
 | FLIGHT PLAN | Year-by-year career sim with an ND-style route map, pay-by-age lines, earnings/retirement bars, and a benefits & contracts table with sources. |
 | CRUISE | 4×3 model allocation, draggable glide-path landing, order-of-operations "fuel planning", §415(c) spillover chart, and Roth/backdoor timeline. |

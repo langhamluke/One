@@ -12,7 +12,7 @@ const width = Number(process.argv[3] ?? 1440);
 const height = Number(process.argv[4] ?? 900);
 fs.mkdirSync(out, { recursive: true });
 const file = 'file://' + path.resolve('dist-single/flight-plan.html');
-const personas = ['cfi23', 'rfo27', 'cargo34'];
+const personas = (process.env.PERSONAS ?? 'cfi23,rfo27,cargo34,stevejobs').split(',');
 const phases = ['PREFLIGHT', 'CHECKLIST', 'FLIGHT PLAN', 'CRUISE', 'LANDING', 'BRIEFING'];
 const modes = (process.env.MODES ?? 'advisor').split(',');
 
