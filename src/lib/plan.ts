@@ -158,7 +158,7 @@ export function computePlan(s: PlanState, pathId: PathId): PlanResult {
   let cash = p.cash;
   let school = p.schoolDebt, other = p.otherDebt;
   const schoolPmt = pmt(p.schoolRate / 100, a.debtTermYears, p.schoolDebt);
-  const otherPmt = pmt(p.otherRate / 100, a.debtTermYears, p.otherDebt);
+  const otherPmt = pmt(p.otherRate / 100, Math.max(1, p.otherDebtYears ?? a.debtTermYears), p.otherDebt);
   const b: Buckets = { pretax: p.retirementAccounts, roth: 0, hsa: 0, taxable: p.taxable, mbcb: 0 };
   const startBalance = b.pretax + b.taxable;
   let priorWages = 0;

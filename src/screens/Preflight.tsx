@@ -96,6 +96,7 @@ export function Preflight() {
             <Field label="Flight-school rate"><NumberInput ariaLabel="Flight-school rate" kind="pct" suffix="%" value={p.schoolRate} min={0} max={30} step={0.25} onChange={(v) => setProfile({ schoolRate: v })} /></Field>
             <Field label="Other debt"><NumberInput ariaLabel="Other debt" kind="usd" value={p.otherDebt} min={0} onChange={(v) => setProfile({ otherDebt: v })} /></Field>
             <Field label="Other debt rate"><NumberInput ariaLabel="Other debt rate" kind="pct" suffix="%" value={p.otherRate} min={0} max={30} step={0.25} onChange={(v) => setProfile({ otherRate: v })} /></Field>
+            <Field label="Other debt payoff" help="Years left on the car loan / other debt. Sets the annual payment."><NumberInput ariaLabel="Other debt payoff years" suffix="yr" value={p.otherDebtYears} min={1} max={30} step={1} onChange={(v) => setProfile({ otherDebtYears: v })} /></Field>
             <AdvisorOnly>
               <Field label="Pre-tax IRA balance" help="Part of retirement accounts held in traditional/rollover IRAs. Triggers the backdoor-Roth pro-rata alert." className="col-span-2">
                 <NumberInput ariaLabel="Pre-tax IRA balance" kind="usd" value={p.pretaxIra} min={0} onChange={(v) => setProfile({ pretaxIra: v })} />

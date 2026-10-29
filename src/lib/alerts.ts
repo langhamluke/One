@@ -61,9 +61,10 @@ export function buildAlerts(s: PlanState, plan: PlanResult, mc: MCResult | null)
     if (p.pretaxIra > 0)
       add({ id: 'prorata', level: 'caution', text: 'PRO-RATA RULE — PRE-TAX IRA BALANCE', detail: `${fmtK(p.pretaxIra)} in pre-tax IRAs makes a backdoor Roth partly taxable. Consider rolling it into the 401(k).` });
   }
-  const shortfall = first && first.gross > 0 ? Math.max(0, Math.min(IRS_2026.electiveDeferral, first.gross) - first.employeeDeferral) : 0;
+  const earning = plan.rows.find((r) => r.phase === 'regional' || r.phase === 'major') ?? plan.rows.find((r) => r.gross > 0);
+  const shortfall = earning ? Math.max(0, Math.min(IRS_2026.electiveDeferral, earning.gross) - earning.employeeDeferral) : 0;
   if (shortfall > 1000)
-    add({ id: 'deferral', level: 'advisory', text: '401(k) DEFERRAL BELOW IRS MAX', detail: `${fmtK(shortfall)} of 2027 deferral room unused at the current ${p.deferralPct}% election.` });
+    add({ id: 'deferral', level: 'advisory', text: '401(k) DEFERRAL BELOW IRS MAX', detail: `${fmtK(shortfall)} of ${earning?.year} deferral room unused at the current ${p.deferralPct}% election.` });
 
   const unalloc = plan.rows.slice(0, 10);
   const avgUnalloc = unalloc.reduce((a, r) => a + r.unallocated / r.index, 0) / Math.max(1, unalloc.length);
@@ -110,12 +111,16 @@ export function buildActions(s: PlanState, plan: PlanResult): ActionItem[] {
   if (p.employer === 'fedex' && (p.stage === 'cargo_fo' || p.stage === 'cargo_ca'))
     items.push({ title: 'Model and make the FedEx pension election (Apr–May 30, 2027)', detail: 'Compare the legacy pension and the MBCB in the LANDING screen before the irrevocable deadline.' });
   if (!p.lol || !p.ltd) items.push({ title: `Add ${[!p.ltd && 'own-occupation disability', !p.lol && 'loss-of-license'].filter(Boolean).join(' + ')} coverage`, detail: 'Protects the pilot certificate — the engine of the whole plan.' });
-  if (first && first.employeeDeferral + 1000 < Math.min(IRS_2026.electiveDeferral, first.gross))
-    items.push({ title: `Step 401(k) deferral toward the ${fmtK(IRS_2026.electiveDeferral)} IRS max`, detail: `Raise ~2% per year or with each upgrade; currently ${p.deferralPct}% (${p.rothPct}% Roth).` });
+  const earning = plan.rows.find((r) => r.phase === 'regional' || r.phase === 'major') ?? plan.rows.find((r) => r.gross > 0);
+  if (earning && earning.employeeDeferral + 1000 < Math.min(IRS_2026.electiveDeferral, earning.gross))
+    items.push(p.deferralPct > 0
+      ? { title: `Step 401(k) deferral toward the ${fmtK(IRS_2026.electiveDeferral)} IRS max`, detail: `Raise ~2% per year or with each upgrade; currently ${p.deferralPct}% (${p.rothPct}% Roth).` }
+      : { title: `Start 401(k) deferrals with the first airline paycheck (${earning!.year})`, detail: 'At least enough to get the full company match, then +2% per year or with each upgrade. Roth is attractive while income is low.' });
   if (p.hsaEligible) items.push({ title: 'Fund the HSA to the family/self limit', detail: 'Triple tax advantage; invest it rather than spending it.' });
   if (plan.firstBackdoor || plan.firstPartialRoth)
     items.push({ title: `Switch to a backdoor Roth from age ${(plan.firstPartialRoth ?? plan.firstBackdoor)!.age}`, detail: 'Non-deductible traditional IRA contribution, then convert. Watch the pro-rata rule.' });
   else if (p.rothIra) items.push({ title: 'Fund a Roth IRA every year', detail: `${fmtK(IRS_2026.ira)} limit in 2026; income is below the phase-out.` });
+  else items.push({ title: 'Open a Roth IRA and fund it each year', detail: `Up to ${fmtK(IRS_2026.ira)}/yr (2026). Low-income years as a CFI/regional FO are the best years for Roth money.` });
   if (plan.firstSpill) items.push({ title: `Plan for §415(c) spillover from age ${plan.firstSpill.age}`, detail: 'Invest after-tax cash-in-lieu in a tax-efficient taxable account.' });
   items.push({ title: `Hold the ${plan.risk} / ${plan.horizon} model and follow the glide path`, detail: `Equity ${Math.round(plan.glide[0].equity)}% today → ${Math.round(plan.glide[plan.glide.length - 1].equity)}% at ${plan.retireAge}. Rebalance annually.` });
   return items;

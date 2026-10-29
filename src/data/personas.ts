@@ -51,6 +51,7 @@ export const BLANK_PROFILE: Profile = {
   schoolRate: 8,
   otherDebt: 0,
   otherRate: 7,
+  otherDebtYears: 5,
   monthlyExpenses: 3_500,
   lifeInsurance: 0,
   ltd: false,

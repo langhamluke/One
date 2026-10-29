@@ -46,6 +46,8 @@ export interface Profile {
   schoolRate: number;
   otherDebt: number;
   otherRate: number;
+  /** Years remaining to pay off other debt (car, cards) */
+  otherDebtYears: number;
   monthlyExpenses: number;
 
   lifeInsurance: number;
