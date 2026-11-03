@@ -39,7 +39,7 @@ export function UsersPage() {
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); toast('Copied', 'ok'); } catch { toast('Copy failed; select the link and copy it manually', 'danger'); }
   };
-  const openEdit = (u: UserSummary) => { setEditing(u); setEdit({ role: u.role, status: u.status, displayName: u.displayName }); setAssignId(''); };
+  const openEdit = (u: UserSummary) => { setEditing(u); setEdit({ role: u.role, status: u.status === 'disabled' ? 'disabled' : 'active', displayName: u.displayName }); setAssignId(''); };
   const saveEdit = async () => {
     if (!editing) return;
     setBusy(true);
@@ -109,7 +109,7 @@ export function UsersPage() {
           <div className="flex flex-col gap-3">
             <Field label="Display name" htmlFor="ed-name"><TextInput id="ed-name" value={edit.displayName} onChange={(e) => setEdit({ ...edit, displayName: e.target.value })} /></Field>
             <Field label="Role" htmlFor="ed-role"><Select id="ed-role" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value as Role })} options={[{ value: 'client', label: 'Client' }, { value: 'advisor', label: 'Advisor' }, { value: 'admin', label: 'Admin' }]} /></Field>
-            <Field label="Status" htmlFor="ed-status"><Select id="ed-status" value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value as UserSummary['status'] })} options={[{ value: 'active', label: 'Active' }, { value: 'invited', label: 'Invited' }, { value: 'disabled', label: 'Disabled' }]} /></Field>
+            <Field label="Status" htmlFor="ed-status"><Select id="ed-status" value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value as UserSummary['status'] })} options={[{ value: 'active', label: 'Active' }, { value: 'disabled', label: 'Disabled' }]} /></Field>
             {editing.role === 'client' && (
               <div>
                 <div className="text-xs font-medium text-ink-2 mb-1">Advisors</div>
