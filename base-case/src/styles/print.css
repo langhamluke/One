@@ -1,0 +1,38 @@
+/* Print styles for the SUMMARY one-pager. Letter, light theme, fits one page. */
+@page {
+  size: letter;
+  margin: 0.45in;
+}
+@media print {
+  html, body {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #14161a;
+    font-size: 10.5px;
+    line-height: 14px;
+  }
+  .no-print, nav, header[data-shell], aside[data-shell], [data-readout-strip], [data-draft-banner], [data-stepper] {
+    display: none !important;
+  }
+  main, [data-shell-main] {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+  .print-page {
+    width: 100%;
+    max-width: 7.6in;
+    margin: 0 auto;
+    page-break-inside: avoid;
+  }
+  .print-page .card {
+    box-shadow: none;
+    border: 1px solid #dad7cf;
+    break-inside: avoid;
+  }
+  .print-page h1 { font-size: 16px; line-height: 20px; }
+  .print-page h2 { font-size: 11px; line-height: 14px; }
+  .print-page .readout-value { font-size: 16px !important; line-height: 20px !important; }
+  .print-page svg { max-height: 1.6in; }
+  a { color: inherit; text-decoration: none; }
+}
