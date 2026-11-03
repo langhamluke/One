@@ -2,6 +2,9 @@
  * Federal student loan rules after P.L. 119-21 (July 4, 2025), effective July 1, 2026, plus interest rates by award year.
  * Primary sources: 20 U.S.C. §1087e as amended; StudentAid.gov; Federal Register rate notices.
  * Secondary corroboration (this build could not fetch studentaid.gov directly): CRS IF13075, TICAS, NASFAA, Fidelity, CBS News.
+ * Verification pass 2026-11-03: tiered standard thresholds confirmed (tateesq.com, The College Investor, Kiplinger,
+ * ED/mychesco); HHS 2026 poverty guideline confirmed at $15,960 and the per-person increment CORRECTED to $5,680
+ * (ASPE detailed guidelines 2026; Federal Register 2026-01431).
  */
 import { sourced } from '../lib/types';
 
@@ -64,8 +67,8 @@ export const TIERED_STANDARD = sourced(
   ],
   'P.L. 119-21 §82001 (HEA §455(d)(7))',
   '2026-07',
-  false,
-  { note: 'Thresholds entered from the statute text as recalled; not corroborated by a second source in this build. Confirm on StudentAid.gov.' },
+  true,
+  { url: 'https://www.tateesq.com/learn/rap-vs-tiered-standard', note: 'Corroborated by tateesq.com, The College Investor and Kiplinger. Minimum payment $50/month (or the balance if lower). Boundary wording varies ($49,999 vs $50,000); the engine treats each threshold as exclusive.' },
 );
 
 /** Legacy standard plan: 10-year level amortization. */
@@ -83,8 +86,8 @@ export const IBR = {
   forgivenessYearsNew: 20,
   povertyMultiple: 1.5,
   /** HHS poverty guideline, 48 contiguous states, 1-person household, 2026 */
-  povertyGuideline2026: sourced(15960, 'HHS Poverty Guidelines 2026', '2026-01', false, { note: 'Entered from memory; verify at aspe.hhs.gov' }),
-  povertyPerAdditionalPerson2026: sourced(5640, 'HHS Poverty Guidelines 2026', '2026-01', false, { note: 'Entered from memory; verify' }),
+  povertyGuideline2026: sourced(15960, 'HHS Poverty Guidelines 2026 (48 contiguous states and DC), in effect Jan 13, 2026', '2026-01', true, { url: 'https://aspe.hhs.gov/topics/poverty-economic-mobility/poverty-guidelines' }),
+  povertyPerAdditionalPerson2026: sourced(5680, 'HHS Poverty Guidelines 2026, add per additional person', '2026-01', true, { url: 'https://aspe.hhs.gov/sites/default/files/documents/b1bfa16b20ae9b89d525bc35de7c1643/detailed-guidelines-2026.pdf', note: 'Corrected from $5,640 (entered from memory) to $5,680: 2-person guideline $21,640 - $15,960.' }),
 };
 
 /** Borrowing limits for new borrowers whose program first disburses on/after July 1, 2026. */

@@ -28,3 +28,6 @@ Public data (tax brackets, contribution limits, wage statistics, loan rules) is 
 
 # Your responsibilities
 Keep your login private, enable multi-factor authentication when offered, and tell your advisor if anything in your plan is out of date.`;
+
+export const DEFAULT_DISCLAIMER =
+  'Projections are educational estimates based on your inputs and public data; they are not guarantees or individualized investment, tax or legal advice.';

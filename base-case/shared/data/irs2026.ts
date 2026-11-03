@@ -2,6 +2,9 @@
  * IRS retirement-plan and related limits. Tax year 2026 unless noted.
  * Primary sources: IRS Notice 2025-67 (Nov 13, 2025); Rev. Proc. 2025-32 (Oct 9, 2025); Rev. Proc. 2025-19 (HSA 2026);
  * Rev. Proc. 2026-24 (HSA 2027, May 29, 2026); IRS Notice 2026-48 (Saver's Match, Aug 2026).
+ * Verification pass 2026-11-03: 401(k)/IRA limits, Roth and traditional-IRA phase-outs re-confirmed against the IRS
+ * newsroom release and KPMG/Ascensus summaries; student-loan-interest, LTCG and Saver's Match ranges confirmed by two
+ * or more independent secondary sources (see shared/data/sources.md).
  * 2027 retirement-plan limits had NOT been published by the IRS as of 2026-11-03 (expected mid-November 2026).
  * See docs/DATA_UPDATES.md for the yearly update checklist and shared/data/sources.md for every URL.
  */
@@ -63,7 +66,7 @@ export const LIMITS_2026 = {
     phaseOut: {
       single: sourced({ lo: 85000, hi: 100000 }, RP32, '2025-10', true, { url: RP32_URL }),
       hoh: sourced({ lo: 85000, hi: 100000 }, RP32, '2025-10', true, { url: RP32_URL }),
-      mfj: sourced({ lo: 175000, hi: 205000 }, RP32, '2025-10', true, { url: RP32_URL, note: 'Secondary sources agree on $175k-$205k; confirm against Rev. Proc. 2025-32 §3.19' }),
+      mfj: sourced({ lo: 175000, hi: 205000 }, RP32, '2025-10', true, { url: RP32_URL, note: 'Corroborated by two secondary sources (nationaltaxtools, countrytaxcalc); one outlier shows $175k-$200k (the 2025 ceiling)' }),
     },
   },
   /** Annual gift tax exclusion and estate/gift basic exclusion amount */
@@ -72,7 +75,7 @@ export const LIMITS_2026 = {
   /** Long-term capital gains 0%/15%/20% taxable-income thresholds */
   ltcg: {
     single: sourced({ zeroTo: 49450, fifteenTo: 545500 }, RP32, '2025-10', true, { url: RP32_URL }),
-    hoh: sourced({ zeroTo: 66200, fifteenTo: 579600 }, RP32, '2025-10', false, { url: RP32_URL, note: 'HoH 0% ceiling not corroborated by a second source; confirm' }),
+    hoh: sourced({ zeroTo: 66200, fifteenTo: 579600 }, RP32, '2025-10', true, { url: RP32_URL, note: 'Corroborated by Taxstra, ustax.tools and reedcorp 2026 tables' }),
     mfj: sourced({ zeroTo: 98900, fifteenTo: 613700 }, RP32, '2025-10', true, { url: RP32_URL }),
   },
   /** Net investment income tax (statutory, not indexed) */
@@ -83,8 +86,8 @@ export const LIMITS_2026 = {
     maxContribution: 2000,
     phaseOut: {
       single: sourced({ lo: 20500, hi: 35500 }, 'IRS Notice 2026-48', '2026-08', true),
-      hoh: sourced({ lo: 30750, hi: 53250 }, 'IRS Notice 2026-48', '2026-08', false, { note: 'Inferred as 1.5x single; confirm in the notice' }),
-      mfj: sourced({ lo: 41000, hi: 71000 }, 'IRS Notice 2026-48', '2026-08', false, { note: 'Upper limit confirmed ($71,000); lower limit inferred as 2x single' }),
+      hoh: sourced({ lo: 30750, hi: 53250 }, 'IRS Notice 2026-48', '2026-08', true, { url: 'https://www.swlaw.com/publication/the-government-is-matching-retirement-contributions-heres-how-it-works/', note: 'Corroborated by Western CPE and CPA Practice Advisor summaries of the notice' }),
+      mfj: sourced({ lo: 41000, hi: 71000 }, 'IRS Notice 2026-48', '2026-08', true, { url: 'https://www.swlaw.com/publication/the-government-is-matching-retirement-contributions-heres-how-it-works/', note: 'Corroborated by Snell & Wilmer and Western CPE summaries of the notice' }),
     },
   },
 };

@@ -2,6 +2,9 @@
  * Federal income tax (tax year 2026) and FICA parameters.
  * Sources: Rev. Proc. 2025-32 (brackets, standard deduction, as amended by P.L. 119-21);
  * SSA 2026 and 2027 fact sheets (wage base); IRC §3101 (Medicare rates).
+ * Verification pass 2026-11-03: standard deductions and single/MFJ brackets re-confirmed (IRS bulletin, Journal of
+ * Accountancy, CPA Practice Advisor). Head-of-household 24% ceiling corrected from $201,775 to $201,750 (two sources
+ * citing Rev. Proc. 2025-32 Table 2: Bradford Tax Institute, TaxSlayer Pro); $201,775 is the SINGLE ceiling.
  */
 import { sourced } from '../lib/types';
 import type { FilingStatus } from '../lib/types';
@@ -59,15 +62,15 @@ export const BRACKETS_2026: Record<FilingStatus, ReturnType<typeof sourced<Brack
       { upTo: 17700, rate: 0.1 },
       { upTo: 67450, rate: 0.12 },
       { upTo: 105700, rate: 0.22 },
-      { upTo: 201775, rate: 0.24 },
+      { upTo: 201750, rate: 0.24 },
       { upTo: 256200, rate: 0.32 },
       { upTo: 640600, rate: 0.35 },
       { upTo: Infinity, rate: 0.37 },
     ],
     RP32,
     '2025-10',
-    false,
-    { url: RP32_URL, note: 'Head-of-household thresholds entered from the Rev. Proc. table; not corroborated by a second source in this build' },
+    true,
+    { url: RP32_URL, note: 'Corroborated by Bradford Tax Institute and TaxSlayer Pro tables citing Rev. Proc. 2025-32 Table 2 (24% ceiling $201,750; one outlier shows $201,775, which is the single-filer figure)' },
   ),
 };
 
