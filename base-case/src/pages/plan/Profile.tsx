@@ -12,7 +12,8 @@ import { fmtMoney, fmtPct } from '@/lib/format';
 
 const DEBT_KINDS: { value: DebtKind; label: string }[] = [
   { value: 'federal_student', label: 'Federal student loan' }, { value: 'private_student', label: 'Private student loan' }, { value: 'credit_card', label: 'Credit card' },
-  { value: 'auto', label: 'Auto loan' }, { value: 'personal', label: 'Personal loan' }, { value: 'medical', label: 'Medical' }, { value: 'other', label: 'Other' },
+  { value: 'auto', label: 'Auto loan' }, { value: 'personal', label: 'Personal loan' }, { value: 'medical', label: 'Medical' },
+  { value: 'heloc', label: 'HELOC (home equity line)' }, { value: 'sbloc', label: 'SBLOC (securities-based line)' }, { value: 'other', label: 'Other' },
 ];
 const FED_PLANS: { value: FederalPlan; label: string }[] = [
   { value: 'tiered_standard', label: 'Tiered standard' }, { value: 'standard', label: 'Standard (legacy 10-yr)' }, { value: 'rap', label: 'RAP' }, { value: 'ibr', label: 'IBR (legacy)' }, { value: 'custom', label: 'Custom payment' },

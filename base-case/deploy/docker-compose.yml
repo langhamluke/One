@@ -1,0 +1,76 @@
+# Base Case production stack for a single droplet: PostgreSQL + app + Caddy (automatic HTTPS).
+# Run from base-case/:  docker compose -f deploy/docker-compose.yml --env-file deploy/.env.production up -d --build
+name: basecase
+
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: basecase
+      POSTGRES_USER: basecase
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U basecase -d basecase"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      APP_ORIGIN: https://${DOMAIN:?set DOMAIN}
+      TRUST_PROXY: "1"
+      DATABASE_URL: postgres://basecase:${POSTGRES_PASSWORD}@db:5432/basecase
+      BASE_CASE_MASTER_KEY: ${BASE_CASE_MASTER_KEY:?set BASE_CASE_MASTER_KEY}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      FIRM_NAME: ${FIRM_NAME:-Base Case}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      DEMO_SEED: ${DEMO_SEED:-0}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BASE_CASE_CHAT_MODEL: ${BASE_CASE_CHAT_MODEL:-claude-opus-5-5}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [internal, web]
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on: [app]
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks: [web]
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    internal: true
+  web:

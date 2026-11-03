@@ -87,6 +87,22 @@ export function buildAlerts(ctx: AlertContext): Alert[] {
     push('high-interest-debt', 'caution', `High-interest debt: ${fmtMoney(bal)}`, `${hi.map((d) => `${d.name} at ${fmtPct(d.rate, 1)}`).join(', ')} cost more than the portfolio is expected to earn (${fmtPct(ctx.expectedReturn, 1)}). Pay these down before investing beyond the match.`, { value: bal });
   }
 
+  // Lines of credit secured by assets
+  const sbloc = state.debts.filter((d) => d.kind === 'sbloc' && d.balance > 0);
+  if (sbloc.length) {
+    const bal = sbloc.reduce((s, d) => s + d.balance, 0);
+    const portfolio = state.balanceSheet.taxable;
+    const ltv = portfolio > 0 ? bal / portfolio : null;
+    push('sbloc-risk', ltv !== null && ltv > 0.5 ? 'caution' : 'advisory', `Securities-based line of credit: ${fmtMoney(bal)}${ltv !== null ? ` (${fmtPct(ltv, 0)} of the taxable portfolio)` : ''}`,
+      'An SBLOC is a demand loan at a variable rate (usually SOFR plus a spread). If the pledged portfolio falls, the lender can require more collateral or sell holdings without notice, possibly at a loss and with taxable gains. Proceeds cannot be used to buy securities. FINRA suggests borrowing well below the maximum offered.', { value: bal });
+  }
+  const heloc = state.debts.filter((d) => d.kind === 'heloc' && d.balance > 0);
+  if (heloc.length) {
+    const bal = heloc.reduce((s, d) => s + d.balance, 0);
+    push('heloc-risk', 'advisory', `Home equity line of credit: ${fmtMoney(bal)}`,
+      'A HELOC rate floats with the prime rate and the home secures the debt. Interest is deductible only if the money buys, builds or substantially improves the home that secures it, and only when you itemize (IRC §163(h) as made permanent by P.L. 119-21). Using it to pay off cards converts unsecured debt into debt secured by your home.', { value: bal });
+  }
+
   // 401(k) match and limits
   if (first && (first.stage === 'working' || first.stage === 'gap')) {
     const pay = first.wages + first.bonus;

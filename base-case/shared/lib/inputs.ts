@@ -50,6 +50,10 @@ export type DebtKind =
   | 'auto'
   | 'personal'
   | 'medical'
+  /** Home equity line of credit: variable (prime-based), secured by the home; modelled as amortizing (default 20 yrs) */
+  | 'heloc'
+  /** Securities-based line of credit: variable (SOFR + spread), demand loan secured by a taxable portfolio; interest-only */
+  | 'sbloc'
   | 'other';
 
 /**

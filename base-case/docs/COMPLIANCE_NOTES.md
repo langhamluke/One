@@ -4,7 +4,8 @@ Prepared 2026-11-03 to support a presentation to an SEC-registered investment ad
 **(verify)** should be confirmed by counsel or the firm's chief compliance officer.
 
 ## 1. Who is the "adviser"?
-Base Case itself is software. Two deployment models:
+Base Case itself is software. **Current status (2026-11-03): operated by Luke Langham personally for himself and friends (deployment model 2).** Model 1 applies if MCIA adopts it.
+Two deployment models:
 1. **Firm deployment** — the RIA licenses Base Case and its advisors use it with clients. The RIA is the adviser;
    Base Case is a *service provider* under SEC Regulation S-P. The firm's fiduciary duty, Form ADV disclosures,
    marketing rule, and books-and-records rules apply to the firm's use of the tool.

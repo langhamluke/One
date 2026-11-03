@@ -1,7 +1,7 @@
 # Base Case Privacy Policy (DRAFT — for attorney review before publication)
 
 **Effective date:** [to be set at launch]  
-**Operator:** [Legal entity name], Colorado ("we", "us")  
+**Operator:** Luke Langham, an individual, Colorado ("we", "us"). If an entity later operates Base Case, replace this line.  
 **Contact:** [privacy@yourdomain] · [mailing address]
 
 > Draft status: this policy was prepared as a working draft on 2026-11-03. It must be reviewed by counsel

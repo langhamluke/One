@@ -42,7 +42,8 @@ Postgres for local) / PostgreSQL (production) · Vitest · Playwright · Anthrop
 - `docs/COMPLIANCE_NOTES.md` — Reg S-P, marketing rule, records, privacy law notes
 - `docs/PRIVACY_POLICY.md` — draft policy (attorney review required)
 - `docs/DATA_UPDATES.md` — yearly data refresh procedure; `shared/data/sources.md` — every source
-- `docs/DEPLOYMENT.md` — hosting
+- `docs/DEPLOY_DIGITALOCEAN.md` — deploy on a DigitalOcean droplet (tested)
+- `docs/DEPLOYMENT.md` — other hosting options
 - `docs/QUESTIONS_AND_RESOURCES.md` — what I need from you
 - `docs/HANDOFF.md` — current state, decisions taken, open items
 

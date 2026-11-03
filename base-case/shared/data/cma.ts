@@ -39,5 +39,7 @@ export function correlationIndex(a: AssetClass): number {
 /** Market context shown on the Data page (not used in math). */
 export const MARKET_CONTEXT = {
   fedFundsTarget: { lo: 0.0375, hi: 0.04, source: 'FOMC statement Oct 28, 2026', asOf: '2026-10', verified: true },
+  /** WSJ prime = fed funds upper bound + 3 points; HELOCs price off prime */
+  primeRate: { value: 0.07, source: 'Inferred: fed funds upper bound 4.00% (FOMC Oct 28, 2026) + 3.00 points (WSJ convention)', asOf: '2026-10', verified: false },
   tenYearTreasury: { value: 0.0475, source: 'Late Aug 2026 market reports (approx.)', asOf: '2026-08', verified: false },
 };

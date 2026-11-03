@@ -35,6 +35,37 @@ const RP32_URL = 'https://www.journalofaccountancy.com/news/2025/oct/annual-infl
 
 export const PLAYBOOK: PlaybookTopic[] = [
   {
+    key: 'sbloc',
+    title: 'SBLOC: borrowing against a brokerage account',
+    stage: 'growing',
+    area: 'credit',
+    summary: 'A securities-based line of credit lets you borrow against a taxable portfolio without selling it, which avoids realizing capital gains. It is a variable-rate demand loan: a market drop can force a collateral call or a sale at the worst time.',
+    trigger: 'Debt of kind sbloc -> sbloc-risk alert (caution above 50% of the taxable portfolio)',
+    items: [
+      { text: 'How it works: a revolving line secured by securities in a non-retirement account; the limit depends on the amount and type of collateral (often around 50% of diversified stocks, more for high-grade bonds). Retirement accounts cannot be pledged.', source: 'FINRA Investor Insights, "Securities-Backed Lines of Credit Explained"', url: 'https://www.finra.org/investors/insights/securities-backed-lines-credit', asOf: '2026-11', verified: true },
+      { text: 'Cost: variable, typically SOFR (or prime) plus a spread that shrinks as the line grows; one large brokerage quotes spreads of about 1.90% to 3.10% over its benchmark.', source: 'FINRA; Fidelity line-of-credit materials (Feb 2025)', asOf: '2026-11', verified: true },
+      { text: 'Restrictions: proceeds generally cannot be used to buy or carry securities or repay a margin loan (non-purpose loan). Common uses are bridge financing, a down payment, taxes or a business need.', source: 'Schwab and E*TRADE SBLOC disclosures', asOf: '2026-11', verified: true },
+      { text: 'Risks: SBLOCs are demand loans the lender can call at any time; if the collateral falls, you must add cash or securities or the lender can sell holdings, possibly creating taxable gains. You can lose more than the pledged account. FINRA suggests taking less than the maximum offered.', source: 'FINRA Investor Insights', url: 'https://www.finra.org/investors/insights/securities-backed-lines-credit', asOf: '2026-11', verified: true },
+      { text: 'Taxes: interest is deductible only as investment interest when proceeds fund taxable investments (IRC §163(d)), which SBLOC rules usually prohibit, so treat the interest as a non-deductible cost for most uses.', source: 'IRC §163(d); IRS Pub. 550', asOf: '2026-11', verified: false },
+      { text: 'Stage fit: rarely appropriate for new graduates. It becomes relevant once a taxable portfolio is large relative to the borrowing need (a common rule of thumb is borrowing no more than 20-30% of the portfolio) and the borrower has steady income to cover variable interest.', source: 'Planning convention (assumption)', asOf: '2026-11', verified: false },
+    ],
+  },
+  {
+    key: 'heloc',
+    title: 'HELOC: a home equity line of credit',
+    stage: 'growing',
+    area: 'housing',
+    summary: 'A HELOC is a variable-rate line secured by your home. It is usually cheaper than cards or personal loans, but the home is the collateral and the interest is deductible only for home improvements.',
+    trigger: 'Debt of kind heloc -> heloc-risk advisory',
+    items: [
+      { text: 'How it works: a draw period (commonly 10 years, often interest-only) followed by a repayment period (commonly up to 20 years) in which principal and interest are paid. Lenders usually cap total mortgage debt at about 80-85% of the home value. Base Case models the repayment phase (20-year amortization by default); enter a payment override for an interest-only draw period.', source: 'Industry practice; Freedom Mortgage learning center', asOf: '2026-11', verified: false },
+      { text: 'Rate: variable, usually the prime rate plus a margin. Prime is the fed funds upper bound plus 3 points (about 7.00% after the September 2026 rate increase; verify the current WSJ prime rate).', source: 'FOMC statement Oct 28, 2026; WSJ prime convention', asOf: '2026-10', verified: false },
+      { text: 'Taxes: interest is deductible only if the money buys, builds or substantially improves the home that secures the loan, only when you itemize, and only within the $750,000 total acquisition-debt cap ($375,000 married filing separately). P.L. 119-21 made these rules permanent.', source: 'IRC §163(h)(3) as amended by P.L. 119-21', asOf: '2026-07', verified: true },
+      { text: 'Risks: payments rise when rates rise; lenders can freeze or reduce the line if home values fall; failure to pay puts the home at risk. Using a HELOC to pay off credit cards turns unsecured debt into debt secured by your house.', source: 'CFPB consumer guidance on home equity lines', asOf: '2026-11', verified: false },
+      { text: 'Stage fit: available only after buying a home with built-up equity; best used for improvements that add value or as a backstop emergency reserve, not for lifestyle spending.', source: 'Planning convention (assumption)', asOf: '2026-11', verified: false },
+    ],
+  },
+  {
     key: 'first-accounts',
     title: 'First bank accounts and high-yield savings',
     stage: 'first-job',

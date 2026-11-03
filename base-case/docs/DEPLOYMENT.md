@@ -9,6 +9,9 @@ npm run dev              # API on :8787, web on :5173 (proxying /api)
 ```
 Open http://localhost:5173. Demo accounts are printed by the API on first start (see README).
 
+## DigitalOcean droplet (recommended, tested)
+See `docs/DEPLOY_DIGITALOCEAN.md`: one setup script, Docker Compose with PostgreSQL and Caddy (automatic HTTPS), nightly backups.
+
 ## Production (single container + managed PostgreSQL)
 1. Create a PostgreSQL database (Neon, Supabase, Railway, RDS…). Note the connection string.
 2. Generate secrets:

@@ -5,7 +5,8 @@
  *  - payment override wins everywhere; extraPayment is added to principal every month; graceMonths delay the start
  *    (interest accrues and capitalizes monthly during grace).
  *  - Level payment from termMonths; defaults: federal 'standard' 120, private student 120, auto 60, personal 36,
- *    medical 36, other 60. Credit cards: 3% of balance, $25 minimum, recomputed monthly.
+ *    medical 36, HELOC 240 (repayment phase), other 60. SBLOC: interest-only (demand loan, no maturity); principal falls
+ *    only through extraPayment or a payment override. Credit cards: 3% of balance, $25 minimum, recomputed monthly.
  *  - 'tiered_standard': term from TIERED_STANDARD by originalBalance ?? balance (10/15/20/25 years).
  *  - 'rap': payment = max($10, tier% * AGI / 12 - $50 * dependents); the tier applies to the WHOLE AGI (cliffs).
  *    RAP is a per-BORROWER payment, so when several loans are on RAP the payment (and the $50 principal match) is
@@ -96,13 +97,16 @@ export function defaultTermMonths(d: Debt): number {
       return 36;
     case 'medical':
       return 36;
+    case 'heloc':
+      return 240;
     default:
       return 60;
   }
 }
 
-export function effectivePlan(d: Debt): FederalPlan | 'amortizing' | 'card' {
+export function effectivePlan(d: Debt): FederalPlan | 'amortizing' | 'card' | 'interest_only' {
   if (d.kind === 'credit_card') return 'card';
+  if (d.kind === 'sbloc') return 'interest_only';
   if (d.kind !== 'federal_student') return 'amortizing';
   return d.federalPlan ?? 'standard';
 }
@@ -114,6 +118,8 @@ export function initialMonthlyPayment(d: Debt, ctx: { agi: number; dependents: n
   switch (plan) {
     case 'card':
       return Math.max(25, 0.03 * d.balance);
+    case 'interest_only':
+      return (d.balance * d.rate) / 12;
     case 'rap':
       return rapMonthlyPayment(ctx.agi, ctx.dependents);
     case 'ibr':
@@ -294,6 +300,7 @@ export class LoanSimulator {
         else if (st.plan === 'rap') scheduled = rapBal > 0 ? (rapPayment * st.balance) / rapBal : rapPayment;
         else if (st.plan === 'ibr') scheduled = ibrMonthlyPayment(ctx.agi, ctx.householdSize, ctx.year, { inflation: ctx.inflation, standardCap: st.standardCap });
         else if (st.plan === 'card') scheduled = Math.max(25, 0.03 * st.balance);
+        else if (st.plan === 'interest_only') scheduled = interest;
         else scheduled = st.payment;
         scheduled = Math.max(0, Math.min(scheduled, st.balance + interest));
 

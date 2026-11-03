@@ -8,3 +8,5 @@ screenshots/
 playwright-report/
 test-results/
 .DS_Store
+deploy/.env.production
+deploy/backups/

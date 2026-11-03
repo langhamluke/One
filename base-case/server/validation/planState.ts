@@ -44,7 +44,7 @@ const debt = z
   .object({
     id: shortStr,
     name: str,
-    kind: z.enum(['federal_student', 'private_student', 'credit_card', 'auto', 'personal', 'medical', 'other']),
+    kind: z.enum(['federal_student', 'private_student', 'credit_card', 'auto', 'personal', 'medical', 'heloc', 'sbloc', 'other']),
     balance: num,
     rate: num,
     termMonths: optNum,

@@ -36,11 +36,14 @@ Demo accounts print on first start (see README). Production: `docs/DEPLOYMENT.md
 - **Marketing-rule interactive-tool disclosures** (methodology, results vary, no products favored, hypothetical) are built
   into the FUTURE screen, the Methodology page and the summary.
 
+## Owner answers (2026-11-03)
+Operator: Luke Langham personally. Host: his DigitalOcean droplet. SBLOC and HELOC are debt kinds (interest-only demand loan; 20-yr amortizing variable line) with alerts and Playbook topics.
+
 ## Open items (ranked)
 1. Replace the questionnaire stand-in text with the exact FNCE 2830 text from Flight Plan (`shared/data/questionnaire.ts`).
 2. Verify the `verified:false` figures listed in `shared/data/sources.md` on primary sources (irs.gov, ssa.gov, bls.gov,
    studentaid.gov, state DORs) — the build environment could not open those hosts.
-3. Email delivery (invites, self-service password reset) and a hosted deployment with TLS.
+3. Email delivery (invites, self-service password reset). Hosting is solved: `deploy/` + `docs/DEPLOY_DIGITALOCEAN.md`, tested end to end.
 4. 2027 IRS retirement limits when Notice 2026-xx is published (mid-November 2026); 2027 tax brackets (Rev. Proc.).
 5. Attorney review of `docs/PRIVACY_POLICY.md`, Terms, and the service-provider agreement for MCIA (72-hour breach notice).
 6. Nice-to-haves: code-split the 1 MB bundle; passkeys; Redis-backed rate limits for multi-instance; key-rotation script;

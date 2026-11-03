@@ -43,7 +43,8 @@ export function DataPage() {
           ) : <p className="text-sm text-ink-3">Loading…</p>}
         </Panel>
         <Panel title="Market context" subtitle="not used in math">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+            <Stat label="Prime rate" value={<span className="inline-flex items-center gap-1">{fmtPct(MARKET_CONTEXT.primeRate.value, 2)}{!MARKET_CONTEXT.primeRate.verified && <VerifyTag source={MARKET_CONTEXT.primeRate.source} asOf={MARKET_CONTEXT.primeRate.asOf} />}</span>} sub={`HELOC benchmark · ${MARKET_CONTEXT.primeRate.asOf}`} />
             <Stat label="Fed funds target" value={`${fmtPct(MARKET_CONTEXT.fedFundsTarget.lo, 2)}–${fmtPct(MARKET_CONTEXT.fedFundsTarget.hi, 2)}`} sub={`${MARKET_CONTEXT.fedFundsTarget.source} · ${MARKET_CONTEXT.fedFundsTarget.asOf}`} />
             <Stat label="10-year Treasury" value={<span className="inline-flex items-center gap-1">{fmtPct(MARKET_CONTEXT.tenYearTreasury.value, 2)}{!MARKET_CONTEXT.tenYearTreasury.verified && <VerifyTag source={MARKET_CONTEXT.tenYearTreasury.source} asOf={MARKET_CONTEXT.tenYearTreasury.asOf} />}</span>} sub={`${MARKET_CONTEXT.tenYearTreasury.source} · ${MARKET_CONTEXT.tenYearTreasury.asOf}`} />
           </div>
