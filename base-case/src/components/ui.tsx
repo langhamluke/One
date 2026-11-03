@@ -268,7 +268,7 @@ export function Toggle({ id, checked, onChange, label, description, disabled }: 
       </button>
       <label htmlFor={id} className="text-sm cursor-pointer min-w-0">
         <span className="font-medium text-ink-2">{label}</span>
-        {description && <span className="block text-xxs text-ink-3">{description}</span>}
+        {description && <span className="block text-xxs text-ink-3 leading-tight">{description}</span>}
       </label>
     </div>
   );

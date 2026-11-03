@@ -76,7 +76,7 @@ export function ProfilePage() {
         </Panel>
 
         <Panel title="Balance sheet" collapseKey="profile.balance">
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {([
               ['cash', 'Cash (checking + savings)', 'Your emergency fund lives here.'],
               ['taxable', 'Taxable brokerage', ''],
@@ -209,7 +209,7 @@ function DebtRow({ d, i }: { d: Debt; i: number }) {
   const fed = d.kind === 'federal_student';
   return (
     <div className="rounded-md border border-line-2 p-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <Field label="Kind" htmlFor={`db-kind-${d.id}`}><Select id={`db-kind-${d.id}`} value={d.kind} onChange={(e) => set('kind', e.target.value as DebtKind)} options={DEBT_KINDS} /></Field>
         <Field label="Name" htmlFor={`db-name-${d.id}`}><TextInput id={`db-name-${d.id}`} value={d.name} onChange={(e) => set('name', e.target.value)} maxLength={40} /></Field>
         <Field label="Balance" htmlFor={`db-bal-${d.id}`}><NumberInput id={`db-bal-${d.id}`} value={d.balance} min={0} max={5_000_000} step={500} prefix="$" onChange={(v) => set('balance', v ?? 0)} /></Field>
@@ -240,7 +240,7 @@ function GoalRow({ g, i }: { g: Goal; i: number }) {
   const set = <K extends keyof Goal>(k: K, v: Goal[K]) => update((s) => { (s.goals[i] as Goal)[k] = v; });
   return (
     <div className="rounded-md border border-line-2 p-3">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         <Field label="Name" htmlFor={`gl-name-${g.id}`}><TextInput id={`gl-name-${g.id}`} value={g.name} onChange={(e) => set('name', e.target.value)} maxLength={40} /></Field>
         <Field label="Kind" htmlFor={`gl-kind-${g.id}`}><Select id={`gl-kind-${g.id}`} value={g.kind} onChange={(e) => { const k = e.target.value as GoalKind; update((s) => { s.goals[i].kind = k; if (k === 'home' && !s.goals[i].home) s.goals[i].home = { price: 400000, downPct: 0.1, mortgageRate: 0.065, termYears: 30, propertyTaxPct: 0.011, maintenancePct: 0.01 }; }); }} options={GOAL_KINDS} /></Field>
         <Field label="Target (today's $)" htmlFor={`gl-amt-${g.id}`}><NumberInput id={`gl-amt-${g.id}`} value={g.targetAmount} min={0} max={10_000_000} step={500} prefix="$" onChange={(v) => set('targetAmount', v ?? 0)} /></Field>

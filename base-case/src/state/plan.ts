@@ -184,8 +184,11 @@ export const usePlanStore = create<PlanStore>((set, get) => {
       timer = null;
       let p = get().proposal ?? (await get().startDraft());
       if (!p) return null;
-      if (get().dirty) await get().flush();
-      p = await proposals.submit(p.id, { title, note });
+      if (timer) clearTimeout(timer);
+      timer = null;
+      await proposals.update(p.id, { state: get().state, title, note });
+      set({ dirty: false });
+      p = await proposals.submit(p.id, {});
       const base = get().approved?.state ?? defaultPlanState();
       set({ proposal: null, mode: get().role === 'client' ? 'view' : 'direct', state: base, dirty: false });
       return p;

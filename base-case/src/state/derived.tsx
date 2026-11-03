@@ -48,7 +48,7 @@ export function DerivedProvider({ children }: { children: ReactNode }) {
     return () => clearTimeout(t);
   }, [state, dragging]);
 
-  const approvedDerived = useMemo(() => (approvedState ? safeCompute(approvedState, 400).derived : null), [approvedState]);
+  const approvedDerived = useMemo(() => (approvedState ? safeCompute(approvedState).derived : null), [approvedState]);
 
   const value = useMemo<DerivedCtx>(
     () => ({ derived: result.derived, error: result.error, stale: result.forState !== state, preview: result.preview, approvedDerived, state }),

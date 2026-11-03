@@ -98,7 +98,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
   };
 
   return (
-    <div data-readout-strip className="sticky top-0 lg:top-0 z-30 border-b border-line bg-paper-2/95 backdrop-blur">
+    <div data-readout-strip className="lg:sticky lg:top-0 z-30 border-b border-line bg-paper-2/95 backdrop-blur">
       <div className="mx-auto max-w-[1280px] px-4 sm:px-6 py-2 flex flex-col xl:flex-row xl:items-center gap-2">
         <div className="flex gap-5 overflow-x-auto flex-1 min-w-0 pb-0.5" aria-live="polite" aria-atomic="true" aria-busy={stale} role="status">
           {error && <span className="text-xs text-ink-3 py-2">Engine not available — readouts will appear once the plan engine loads.</span>}

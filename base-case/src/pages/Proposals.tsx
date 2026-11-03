@@ -58,7 +58,7 @@ export function ProposalsPage() {
   );
 }
 
-function HeadlineCol({ h, label, base }: { h: Headline | null; label: string; base?: Headline | null }) {
+function HeadlineCol({ h, label, base, hasDebt }: { h: Headline | null; label: string; base?: Headline | null; hasDebt?: boolean }) {
   const rows: { k: string; v: string; good: boolean | null }[] = h
     ? [
         { k: 'Net worth', v: fmtCompact(h.netWorth), good: base ? h.netWorth > base.netWorth ? true : h.netWorth < base.netWorth ? false : null : null },
@@ -66,7 +66,7 @@ function HeadlineCol({ h, label, base }: { h: Headline | null; label: string; ba
         { k: 'P(success)', v: fmtPct(h.successProbability, 0), good: base ? h.successProbability > base.successProbability ? true : h.successProbability < base.successProbability ? false : null : null },
         { k: "Retirement P50 (today's $)", v: fmtCompact(h.medianAtRetirementReal), good: base ? h.medianAtRetirementReal > base.medianAtRetirementReal ? true : h.medianAtRetirementReal < base.medianAtRetirementReal ? false : null : null },
         { k: 'Emergency fund', v: `${h.emergencyMonthsCovered.toFixed(1)} mo`, good: base ? h.emergencyMonthsCovered > base.emergencyMonthsCovered ? true : h.emergencyMonthsCovered < base.emergencyMonthsCovered ? false : null : null },
-        { k: 'Debt-free age', v: fmtAge(h.debtFreeAge), good: base && h.debtFreeAge != null && base.debtFreeAge != null ? h.debtFreeAge < base.debtFreeAge ? true : h.debtFreeAge > base.debtFreeAge ? false : null : null },
+        { k: 'Debt-free age', v: h.debtFreeAge == null && !hasDebt ? 'Now' : fmtAge(h.debtFreeAge), good: base && h.debtFreeAge != null && base.debtFreeAge != null ? h.debtFreeAge < base.debtFreeAge ? true : h.debtFreeAge > base.debtFreeAge ? false : null : null },
       ]
     : [];
   return (
@@ -149,8 +149,8 @@ export function ProposalReviewPage() {
         <Panel title="Headline" subtitle="approved vs draft" className="lg:col-span-5">
           {draftD.error && !draftD.derived ? <EngineUnavailable compact /> : (
             <div className="grid grid-cols-2 gap-4">
-              <HeadlineCol h={approvedD.derived?.headline ?? null} label={`Approved v${approved?.version ?? '—'}`} />
-              <HeadlineCol h={draftD.derived?.headline ?? null} label="Draft" base={approvedD.derived?.headline ?? null} />
+              <HeadlineCol h={approvedD.derived?.headline ?? null} label={`Approved v${approved?.version ?? '—'}`} hasDebt={(approvedD.derived?.debt.totalBalance ?? 0) > 0} />
+              <HeadlineCol h={draftD.derived?.headline ?? null} label="Draft" base={approvedD.derived?.headline ?? null} hasDebt={(draftD.derived?.debt.totalBalance ?? 0) > 0} />
             </div>
           )}
         </Panel>

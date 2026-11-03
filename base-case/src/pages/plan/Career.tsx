@@ -115,7 +115,7 @@ export function CareerPage() {
                 <thead>
                   <tr>
                     <th className={th}>Metric</th>
-                    {derived.paths.map((p) => <th key={p.pathId} className={cx(thNum, p.pathId === state.activePathId && 'text-rec')}>{p.name}</th>)}
+                    {derived.paths.map((p) => <th key={p.pathId} className={cx(thNum, '!whitespace-normal', p.pathId === state.activePathId && 'text-rec')}>{p.name}</th>)}
                   </tr>
                 </thead>
                 <tbody>
