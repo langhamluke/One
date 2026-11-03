@@ -1,0 +1,55 @@
+# Base Case — Design System ("The Model Desk")
+
+Base Case is the planning tool a sharp friend who works in finance would build for you: a clean,
+well-set financial model, not a bank brochure and not a game. The metaphor is **the model desk** —
+paper, ink, hairline rules, tabular numbers, one violet accent for the *base case* (the recommended path).
+
+## Principles
+1. **One meaning per color.** Never reuse a semantic color for decoration.
+2. **Numbers are the product.** Every number is set in IBM Plex Mono with tabular figures. Big readouts are
+   quiet (medium weight), labels are small caps-ish (11px, letter-spacing 0.06em, ink-3).
+3. **Restraint.** No gradients on content, no glassmorphism, no emoji, no confetti, no sound. Motion is
+   limited to charts drawing in (≤ 600 ms) and panels fading (≤ 150 ms); all disabled under `prefers-reduced-motion`.
+4. **Light, paper surface.** `paper` #F7F6F2 page, `paper-2` #FFFFFF cards, `line` #DAD7CF 1px borders,
+   10px radius, shadow-card only. Page background carries a faint 24px grid (blueprint nod, 3% ink).
+5. **Accessible.** WCAG AA contrast everywhere (ink on paper ≥ 12:1; semantic colors on white ≥ 4.5:1 for text).
+   Everything keyboard reachable with visible focus rings (2px `edit` outline, 2px offset). Works at 1440, 1024 and 768 px.
+
+## Color language (Tailwind tokens in tailwind.config.js)
+| Token | Hex | Meaning | Use |
+|---|---|---|---|
+| `edit` | #1F5EFF | **Editable** | input borders on focus, slider thumbs, "edit" affordances, links |
+| `rec` | #7A3EF0 | **Recommended / base case** | median line, model allocation ring, active path, targets |
+| `ok` | #1B9E5A | **On track** | success chips, positive deltas |
+| `warn` | #D98A00 | **Caution / unverified** | VERIFY tags, caution alerts, provisional profile badge |
+| `danger` | #D6342B | **Genuine problem** | warnings (shortfall, negative cash flow). Nothing else. |
+| `ink`/`ink-2/3/4` | #14161A… | Text hierarchy | primary / secondary / labels / disabled |
+| `asset.*` | muted blues & tans | Asset classes | donut and glide chart only |
+
+Comparison paths (CAREER screen) use a neutral ordinal palette distinct from semantics:
+path 1 = ink (#14161A), path 2 = rec (#7A3EF0), path 3 = #0F8B8D (teal), path 4 = #C2410C (rust).
+The *active* path is always drawn in `rec`; other paths take their ordinal color.
+
+## Typography
+- UI: IBM Plex Sans (400/500/600). Body 14px/20px. Headings 600 weight, tight tracking.
+- Numbers: IBM Plex Mono (400/500), `font-variant-numeric: tabular-nums`.
+- Readout: 28px mono medium; label above in 11px uppercase ink-3 tracking-wider.
+
+## Signature components
+1. **Readout strip** (sticky top of planning screens): Net worth · Savings rate · P(success) · Retirement income (P50, today's $) · Emergency fund months · Debt-free age. Values mono; deltas vs approved plan shown in ok/danger when viewing a draft.
+2. **Phase stepper**: PROFILE → RISK → CAREER → PLAN → FUTURE → SUMMARY. Current phase underlined in `rec`; completed phases get a small check; keyboard arrows move between phases.
+3. **Scenario cone** (FUTURE): area between P10 and P90 in rec at 12% opacity, P25–P75 not shown, P50 as 2px rec line, deterministic as dashed ink-4, retirement age vertical rule with boxed readout. Y axis in today's $ by default.
+4. **Career ladder comparison** (CAREER): horizontal timeline per path, rungs as small squares at promotions with labels using greedy lane assignment to avoid overlap; salary curve beneath; selectable 2–4 paths.
+5. **Playbook** (PLAN): numbered order of operations list — each step shows status chip (Done / Next / Later) and dollar amount.
+6. **Alert ledger**: three sections (Warning → Caution → Advisory), each row with a 6px color bar on the left, title, one-line detail; advisor-only rows show a small "ADVISOR" tag.
+7. **VERIFY tag**: 10px uppercase warn chip next to any unverified/self-reported number in Advisor mode; hover/focus shows source + as-of.
+8. **Draft banner**: when editing a proposal, a thin rec-colored bar across the top: "Draft — changes are provisional until approved" with Submit for review button.
+
+## Layout
+- App shell: left rail 232px (role nav) on ≥1024; collapses to top bar at 768. Content max-width 1280, 24px gutters.
+- Planning screens: two-column at ≥1024 (inputs 5/12, results 7/12), stacked at 768.
+- Print (SUMMARY): light theme, Letter, `@page { size: letter; margin: 0.45in }`, `.no-print` hidden, fits ONE page.
+
+## Copy voice
+Direct, plain English, second person. No exclamation marks. Explain every number in one sentence when hovered.
+Disclaimers are present but not shouted (ink-3, 12px).
