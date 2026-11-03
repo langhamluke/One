@@ -64,7 +64,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
         { label: 'Net worth', value: fmtCompact(h.netWorth), d: delta(h.netWorth, a?.netWorth, fmtCompact), hint: 'Investable assets plus other assets minus all debt balances today.' },
         { label: 'Savings rate', value: fmtPct(h.savingsRate, 0), d: delta(h.savingsRate, a?.savingsRate, (x, o) => fmtPct(x, 1, o)), hint: 'Employee savings this year as a share of gross pay (employer contributions excluded).' },
         { label: 'P(success)', value: fmtPct(h.successProbability, 0), d: delta(h.successProbability, a?.successProbability, (x, o) => fmtPct(x, 1, o)), hint: 'Share of Monte Carlo simulations that fund the retirement income target through life expectancy.' },
-        { label: "Retirement P50 (today's $)", value: fmtCompact(h.medianAtRetirementReal), d: delta(h.medianAtRetirementReal, a?.medianAtRetirementReal, fmtCompact), hint: "Median simulated portfolio at retirement, in today's dollars." },
+        { label: 'Retirement P50', value: fmtCompact(h.medianAtRetirementReal), d: delta(h.medianAtRetirementReal, a?.medianAtRetirementReal, fmtCompact), hint: "Median simulated portfolio at retirement, in today's dollars." },
         { label: 'Emergency fund', value: fmtMonths(h.emergencyMonthsCovered), d: delta(h.emergencyMonthsCovered, a?.emergencyMonthsCovered, (x, o) => `${o.sign && x > 0 ? '+' : ''}${x.toFixed(1)} mo`), hint: 'Months of essential spending covered by cash on hand.' },
         { label: 'Debt-free age', value: h.debtFreeAge == null ? (derived?.debt.totalBalance ? 'Never' : 'Now') : String(h.debtFreeAge), d: ageDelta(h.debtFreeAge, a?.debtFreeAge), hint: 'Age at which every debt is paid off in the active path.' },
       ]
@@ -104,7 +104,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
           {error && <span className="text-xs text-ink-3 py-2">Engine not available — readouts will appear once the plan engine loads.</span>}
           {!error && !h && <span className="text-xs text-ink-3 py-2">Computing…</span>}
           {items.map((it) => (
-            <Readout key={it.label} label={it.label} value={it.value} delta={it.d.text} deltaGood={it.d.good} hint={it.hint} size="md" />
+            <div key={it.label} className="shrink-0"><Readout label={it.label} value={it.value} delta={it.d.text} deltaGood={it.d.good} hint={it.hint} size="md" /></div>
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2 shrink-0 no-print">

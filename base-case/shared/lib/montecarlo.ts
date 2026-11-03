@@ -1,7 +1,7 @@
 /**
  * Monte Carlo projection of the investable portfolio.
  *
- *  - mulberry32 seeded PRNG, Box-Muller normals, Cholesky factor of CORRELATION (positive-definite check; on failure
+ *  - mulberry32 seeded PRNG, Box-Muller (polar form) normals, Cholesky factor of CORRELATION (positive-definite check; on failure
  *    1e-6 jitter is added to the diagonal and a flag recorded).
  *  - Per asset class lognormal: sigma^2 = ln(1 + vol^2 / (1+m)^2), mu = ln(1+m) - sigma^2/2, so the arithmetic mean of
  *    the simple return equals the CMA's `ret`. Annual rebalance to that year's glide-path allocation.
@@ -29,7 +29,7 @@ export function mulberry32(seed: number): () => number {
   };
 }
 
-/** Standard normal generator (Box-Muller, caches the second draw). */
+/** Standard normal generator: Box-Muller in polar (Marsaglia) form, no trig, caches the second draw. */
 export function normalGenerator(rng: () => number): () => number {
   let spare = 0;
   let hasSpare = false;
@@ -38,15 +38,18 @@ export function normalGenerator(rng: () => number): () => number {
       hasSpare = false;
       return spare;
     }
-    let u = 0;
-    let v = 0;
-    do u = rng();
-    while (u <= 1e-12);
-    v = rng();
-    const mag = Math.sqrt(-2 * Math.log(u));
-    spare = mag * Math.sin(2 * Math.PI * v);
+    let u: number;
+    let v: number;
+    let s: number;
+    do {
+      u = 2 * rng() - 1;
+      v = 2 * rng() - 1;
+      s = u * u + v * v;
+    } while (s >= 1 || s === 0);
+    const mag = Math.sqrt((-2 * Math.log(s)) / s);
+    spare = v * mag;
     hasSpare = true;
-    return mag * Math.cos(2 * Math.PI * v);
+    return u * mag;
   };
 }
 

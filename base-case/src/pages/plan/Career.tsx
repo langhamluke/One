@@ -128,7 +128,7 @@ export function CareerPage() {
                     ['Debt-free age', (p: typeof derived.paths[number]) => (p.debtFreeAge == null ? (derived.debt.totalBalance ? 'Never' : 'Now') : String(p.debtFreeAge))],
                   ] as const).map(([label, fn]) => (
                     <tr key={label}>
-                      <td className={td}>{label}</td>
+                      <td className={`${td} whitespace-nowrap`}>{label}</td>
                       {derived.paths.map((p) => <td key={p.pathId} className={cx(tdNum, p.pathId === state.activePathId && 'font-medium')}>{fn(p)}</td>)}
                     </tr>
                   ))}

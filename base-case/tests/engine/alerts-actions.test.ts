@@ -35,6 +35,7 @@ describe('alerts', () => {
 
   it('surfaces unsaved cash flow and the deferral-below-max advisory', () => {
     const s = fixtureState();
+    s.profile.livingExpenses = 30000;
     const d = computeDerived(s, { skipMonteCarlo: true });
     const row = d.active.rows[0];
     expect(row.unallocated).toBeGreaterThan(0);

@@ -6,6 +6,7 @@ import { chatMessages, auditLog } from '../../server/db/schema';
 import { buildPlanContext } from '../../server/services/planContext';
 import { offlineAnswer, classifyIntent, ADVISOR_REMINDER, systemPrompt } from '../../server/services/assistant';
 import { defaultPlanState } from '../../shared/lib/inputs';
+import { PERSONAS } from '../../shared/data/personas';
 
 const PW = 'Chat-Password-2026!';
 
@@ -140,6 +141,54 @@ describe('offline explainer', () => {
     expect(offlineAnswer(ctx, 'How are my taxes computed?')).toMatch(/standard deduction/i);
     expect(offlineAnswer(ctx, 'When will my debt be paid off?')).toMatch(/Credit card/);
     expect(offlineAnswer(ctx, 'What is my savings rate?')).toMatch(/2%/);
+  });
+});
+
+describe('plan context with the real engine', () => {
+  it('carries headline, alerts, actions and the first 10 year rows for a demo persona, without notes', () => {
+    const persona = PERSONAS[0];
+    const ctx = buildPlanContext({ ...persona.state, notes: 'SECRET-NOTE-TEXT' });
+    expect(ctx.derivedError).toBeNull();
+    expect(ctx.derived).not.toBeNull();
+    const d = ctx.derived!;
+    expect(d.headline.successProbability).toBeGreaterThanOrEqual(0);
+    expect(d.headline.successProbability).toBeLessThanOrEqual(1);
+    expect(typeof d.headline.netWorth).toBe('number');
+    expect(Array.isArray(d.alerts)).toBe(true);
+    expect(d.actions.length).toBeGreaterThan(0);
+    expect(d.actions[0]).toMatchObject({ rank: expect.any(Number), title: expect.any(String) });
+    expect(d.years.length).toBeGreaterThan(0);
+    expect(d.years.length).toBeLessThanOrEqual(10);
+    expect(d.years[0]).toHaveProperty('takeHome');
+    expect(JSON.stringify(ctx)).not.toContain('SECRET-NOTE-TEXT');
+    expect(JSON.stringify(ctx)).not.toContain('@');
+    // offline answers now quote the engine
+    const first = offlineAnswer(ctx, 'What should I do first?');
+    expect(first).toContain(`1. ${d.actions[0].title}`);
+    expect(first).toContain(ADVISOR_REMINDER);
+    expect(offlineAnswer(ctx, 'What is my success probability?')).toMatch(/\d+% /);
+    expect(offlineAnswer(ctx, 'How is my emergency fund?')).toMatch(/covers [\d.]+ months/);
+    expect(offlineAnswer(ctx, 'How are my taxes computed?')).toMatch(/Tax year 2026/);
+    expect(offlineAnswer(ctx, 'what does my risk profile mean')).toMatch(/Risk profile: (Conservative|Moderate|Assertive|Aggressive)/);
+  });
+
+  it('chat route stores a reply that reflects the engine (derived=true in the audit metadata)', async () => {
+    const t = await makeApp();
+    try {
+      const xId = await createUser(t, { email: 'eng@c.test', password: PW, role: 'client' });
+      const adminId = await createUser(t, { email: 'adm-eng@c.test', password: PW, role: 'admin' });
+      const admin = await login(t, 'adm-eng@c.test', PW, '32.0.0.1');
+      expect((await req(t, 'PUT', `/api/plans/${xId}`, { cookie: admin, body: PERSONAS[0].state })).status).toBe(200);
+      const X = await login(t, 'eng@c.test', PW, '32.0.0.2');
+      const th = await json(await req(t, 'POST', '/api/chat/threads', { cookie: X, body: {} }));
+      const r = await json(await req(t, 'POST', `/api/chat/threads/${th.id}/messages`, { cookie: X, body: { content: 'What should I do first?' } }));
+      expect(r.reply.content).toMatch(/^The plan ranks these actions first/);
+      const rows = await t.deps.db.select().from(auditLog).where(eq(auditLog.action, 'chat.message'));
+      expect(rows[0].metadata).toMatchObject({ derived: true, mode: 'offline', clientId: xId });
+      expect(adminId).toBeTruthy();
+    } finally {
+      await t.close();
+    }
   });
 });
 

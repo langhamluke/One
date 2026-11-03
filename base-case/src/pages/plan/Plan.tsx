@@ -155,7 +155,7 @@ export function PlanPage() {
               {limits.map((l) => (
                 <li key={l.label} className="flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <div className="truncate">{l.label}</div>
+                    <div>{l.label}</div>
                     {advisor && <SourceLine source={l.s.source} asOf={l.s.asOf} verified={l.s.verified} url={l.s.url} note={l.s.note} showVerify />}
                     {l.note && <div className="text-xxs text-ink-3">{l.note}</div>}
                   </div>

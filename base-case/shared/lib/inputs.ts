@@ -100,7 +100,7 @@ export interface Pension {
 }
 
 export interface EquityComp {
-  /** Expected annual RSU vest value (today's dollars), grows with merit raises */
+  /** Expected annual RSU vest value at the start of the career; scales with pay (raises and promotions) */
   annualRsuValue: number;
   /** ESPP discount (0.15 = 15%) */
   esppDiscount: number;
@@ -209,7 +209,10 @@ export interface CareerPath {
   yearsOverrides: Record<number, number>;
   /** Custom ladder when occupationCode === 'custom' (self-reported, flagged as user data) */
   customLevels?: LadderLevel[];
-  /** Annual merit raise within a level (real, on top of inflation) */
+  /**
+   * Annual within-level raise, NOMINAL (default 0.03, i.e. roughly inflation + 0.5% real). Promotions provide the real
+   * jumps between level bands; real pay within a level plateaus at the level band's p90 (a pay-scale maximum).
+   */
   meritRaise: number;
   /** Bonus override as a fraction of salary; undefined = use level default */
   bonusPctOverride?: number;
@@ -217,7 +220,7 @@ export interface CareerPath {
   startYearOffset: number;
   /** Annual income before the path starts (internship, part-time) */
   preStartIncome: number;
-  /** Optional real wage growth beyond merit raises (industry drift) */
+  /** Optional REAL drift of the whole occupation's bands beyond inflation (industry wage growth); 0 = bands keep pace with inflation */
   industryDrift: number;
 }
 

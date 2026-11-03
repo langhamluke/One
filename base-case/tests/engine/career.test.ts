@@ -3,11 +3,22 @@ import { simulatePath, resolveLadder } from '../../shared/lib/career';
 import { FIXTURE_L0_P50, FIXTURE_L1_P50, fixtureState } from './fixtures';
 
 describe('career simulation', () => {
-  it('starts at the level band and applies merit raises within a level', () => {
+  it('starts at the level band and applies NOMINAL merit raises within a level', () => {
     const s = fixtureState();
     const sim = simulatePath(s, s.careerPaths[0], s.whatIf);
     expect(sim.rows[0].wages).toBeCloseTo(FIXTURE_L0_P50, 4);
     expect(sim.rows[1].wages).toBeCloseTo(FIXTURE_L0_P50 * 1.03, 4);
+    // with 2.5% inflation the same 3% merit raise is still 3% nominal (not 3% real on top of inflation)
+    const s2 = fixtureState({ inflation: 0.025 });
+    const sim2 = simulatePath(s2, s2.careerPaths[0], s2.whatIf);
+    expect(sim2.rows[0].wages).toBeCloseTo(FIXTURE_L0_P50, 4);
+    expect(sim2.rows[1].wages).toBeCloseTo(FIXTURE_L0_P50 * 1.03, 4);
+    // the plateau keeps pace with inflation (constant in today's dollars)
+    expect(sim2.rows[40].wages / Math.pow(1.025, 40)).toBeCloseTo(100000, 4);
+    // industry drift lifts the bands in real terms
+    s2.careerPaths[0].industryDrift = 0.01;
+    const sim3 = simulatePath(s2, s2.careerPaths[0], s2.whatIf);
+    expect(sim3.rows[40].wages / Math.pow(1.025, 40)).toBeCloseTo(100000 * Math.pow(1.01, 40), 2);
     expect(sim.rows[0].stage).toBe('working');
     expect(sim.rows[0].levelTitle).toBe('Entry');
     expect(sim.firstIncomeYearIndex).toBe(0);
@@ -25,8 +36,11 @@ describe('career simulation', () => {
     expect(sim.rows[1].levelTitle).toBe('Entry');
     expect(sim.rows[10].levelTitle).toBe('Lead / Manager');
     expect(sim.rows[40].levelTitle).toBe('Lead / Manager');
-    // never a pay cut on promotion
-    for (let i = 1; i < 44; i++) expect(sim.rows[i].wages).toBeGreaterThan(sim.rows[i - 1].wages);
+    // never a pay cut on promotion; pay plateaus at the level band's p90 (100,000 for the fixture's last level)
+    for (let i = 1; i < 44; i++) expect(sim.rows[i].wages).toBeGreaterThanOrEqual(sim.rows[i - 1].wages - 1e-9);
+    for (const r of sim.rows) expect(r.wages).toBeLessThanOrEqual(100000 + 1e-9);
+    expect(sim.rows[40].wages).toBeCloseTo(100000, 6);
+    expect(sim.rows[13].wages).toBeLessThan(100000);
   });
 
   it('honours yearsOverrides', () => {

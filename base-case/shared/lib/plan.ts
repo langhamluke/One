@@ -169,7 +169,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     const ret = expectedReturn(alloc, a.cma);
     if (retired && retirementIndex === sim.rows.length) {
       retirementIndex = i;
-      netWorthAtRetirement = rows.length ? rows[rows.length - 1].netWorth : investableNow() + cash + other - loans.totalBalance();
+      netWorthAtRetirement = rows.length ? rows[rows.length - 1].netWorth : preTax + roth + hsa + taxable + cash + other - loans.totalBalance();
     }
 
     // ---- Income
@@ -318,8 +318,13 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     }
     const debtService = dr.debtService;
 
-    // ---- Surplus and order of operations
+    // ---- Surplus and order of operations (balances grow first; flows and draws happen at year end)
     for (const g of goals) if (!g.done) g.balance *= 1 + a.cashYield;
+    cash *= 1 + a.cashYield;
+    preTax *= 1 + ret;
+    roth *= 1 + ret;
+    hsa *= 1 + ret;
+    taxable *= 1 + ret;
     const surplus = takeHome - living - debtService;
     let emergencyTopUp = 0;
     let iraActual = 0;
@@ -412,11 +417,11 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     }
 
     // ---- Balances (end of year)
-    cash = cash * (1 + a.cashYield) + emergencyTopUp - drawCash + goalLeftover + (retired ? unallocated : 0);
-    preTax = preTax * (1 + ret) + employeePretax + employer401k + loanMatch + tradIraContrib - drawPre;
-    roth = roth * (1 + ret) + employeeRoth + rothIraContrib - drawRoth;
-    hsa = hsa * (1 + ret) + hsaEmployee + hsaEmployer - drawHsa;
-    taxable = taxable * (1 + ret) + taxableContrib + r.esppContribution + r.esppGain - drawTaxable;
+    cash = cash + emergencyTopUp - drawCash + goalLeftover + (retired ? unallocated : 0);
+    preTax = preTax + employeePretax + employer401k + loanMatch + tradIraContrib - drawPre;
+    roth = roth + employeeRoth + rothIraContrib - drawRoth;
+    hsa = hsa + hsaEmployee + hsaEmployer - drawHsa;
+    taxable = taxable + taxableContrib + r.esppContribution + r.esppGain - drawTaxable;
     cash = Math.max(0, cash);
     preTax = Math.max(0, preTax);
     roth = Math.max(0, roth);
@@ -501,10 +506,6 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       limits: { deferralCapped, s415cCapped, rothIra: ra.status, rothIraAllowed: rothAllowedEarned },
       flags,
     });
-  }
-
-  function investableNow(): number {
-    return preTax + roth + hsa + taxable;
   }
 
   if (retirementIndex === sim.rows.length) netWorthAtRetirement = rows.length ? rows[rows.length - 1].netWorth : 0;

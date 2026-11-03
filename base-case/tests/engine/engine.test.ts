@@ -43,14 +43,72 @@ describe('engine', () => {
     expect(median).toBeLessThan(150);
   });
 
-  it('runs for every persona', () => {
+  it('runs for every persona with no NaN and plausible headline ranges', () => {
     expect(PERSONAS.length).toBeGreaterThan(0);
     for (const p of PERSONAS) {
-      const d = computeDerived(mergePlanState(p.state), { sims: 200 });
-      expect(d.alerts.find((a) => a.id === 'engine-error'), p.key).toBeUndefined();
-      expect(nonFinitePaths(d), p.key).toEqual([]);
-      expect(d.active.rows.length, p.key).toBeGreaterThan(0);
+      const s = mergePlanState(p.state);
+      const d = computeDerived(s, { sims: 300 });
+      const k = p.key;
+      expect(d.alerts.find((a) => a.id === 'engine-error'), k).toBeUndefined();
+      expect(nonFinitePaths(d), k).toEqual([]);
+      expect(d.active.rows.length, k).toBe(s.assumptions.lifeExpectancy - s.profile.age + 1);
+      expect(d.paths.length, k).toBe(s.careerPaths.length);
+      const h = d.headline;
+      expect(h.successProbability, k).toBeGreaterThanOrEqual(0);
+      expect(h.successProbability, k).toBeLessThanOrEqual(1);
+      expect(h.savingsRate, k).toBeGreaterThanOrEqual(0);
+      expect(h.savingsRate, k).toBeLessThanOrEqual(1);
+      expect(h.savingsRateWithEmployer, k).toBeGreaterThanOrEqual(h.savingsRate - 1e-9);
+      expect(h.medianAtRetirementReal, k).toBeGreaterThanOrEqual(0);
+      expect(h.medianAtRetirementReal, k).toBeLessThan(5e7);
+      expect(h.emergencyMonthsCovered, k).toBeGreaterThanOrEqual(0);
+      expect(Math.abs(h.netWorth), k).toBeLessThan(1e7);
+      const first = d.active.rows[d.active.firstIncomeYearIndex];
+      expect(first.grossIncome, k).toBeGreaterThan(20000);
+      expect(first.grossIncome, k).toBeLessThan(500000);
+      expect(h.year1TakeHome, k).toBeGreaterThan(0.5 * first.grossIncome);
+      expect(h.year1TakeHome, k).toBeLessThan(first.grossIncome);
+      expect(d.tax.effectiveRate, k).toBeGreaterThan(0.05);
+      expect(d.tax.effectiveRate, k).toBeLessThan(0.5);
+      if (h.debtFreeAge !== null) {
+        expect(h.debtFreeAge, k).toBeGreaterThanOrEqual(s.profile.age);
+        expect(h.debtFreeAge, k).toBeLessThanOrEqual(s.assumptions.lifeExpectancy);
+      }
+      expect(d.ss.annualAtClaim, k).toBeGreaterThanOrEqual(0);
+      expect(d.ss.annualAtClaim, k).toBeLessThan(80000);
+      expect(d.mc.targetIncomeReal, k).toBeGreaterThan(0);
+      expect(d.mc.targetIncomeReal, k).toBeLessThan(400000);
+      // every working-year wage stays within a sane band of today's dollars
+      for (const r of d.active.rows) {
+        if (r.stage === 'working') expect(r.wages / Math.pow(1 + s.assumptions.inflation, r.yearIndex), `${k} y${r.yearIndex}`).toBeLessThan(600000);
+      }
+      expect(d.actions.length, k).toBeGreaterThan(0);
+      expect(d.alerts.length, k).toBeGreaterThan(0);
     }
+  });
+
+  it('gives a credible success probability: default developer > 50%, high saver with a 45-year horizon > 60%', () => {
+    const d = computeDerived(defaultPlanState());
+    expect(d.mc.successProbability).toBeGreaterThan(0.5);
+    // the replacement target is 70% of the final working-year take-home in TODAY'S dollars
+    const rows = d.active.rows;
+    const lastWorking = [...rows].reverse().find((r) => r.stage === 'working')!;
+    const takeHomeReal = lastWorking.takeHome / Math.pow(1.025, lastWorking.yearIndex);
+    expect(d.mc.targetIncomeReal).toBeCloseTo(0.7 * takeHomeReal, 4);
+    expect(d.mc.targetIncomeReal).toBeLessThan(200000);
+    // retirement rows: contributions stop, withdrawals = (target - SS) grossed up, to life expectancy
+    const ret = rows.find((r) => r.stage === 'retired')!;
+    expect(ret.employeePretax401k + ret.employer401k + ret.iraContribution + ret.taxableContribution).toBe(0);
+    expect(ret.livingExpenses).toBeCloseTo(d.mc.targetIncomeReal * Math.pow(1.025, ret.yearIndex), 2);
+    expect(rows[rows.length - 1].age).toBe(95);
+    const s = fixtureState({ inflation: 0.025 });
+    s.savings.deferralPct = 0.15;
+    s.savings.iraContribution = 7500;
+    s.savings.taxableContribution = 6000;
+    s.profile.livingExpenses = 24000;
+    const hs = computeDerived(s);
+    expect(hs.mc.successProbability).toBeGreaterThan(0.6);
+    expect(hs.mc.medianAtRetirementReal).toBeGreaterThan(hs.mc.targetIncomeReal * 10);
   });
 
   it('honours engine options', () => {
@@ -107,12 +165,15 @@ describe('engine', () => {
 
   it('applies the order of operations and the retirement draw-down', () => {
     const s = fixtureState();
+    s.profile.livingExpenses = 15000;
     s.savings.iraContribution = 7500;
     s.savings.taxableContribution = 5000;
     s.goals = [{ id: 'g', name: 'Car', kind: 'car', targetAmount: 12000, targetYear: 2029, priority: 1, fundedSoFar: 0 }];
     const d = computeDerived(s, { skipMonteCarlo: true });
     const r0 = d.active.rows[0];
-    expect(r0.emergencyTopUp).toBeCloseTo(6 * (r0.livingExpenses / 12) - 3000, 4);
+    // cash earns the cash yield before the year-end top-up
+    expect(r0.emergencyTopUp).toBeCloseTo(6 * (r0.livingExpenses / 12) - 3000 * 1.035, 4);
+    expect(r0.unallocated).toBeGreaterThan(0);
     expect(r0.iraContribution).toBe(7500);
     expect(r0.goalFunding).toBeCloseTo(12000 / 4, 4);
     expect(r0.taxableContribution).toBe(5000);

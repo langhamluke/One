@@ -58,7 +58,7 @@ export function DataPage() {
       }>
         {engineError ? <EngineUnavailable compact /> : !derived ? <EmptyState title="No plan loaded" detail="Open a plan to list the data it uses." /> : rows.length === 0 ? <EmptyState title="No items" /> : (
           <Table caption="Data quality ledger">
-            <thead><tr><th className={th}>Item</th><th className={th}>Value</th><th className={th}>Origin</th><th className={th}>Verified</th><th className={th}>As of</th><th className={th}>Source</th></tr></thead>
+            <thead><tr><th className={`${th} w-[26%]`}>Item</th><th className={th}>Value</th><th className={th}>Origin</th><th className={th}>Verified</th><th className={th}>As of</th><th className={`${th} w-[40%]`}>Source</th></tr></thead>
             <tbody>
               {rows.map((i) => (
                 <tr key={i.key}>
@@ -67,7 +67,7 @@ export function DataPage() {
                   <td className={td}><Chip tone={i.origin === 'user' ? 'edit' : i.origin === 'assumption' ? 'neutral' : 'ok'}>{i.origin === 'user' ? 'self-reported' : i.origin}</Chip></td>
                   <td className={td}>{i.verified ? <Chip tone="ok">yes</Chip> : <VerifyTag source={i.source} asOf={i.asOf} note={i.note} url={i.url} />}</td>
                   <td className={cx(td, 'num whitespace-nowrap')}>{i.asOf}</td>
-                  <td className={td}><div className="max-w-xs">{i.url ? <a href={i.url} target="_blank" rel="noreferrer noopener">{i.source}</a> : i.source}{i.note && <div className="text-xxs text-ink-3">{i.note}</div>}</div></td>
+                  <td className={td}><div>{i.url ? <a href={i.url} target="_blank" rel="noreferrer noopener">{i.source}</a> : i.source}{i.note && <div className="text-xxs text-ink-3">{i.note}</div>}</div></td>
                 </tr>
               ))}
             </tbody>

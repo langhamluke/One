@@ -18,6 +18,14 @@ function withCommas(fixed: string): string {
   return frac !== undefined ? `${grouped}.${frac}` : grouped;
 }
 
+/** toFixed with half-up rounding that ignores binary representation drift (0.0725 -> "7.3", not "7.2"). */
+export function toFixedHalfUp(x: number, decimals: number): string {
+  const p = Math.pow(10, decimals);
+  const sign = x < 0 ? -1 : 1;
+  const r = Math.round(Math.abs(x) * p + 1e-9) / p;
+  return (sign * r).toFixed(decimals);
+}
+
 function trimZeros(s: string): string {
   return s.includes('.') ? s.replace(/\.?0+$/, '') : s;
 }
@@ -30,11 +38,11 @@ export function fmtMoney(n: number, opts: MoneyOptions = {}): string {
   const abs = Math.abs(n);
   let body: string;
   if (compact && abs >= 1000) {
-    if (abs >= 1e9) body = `${trimZeros((abs / 1e9).toFixed(decimals ?? 1))}B`;
-    else if (abs >= 1e6) body = `${trimZeros((abs / 1e6).toFixed(decimals ?? 1))}M`;
-    else body = `${trimZeros((abs / 1e3).toFixed(decimals ?? (abs >= 100000 ? 0 : 1)))}k`;
+    if (abs >= 1e9) body = `${trimZeros(toFixedHalfUp(abs / 1e9, decimals ?? 1))}B`;
+    else if (abs >= 1e6) body = `${trimZeros(toFixedHalfUp(abs / 1e6, decimals ?? 1))}M`;
+    else body = `${trimZeros(toFixedHalfUp(abs / 1e3, decimals ?? (abs >= 100000 ? 0 : 1)))}k`;
   } else {
-    body = withCommas(abs.toFixed(decimals ?? 0));
+    body = withCommas(toFixedHalfUp(abs, decimals ?? 0));
   }
   const prefix = neg ? '-$' : sign && n > 0.005 ? '+$' : '$';
   return prefix + body;
@@ -44,7 +52,7 @@ export function fmtMoney(n: number, opts: MoneyOptions = {}): string {
 export function fmtPct(x: number, decimals = 1, opts: { sign?: boolean } = {}): string {
   if (!Number.isFinite(x)) return '—';
   const v = x * 100;
-  const s = v.toFixed(decimals);
+  const s = toFixedHalfUp(v, decimals);
   const plus = opts.sign && v > 0 ? '+' : '';
   return `${plus}${s}%`;
 }

@@ -21,9 +21,8 @@ export function glideEquity(age: number, p: GlideParams): number {
   const landing = Math.min(model, Math.max(0, p.landingEquity));
   const glideYears = Math.max(0, p.glideYears);
   const start = p.retirementAge - glideYears;
-  if (age <= start) return model;
   if (age >= p.retirementAge) return landing;
-  if (glideYears === 0) return landing;
+  if (age <= start || glideYears === 0) return model;
   const t = (age - start) / glideYears;
   return model + t * (landing - model);
 }

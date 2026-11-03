@@ -134,6 +134,7 @@ describe('extras, employer repayment and snowball', () => {
 
   it('snowballs: a paid-off loan frees its payment into the ledger surplus', () => {
     const s = fixtureState();
+    s.profile.livingExpenses = 20000;
     s.debts = [{ id: 'p', name: 'Personal', kind: 'personal', balance: 9000, rate: 0.08, termMonths: 36 }];
     const d = computeDerived(s, { skipMonteCarlo: true });
     const rows = d.active.rows;

@@ -259,12 +259,12 @@ export function Toggle({ id, checked, onChange, label, description, disabled }: 
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={cx(
-          'relative mt-0.5 h-5 w-9 shrink-0 rounded-pill border transition-colors focus-visible:ring-2 focus-visible:ring-edit focus-visible:ring-offset-2 focus-visible:outline-none',
+          'relative mt-0.5 h-[20px] w-[36px] shrink-0 rounded-pill border p-0 transition-colors focus-visible:ring-2 focus-visible:ring-edit focus-visible:ring-offset-2 focus-visible:outline-none',
           checked ? 'bg-edit border-edit' : 'bg-paper-3 border-line',
           disabled && 'opacity-50',
         )}
       >
-        <span className={cx('absolute top-0.5 h-3.5 w-3.5 rounded-full bg-white shadow transition-transform', checked ? 'translate-x-[18px]' : 'translate-x-0.5')} />
+        <span className={cx('absolute left-[2px] top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow transition-transform', checked ? 'translate-x-[16px]' : 'translate-x-0')} aria-hidden />
       </button>
       <label htmlFor={id} className="text-sm cursor-pointer min-w-0">
         <span className="font-medium text-ink-2">{label}</span>
@@ -461,7 +461,7 @@ export function Readout({ label, value, delta, deltaGood, hint, size = 'md', ton
 export function Stat({ label, value, sub, className }: { label: ReactNode; value: ReactNode; sub?: ReactNode; className?: string }) {
   return (
     <div className={cx('min-w-0', className)}>
-      <div className="label-caps truncate">{label}</div>
+      <div className="label-caps leading-[14px]">{label}</div>
       <div className="num text-base font-medium">{value}</div>
       {sub && <div className="text-xxs text-ink-3">{sub}</div>}
     </div>

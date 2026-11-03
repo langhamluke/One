@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { federalIncomeTax, fica, ltcgTax, marginalFederalRate, standardDeduction, stateTax, stateTaxFromPreset, studentLoanInterestDeduction, wageBase } from '../../shared/lib/tax';
 import { sourced } from '../../shared/lib/types';
-import type { StateTax } from '../../shared/data/states';
+import { STATES, type StateTax } from '../../shared/data/states';
 
 describe('federal income tax', () => {
   it('matches the bracket edges for single filers (2026)', () => {
@@ -67,7 +67,10 @@ describe('FICA', () => {
 describe('state tax', () => {
   it("handles 'none', 'flat' and 'CUSTOM'", () => {
     expect(stateTax(100000, 'TX', 'single')).toBe(0);
-    expect(stateTax(100000, 'CO', 'single')).toBeCloseTo(4400, 6);
+    const co = STATES.CO.tax;
+    expect(co.type).toBe('flat');
+    const coSd = co.type === 'flat' ? co.standardDeductionSingle ?? 0 : 0;
+    expect(stateTax(100000, 'CO', 'single')).toBeCloseTo(0.044 * (100000 - coSd), 6);
     expect(stateTax(100000, 'CUSTOM', 'single', { customRate: 0.03 })).toBeCloseTo(3000, 6);
     expect(stateTax(100000, 'ZZ', 'single')).toBe(0);
   });

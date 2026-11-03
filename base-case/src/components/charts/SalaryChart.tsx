@@ -7,11 +7,11 @@ import { ChartFrame, pathColor, tooltipStyle, useAnim } from './common';
 export function SalaryChart({ paths, activeId, basis, inflation, retirementAge }: { paths: PathResult[]; activeId: string; basis: DollarBasis; inflation: number; retirementAge: number }) {
   const anim = useAnim();
   const ages = new Set<number>();
-  for (const p of paths) for (const r of p.rows) if (r.age <= retirementAge) ages.add(r.age);
+  for (const p of paths) for (const r of p.rows) if (r.age < retirementAge && r.stage !== 'retired') ages.add(r.age);
   const data = Array.from(ages).sort((a, b) => a - b).map((age) => {
     const row: Record<string, number> = { age };
     for (const p of paths) {
-      const r = p.rows.find((x) => x.age === age);
+      const r = p.rows.find((x) => x.age === age && x.stage !== 'retired');
       if (r) row[p.pathId] = Math.round(toBasis(r.wages + r.bonus, r.yearIndex, inflation, basis));
     }
     return row;

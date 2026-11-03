@@ -8,8 +8,10 @@
  *    dataset we fall back to customLevels, else to a flagged default band (FALLBACK_BAND) built with STANDARD_LADDER.
  *  - Salary at the start of a stint = bandAt(level band, track position) in today's dollars, indexed by inflation and
  *    industry drift to the year, times the metro index. Track positions: low 0.25, mid 0.5, high 0.75.
- *  - Within a level salary grows (1+inflation)(1+meritRaise)(1+industryDrift)-1 per year. A promotion re-bases pay to
- *    the next level's band at the same track position (never below the merit-grown salary).
+ *  - Within a level salary grows at path.meritRaise, a NOMINAL rate (default 3% = roughly inflation + 0.5% real), times
+ *    (1+industryDrift). Real pay within a level plateaus at the level band's p90 (today's dollars, indexed by inflation
+ *    and drift), the way pay scales have range maxima. Promotions provide the real jumps: pay re-bases to the next
+ *    level's band at the same track position (never below the merit-grown salary).
  *  - Promotion after `years` in level (yearsOverrides wins). whatIf.promotionDelayYears pushes the whole promotion
  *    schedule later by N years (the first level of each stint is held N years longer).
  *  - Layoff gap: starting at layoffYearOffset, layoffGapMonths of zero wages pro-rated across the year(s); level tenure
@@ -143,7 +145,7 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
   const startOffset = Math.max(0, Math.floor(path.startYearOffset));
   const merit = path.meritRaise;
   const drift = path.industryDrift;
-  const growth = (1 + infl) * (1 + merit) * (1 + drift) - 1;
+  const growth = (1 + merit) * (1 + drift) - 1;
   const pos = TRACK_POSITION[path.track] ?? 0.5;
   const pension = state.benefits.pension;
   const eq = state.benefits.equityComp;
@@ -172,8 +174,10 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
     const y = o !== undefined && o !== null && Number.isFinite(o) ? o : ladder.levels[idx].years;
     return Math.max(0, y);
   };
-  const bandSalary = (i: number, idx: number, premium: number): number =>
-    bandAt(ladder.levels[idx].band.value, pos) * Math.pow(1 + infl, i) * Math.pow(1 + drift, i) * metro.index * premium;
+  const bandSalary = (i: number, idx: number, premium: number, position = pos): number =>
+    bandAt(ladder.levels[idx].band.value, position) * Math.pow(1 + infl, i) * Math.pow(1 + drift, i) * metro.index * premium;
+  /** Range maximum for a level: the level band's p90 in that year's dollars. */
+  const ceiling = (i: number, idx: number, premium: number): number => bandSalary(i, idx, premium, 0.9);
 
   let started = false;
   let levelIdx = clampIdx(path.startLevelIndex, ladder.levels.length);
@@ -182,8 +186,8 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
   let levelNeed = 0;
   let premium = 1;
   let needsPostSchool = false;
-  let workedYears = 0;
   let yearsOfService = 0;
+  let startSalary = 0;
   let gapRemaining = Math.max(0, Math.floor(whatIf.layoffGapMonths));
   let gapNoted = false;
   const recentWages: number[] = [];
@@ -215,6 +219,8 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
     levelNeed = yearsFor(levelIdx) + Math.max(0, whatIf.promotionDelayYears);
     const fresh = bandSalary(i, levelIdx, premium);
     salary = fromSchool && started ? Math.max(fresh, salary * (1 + growth)) : fresh;
+    salary = Math.min(salary, Math.max(fresh, ceiling(i, levelIdx, premium)));
+    if (startSalary === 0) startSalary = salary;
     noteBand(ladder.levels[levelIdx]);
     const title = ladder.levels[levelIdx].title;
     waypoints.push({
@@ -301,12 +307,13 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
       if (!started) beginStint(i, needsPostSchool);
       else if (needsPostSchool) beginStint(i, true);
       else {
-        salary *= 1 + growth;
+        salary = Math.min(salary * (1 + growth), Math.max(salary * (1 + infl) * (1 + drift), ceiling(i, levelIdx, premium)));
         while (levelIdx < ladder.levels.length - 1 && tenure >= levelNeed - 1e-9) {
           tenure -= levelNeed;
           levelIdx++;
           levelNeed = yearsFor(levelIdx);
-          salary = Math.max(bandSalary(i, levelIdx, premium), salary);
+          const fresh = bandSalary(i, levelIdx, premium);
+          salary = Math.min(Math.max(fresh, salary), Math.max(fresh, ceiling(i, levelIdx, premium)));
           noteBand(ladder.levels[levelIdx]);
           waypoints.push({ yearIndex: i, age, label: `Promoted to ${ladder.levels[levelIdx].title}`, pay: salary, kind: 'promotion' });
         }
@@ -329,7 +336,7 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
       row.wages = salary * worked;
       const bonusPct = path.bonusPctOverride ?? ladder.levels[levelIdx].bonusPct ?? 0;
       row.bonus = Math.max(0, bonusPct) * row.wages;
-      row.rsu = Math.max(0, eq.annualRsuValue) * Math.pow(1 + infl, i) * Math.pow(1 + merit, workedYears) * worked;
+      row.rsu = Math.max(0, eq.annualRsuValue) * (startSalary > 0 ? salary / startSalary : 1) * worked;
       row.esppContribution = Math.min(0.15, Math.max(0, eq.esppContribPct)) * row.wages;
       row.esppGain = esppDiscount > 0 ? row.esppContribution * (esppDiscount / (1 - esppDiscount)) : 0;
       if (pension.enabled) {
@@ -338,7 +345,6 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
         yearsOfService += worked;
       }
       tenure += worked;
-      workedYears += worked;
       recentWages.push(row.wages);
       if (recentWages.length > 3) recentWages.shift();
     }

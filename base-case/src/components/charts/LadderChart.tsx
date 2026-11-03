@@ -32,7 +32,7 @@ export function LadderChart({ paths, activeId, startAge, retirementAge, lifeAge 
   const w = Math.max(320, width);
   const padL = 12;
   const padR = 16;
-  const laneH = 64;
+  const laneH = 78;
   const top = 10;
   const endAge = Math.max(retirementAge + 1, ...paths.map((p) => Math.max(...p.waypoints.map((wp) => wp.age), startAge)));
   const x = (age: number) => padL + ((age - startAge) / Math.max(1, endAge - startAge)) * (w - padL - padR);
@@ -49,17 +49,17 @@ export function LadderChart({ paths, activeId, startAge, retirementAge, lifeAge 
           </g>
         ))}
         <line x1={x(retirementAge)} x2={x(retirementAge)} y1={top} y2={h - 22} stroke="#7A3EF0" strokeDasharray="3 3" />
-        <text x={x(retirementAge)} y={top + 2} textAnchor="middle" fontSize="9" fill="#7A3EF0" fontFamily="IBM Plex Mono">retire {retirementAge}</text>
+        <text x={Math.min(x(retirementAge), w - padR - 2)} y={top + 2} textAnchor={x(retirementAge) > w - 60 ? 'end' : 'middle'} fontSize="9" fill="#7A3EF0" fontFamily="IBM Plex Mono">retire {retirementAge}</text>
         {paths.map((p, pi) => {
           const active = p.pathId === activeId;
           const color = pathColor(pi, active);
-          const y = top + laneH * pi + 42;
+          const y = top + laneH * pi + 58;
           const rungs = p.waypoints.filter((wp) => wp.kind !== 'retire');
           const labels = assignLanes(rungs.map((r) => ({ x: x(r.age), text: `${r.label} · ${fmtCompact(r.pay)}` })));
           const lastAge = Math.min(endAge, retirementAge);
           return (
             <g key={p.pathId}>
-              <text x={padL} y={y - 30} fontSize="11" fontWeight={600} fill={color}>{p.name}{active ? ' (active)' : ''}</text>
+              <text x={padL} y={y - 46} fontSize="11" fontWeight={600} fill={color}>{p.name}{active ? ' (active)' : ''}</text>
               <line x1={x(startAge)} x2={x(lastAge)} y1={y} y2={y} stroke={color} strokeWidth={active ? 3 : 2} strokeLinecap="round" opacity={active ? 1 : 0.7} />
               {rungs.map((r, i) => (
                 <g key={i}>

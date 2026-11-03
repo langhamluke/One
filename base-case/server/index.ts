@@ -11,7 +11,11 @@ import { createApp } from './app';
 import { bootstrap } from './seed';
 
 const t0 = Date.now();
-const { deps, conn, config, logger } = await boot();
+const { deps, conn, config, logger } = await boot().catch((err: unknown) => {
+  // Startup failures (missing master key in production, unreachable DATABASE_URL) exit with a clear line, not a stack dump.
+  console.error(`[base-case] startup failed: ${err instanceof Error ? err.message : String(err)}`);
+  process.exit(1);
+});
 await bootstrap(deps);
 const app = createApp(deps);
 
@@ -43,11 +47,18 @@ const server = serve({ fetch: app.fetch, port: config.port, hostname: process.en
   });
 });
 
+server.on('error', (err: NodeJS.ErrnoException) => {
+  logger.error('server error', { code: err.code ?? 'unknown', message: err.message, port: config.port });
+  process.exit(1);
+});
+
 let shuttingDown = false;
 const shutdown = (signal: string) => {
   if (shuttingDown) return;
   shuttingDown = true;
   logger.info('shutting down', { signal });
+  // Drop keep-alive connections so close() does not wait on idle clients.
+  (server as unknown as { closeAllConnections?: () => void }).closeAllConnections?.();
   server.close(() => {
     conn.close().finally(() => process.exit(0));
   });

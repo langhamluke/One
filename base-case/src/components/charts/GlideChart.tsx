@@ -12,7 +12,7 @@ export function GlideChart({ glidePath, retirementAge, height = 160, frame = tru
         <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
           <CartesianGrid stroke="#E9E7E1" vertical={false} />
           <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#DAD7CF' }} />
-          <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false} width={40} />
+          <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false} width={48} />
           <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}%`, 'Equity']} labelFormatter={(l) => `Age ${l}`} />
           <ReferenceLine x={retirementAge} stroke={REC} strokeDasharray="3 3" />
           <Area type="stepAfter" dataKey="equity" stroke={REC} strokeWidth={2} fill={REC} fillOpacity={0.12} isAnimationActive={anim} animationDuration={500} />

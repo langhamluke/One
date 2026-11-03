@@ -6,8 +6,8 @@ export function RangeChart({ amount, ranges, selected, onSelect }: { amount: num
   const [ref, width] = useWidth<HTMLDivElement>();
   const w = Math.max(280, width);
   const rowH = 34;
-  const padL = 64;
-  const padR = 64;
+  const padL = 112;
+  const padR = 60;
   const h = rowH * ranges.length + 28;
   const vals = ranges.map((r) => r.map((m) => m * amount));
   const lo = Math.min(...vals.map((v) => v[3]));
@@ -27,7 +27,7 @@ export function RangeChart({ amount, ranges, selected, onSelect }: { amount: num
           return (
             <g key={i} role="button" tabIndex={0} aria-label={`Range ${i + 1}: best ${fmtMoney(best)}, likely ${fmtMoney(ll)} to ${fmtMoney(lh)}, worst ${fmtMoney(worst)}`} className="cursor-pointer focus:outline-none" onClick={() => onSelect(i)} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onSelect(i); } }}>
               <rect x={0} y={y - 4} width={w} height={rowH} fill={sel ? '#F0E9FF' : 'transparent'} rx={4} />
-              <text x={padL - 8} y={y + 14} textAnchor="end" fontSize="11" fill={sel ? '#7A3EF0' : '#3C4048'} fontWeight={sel ? 600 : 500}>Range {i + 1}</text>
+              <text x={padL - 52} y={y + 14} textAnchor="end" fontSize="11" fill={sel ? '#7A3EF0' : '#3C4048'} fontWeight={sel ? 600 : 500}>Range {i + 1}</text>
               <rect x={x(worst)} y={y + 6} width={Math.max(2, x(best) - x(worst))} height={10} rx={2} fill={base} opacity={0.25} />
               <rect x={x(ll)} y={y + 4} width={Math.max(2, x(lh) - x(ll))} height={14} rx={2} fill={base} />
               <text x={x(worst) - 4} y={y + 14} textAnchor="end" fontSize="10" fill="#D6342B" fontFamily="IBM Plex Mono">{fmtCompact(worst)}</text>
