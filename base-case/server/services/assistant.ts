@@ -133,7 +133,7 @@ const INTENTS: [Intent, RegExp][] = [
   ['emergency', /\b(emergency|rainy day|cash (cushion|reserve)|months? of (expenses|savings))\b/i],
   ['savings', /\b(savings? rate|how much (am i|should i be) saving|saving enough|deferral|401 ?\(?k\)?|contribution rate)\b/i],
   ['retirement', /\b(retire|retirement income|nest egg|how much will i have|social security|pension)\b/i],
-  ['debt', /\b(debt|loan|payoff|pay off|interest rate|student|credit card|rap plan|repayment)\b/i],
+  ['debt', /\b(debt|loan|payoff|pay off|interest rate|student|credit card|rap|tiered|ibr|forgiv\w*|repayment)\b/i],
   ['paths', /\b(which path|path (is )?better|compare (paths|careers)|career path|other path|better (option|career)|path a|path b)\b/i],
   ['taxes', /\b(tax|taxes|taxed|bracket|withholding|fica|deduction|take-?home)\b/i],
   ['risk', /\b(risk (profile|score|tolerance)|allocation|moderate|aggressive|conservative|assertive|equity (mix|percentage|split)|horizon)\b/i],
@@ -260,6 +260,8 @@ export function offlineAnswer(ctx: PlanContext, question: string): string {
         if (d) {
           lines.push(`Projected monthly payments: ${money(d.debt.monthlyPayment)}; highest rate ${pct(d.debt.highestRate, 2)}; debt-free at age ${d.debt.payoffAge ?? 'beyond the projection'}; total projected interest ${money(d.debt.totalInterest)}.`);
         }
+        const loanAction = d?.actions.find((a) => a.category === 'loans');
+        if (loanAction) lines.push(`${loanAction.title}. ${loanAction.detail}`);
         lines.push(`Federal student-loan rules (RAP, tiered standard, IBR) follow the plan data as of ${ctx.dataAsOf.loans}.${engineNote(ctx)}`);
       }
       break;

@@ -44,6 +44,7 @@ Postgres for local) / PostgreSQL (production) · Vitest · Playwright · Anthrop
 - `docs/DATA_UPDATES.md` — yearly data refresh procedure; `shared/data/sources.md` — every source
 - `docs/DEPLOYMENT.md` — hosting
 - `docs/QUESTIONS_AND_RESOURCES.md` — what I need from you
+- `docs/HANDOFF.md` — current state, decisions taken, open items
 
 ## Disclaimer
 Prepared for discussion purposes. Hypothetical projections based on stated assumptions and publicly available
