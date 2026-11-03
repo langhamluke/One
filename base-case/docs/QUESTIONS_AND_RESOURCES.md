@@ -3,7 +3,7 @@
 > **Answered 2026-11-03:** you operate Base Case personally for now; hosting is your DigitalOcean droplet
 > (see `docs/DEPLOY_DIGITALOCEAN.md`); Flowcast is your smart-canes customer forecaster, used here only as the
 > model for login-protected, per-user privacy; "S-blocks" and "Helix" were SBLOC and HELOC, now modelled as debt types
-> with alerts and covered in the Playbook. Still open: the Flight Plan questionnaire file (item 1).
+> with alerts and covered in the Playbook. Item 1 resolved: questionnaire text copied from the Flight Plan build (two pilot-specific phrases generalized; see shared/data/questionnaire.ts).
 
 Prepared 2026-11-03 with the first full build of Base Case. Nothing here blocks using the demo; each item
 unlocks the next level of fidelity.

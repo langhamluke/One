@@ -12,6 +12,10 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    # Resource caps keep Base Case from competing with other workloads on the droplet.
+    mem_limit: 384m
+    cpus: 0.5
+    cpu_shares: 256
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U basecase -d basecase"]
       interval: 5s
@@ -24,6 +28,9 @@ services:
       context: ..
       dockerfile: Dockerfile
     restart: unless-stopped
+    mem_limit: 768m
+    cpus: 1.0
+    cpu_shares: 256
     depends_on:
       db:
         condition: service_healthy
@@ -52,6 +59,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    mem_limit: 128m
+    cpus: 0.25
+    cpu_shares: 256
     depends_on: [app]
     ports:
       - "80:80"

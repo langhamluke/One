@@ -9,16 +9,46 @@ Tested end to end on 2026-11-03 with the exact files in `deploy/` (Postgres 16, 
 | `app` | Base Case API and web app | internal only |
 | `db` | PostgreSQL 16 (plan data is AES-256-GCM ciphertext before it gets here) | internal only, no port |
 
-## Before you start (10 minutes)
-1. **Droplet:** Ubuntu 24.04 (or 22.04), at least 1 GB RAM; 2 GB is more comfortable. The setup script adds 2 GB of swap for builds.
-   If the droplet already runs something on ports 80/443 (for example Flowcast), tell me and I will switch Caddy to a
-   shared reverse-proxy setup instead.
-2. **A domain name.** HTTPS needs one. Use a subdomain of a domain you already own (for example `plan.yourdomain.com`)
-   or buy one (~$10–15/yr). In your DNS provider, create an **A record** pointing that name at the droplet's IP address.
-   DigitalOcean DNS works too: Networking → Domains.
-3. **SSH access** to the droplet as root (or a sudo user).
+## Sharing the droplet with trading systems
+Base Case is built to sit next to your trading systems without disturbing them:
+- **Hard caps:** the app, database and proxy are limited to 1.75 CPUs and ~1.25 GB RAM combined, at low CPU priority.
+  Measured idle use is ~250 MB RAM and under 1% CPU.
+- **No network surprises:** the setup script never turns on a firewall that is currently off (that could cut your bots
+  off from exchanges or webhooks). If `ufw` is already on, it only adds 80/443. It refuses to run if 80/443 are taken.
+- **No unattended restarts:** automatic OS upgrades stay as they are unless you opt in (`ENABLE_AUTO_UPDATES=1`),
+  because they can restart services.
+- **Separate everything:** its own containers, private Docker network, own database, own directory (`/opt/base-case`).
+- **Build timing:** the image build uses one to two CPUs for 2–4 minutes. Run setup and updates outside market hours.
 
-## Install (one command, then answer five prompts)
+**My recommendation:** a separate $6–12/month droplet is cleaner. Base Case is a public website; your trading box holds
+exchange keys. Isolation means a problem in one can never touch the other. The same scripts work unchanged on a new
+droplet. If you stay on one droplet, the safeguards above apply.
+
+## Before you start (10 minutes)
+1. **Droplet:** Ubuntu 24.04 or 22.04, at least 1 GB RAM free for Base Case. The script adds 2 GB swap only if none exists.
+2. **A domain name.** HTTPS needs one. Use a subdomain of a domain you already own (for example `plan.yourdomain.com`)
+   or buy one (~$10–15/yr). Create an **A record** pointing that name at the droplet's IP. DigitalOcean DNS works too:
+   Networking → Domains.
+3. **SSH access** as root or a sudo user.
+
+## Option A: let Claude Code on the droplet do it
+SSH in, start Claude Code in your home directory, and paste this prompt (fill in the domain and email):
+
+```text
+Deploy Base Case on this server. Rules: do not stop, restart, modify or read the configuration or secrets of any
+existing service, process, container, cron job or firewall rule (my trading systems run here). Only touch
+/opt/base-case, Docker, and the base-case cron entry. Ask me before any command that could affect other services.
+
+Steps:
+1. Show me what is listening on ports 80 and 443 and stop if anything is.
+2. git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke/One.git /opt/base-case
+3. Read /opt/base-case/base-case/docs/DEPLOY_DIGITALOCEAN.md and /opt/base-case/base-case/deploy/setup-droplet.sh.
+4. Run: sudo NONINTERACTIVE=1 BRANCH=claude/festive-goldberg-9jofrz DOMAIN=<plan.mydomain.com> ADMIN_EMAIL=<me@example.com> bash /opt/base-case/base-case/deploy/setup-droplet.sh
+5. Confirm https://<plan.mydomain.com>/api/health returns ok and show `docker stats --no-stream`.
+6. Do not print the contents of deploy/.env.production. Tell me the command to read the admin password myself.
+```
+
+## Option B: run it yourself
 SSH in and run:
 ```bash
 git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke/One.git /opt/base-case
@@ -26,15 +56,13 @@ git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke
 ```bash
 sudo BRANCH=claude/festive-goldberg-9jofrz bash /opt/base-case/base-case/deploy/setup-droplet.sh
 ```
-After the branch is merged into `main`, drop `--branch …` and `BRANCH=…`.
+It asks for your domain, admin email, admin password (or generates one), demo accounts yes/no, and an optional
+Anthropic key; writes all secrets to `/opt/base-case/base-case/deploy/.env.production` (root-only); builds; starts; and
+schedules a nightly database backup at 03:17 with 14-day retention. After the branch is merged into `main`, drop the
+`--branch` and `BRANCH=` parts.
 
-The script installs Docker, enables the firewall (SSH, 80, 443 only), turns on automatic security updates, adds swap,
-asks for your domain, admin email and password, whether to load demo accounts, and an optional Anthropic key, then
-generates all secrets into `/opt/base-case/base-case/deploy/.env.production` (readable only by root), builds, starts the
-stack, and schedules a nightly database backup at 03:17 with 14-day retention.
-
-**Immediately copy `BASE_CASE_MASTER_KEY` from that file into your password manager.** Losing it makes every stored
-plan unreadable. The app refuses to start with the wrong key, so it cannot silently show blank plans.
+**Copy `BASE_CASE_MASTER_KEY` from that file into your password manager right away.** Losing it makes every stored plan
+unreadable. The app refuses to start with the wrong key, so it can never silently show blank plans.
 
 ## First login
 1. Open `https://your-domain`. The first visit can take ~30 seconds while the certificate is issued.

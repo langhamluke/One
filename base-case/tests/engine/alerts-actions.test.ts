@@ -55,7 +55,7 @@ describe('alerts', () => {
     expect(d.alerts.find((a) => a.id === 'renters')?.severity).toBe('advisory');
     expect(d.alerts.find((a) => a.id === 'emergency-fund')?.severity).toBe('warning');
     expect(d.alerts.find((a) => a.id === 'ss-estimated')?.advisorOnly).toBe(true);
-    expect(d.alerts.find((a) => a.id === 'questionnaire-text')?.advisorOnly).toBe(true);
+    expect(d.alerts.find((a) => a.id === 'questionnaire-text')).toBeUndefined(); // text verified against Flight Plan
     s.insurance.disability = true;
     s.insurance.renters = true;
     const d2 = computeDerived(s, { skipMonteCarlo: true });

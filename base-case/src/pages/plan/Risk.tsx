@@ -37,7 +37,7 @@ export function RiskPage() {
                     <NumberInput id="q5-amount" value={amount} min={1000} max={10_000_000} step={1000} prefix="$" onChange={(v) => update((s) => { s.portfolioAmount = v ?? 100000; })} />
                   </Field>
                   <RangeChart amount={amount} ranges={q.ranges} selected={value ?? null} onSelect={(i) => update((s) => { s.answers.q5 = i; })} />
-                  {q.help && <p className="text-xxs text-ink-3">{q.help}</p>}
+                  {q.help && <p className="text-xxs text-ink-3">{q.help.replace('{{amount}}', fmtAmt)}</p>}
                 </div>
               )}
               <RadioCards
