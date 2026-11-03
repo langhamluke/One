@@ -16,12 +16,16 @@ import { BEND_POINTS } from '../data/ss';
 import { CMA_AS_OF } from '../data/cma';
 import { CURRENT_YEAR } from './inputs';
 
+function tidy(value: number | string): number | string {
+  return typeof value === 'number' && Math.abs(value) >= 100 ? Math.round(value) : value;
+}
+
 function item(key: string, label: string, s: Sourced<unknown>, value: number | string, origin: DataQualityItem['origin'] = 'data'): DataQualityItem {
-  return { key, label, value, source: s.source, url: s.url, asOf: s.asOf, verified: s.verified, note: s.note, origin };
+  return { key, label, value: tidy(value), source: s.source, url: s.url, asOf: s.asOf, verified: s.verified, note: s.note, origin };
 }
 
 function userItem(key: string, label: string, value: number | string, note?: string): DataQualityItem {
-  return { key, label, value, source: 'Entered by the client / advisor', asOf: `${CURRENT_YEAR}-11`, verified: false, note, origin: 'user' };
+  return { key, label, value: tidy(value), source: 'Entered by the client / advisor', asOf: `${CURRENT_YEAR}-11`, verified: false, note, origin: 'user' };
 }
 
 export interface DataQualityContext {
@@ -35,7 +39,7 @@ export function collectDataQuality(state: PlanState, ctx: DataQualityContext): {
   const add = (it: DataQualityItem) => {
     if (seen.has(it.key)) return;
     seen.add(it.key);
-    items.push(it);
+    items.push({ ...it, value: tidy(it.value) });
   };
   const status = state.profile.filingStatus;
   const u = ctx.usage;

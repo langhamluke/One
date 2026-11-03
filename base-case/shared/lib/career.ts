@@ -105,12 +105,12 @@ export function resolveLadder(code: string, customLevels?: LadderLevel[]): Ladde
 }
 
 /** Metro multiplier: per-occupation override, else the metro's all-occupations index, else 1. */
-export function metroIndexFor(metro: string, code: string): { index: number; sourced?: Sourced<number>; known: boolean } {
+export function metroIndexFor(metro: string, code: string): { index: number; sourced?: Sourced<number>; known: boolean; occupationSpecific: boolean } {
   const m = METROS[metro];
-  if (!m) return { index: 1, known: false };
+  if (!m) return { index: 1, known: false, occupationSpecific: false };
   const occ = m.occupationIndex?.[code];
-  if (occ) return { index: occ.value, sourced: occ, known: true };
-  return { index: m.index?.value ?? 1, sourced: m.index, known: true };
+  if (occ) return { index: occ.value, sourced: occ, known: true, occupationSpecific: true };
+  return { index: m.index?.value ?? 1, sourced: m.index, known: true, occupationSpecific: false };
 }
 
 function bandItem(pathId: string, code: string, lvl: LadderLevel, origin: 'data' | 'user'): DataQualityItem {
@@ -363,7 +363,7 @@ export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf)
   if (metro.sourced) {
     dq.push({
       key: `metro:${path.id}:${path.metro}`,
-      label: `Metro wage index (${path.metro})`,
+      label: `Metro wage index (${path.metro}, ${metro.occupationSpecific ? `${ladder.code} median vs national` : 'all occupations'})`,
       value: metro.index,
       source: metro.sourced.source,
       url: metro.sourced.url,

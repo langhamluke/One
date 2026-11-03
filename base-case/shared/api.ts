@@ -141,6 +141,10 @@ export interface DataStatus {
   unverifiedCount: number;
   totalCount: number;
   staleCount: number;
+  /** Primary data points (excludes values derived from other sourced values) */
+  primaryCount?: number;
+  primaryUnverifiedCount?: number;
+  derivedCount?: number;
 }
 
 export interface SettingsRecord {

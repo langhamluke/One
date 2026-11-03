@@ -38,7 +38,7 @@ export function DataPage() {
               <Stat label="Wages (OEWS)" value={status.asOf.wages} />
               <Stat label="Loan rules" value={status.asOf.loans} />
               <Stat label="Social Security" value={status.asOf.ssa} />
-              <Stat label="Unverified" value={`${status.unverifiedCount} / ${status.totalCount}`} sub={status.staleCount ? `${status.staleCount} stale` : 'none stale'} />
+              <Stat label="Primary sources verified" value={status.primaryCount != null ? `${status.primaryCount - (status.primaryUnverifiedCount ?? 0)} / ${status.primaryCount}` : `${status.totalCount - status.unverifiedCount} / ${status.totalCount}`} sub={`${status.primaryUnverifiedCount ?? status.unverifiedCount} unverified · ${status.derivedCount ?? 0} derived · ${status.staleCount ? `${status.staleCount} stale` : 'none stale'}`} />
             </div>
           ) : <p className="text-sm text-ink-3">Loading…</p>}
         </Panel>

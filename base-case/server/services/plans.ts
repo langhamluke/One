@@ -9,6 +9,7 @@ import type { AppDeps } from '../types';
 import type { Db } from '../db/index';
 import { planVersions, plans, users, type UserRow } from '../db/schema';
 import { aad } from '../crypto';
+import { HttpError } from '../errors';
 import { usersByIds } from './users';
 
 export const PLAN_AAD = (clientId: string) => aad('plans', 'state_enc', clientId);
@@ -30,8 +31,8 @@ export async function loadPlan(deps: Pick<AppDeps, 'db' | 'crypto'>, client: Use
   try {
     state = mergePlanState(deps.crypto.decryptJson(row.stateEnc, PLAN_AAD(client.id)));
   } catch {
-    // Undecryptable row (key rotation gone wrong): surface defaults rather than crash the UI.
-    state = defaultPlanState();
+    // Never substitute a blank plan for a record we cannot read: fail loudly so operators notice a key mismatch.
+    throw new HttpError(500, 'Plan data could not be decrypted. The server master key does not match the key that encrypted this record.', 'plan_unreadable');
   }
   return { version: row.version, state, updatedAt: row.updatedAt, updatedBy: row.updatedBy, persisted: true };
 }

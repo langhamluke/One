@@ -21,15 +21,33 @@ export function collectSourced(): { key: string; asOf: string; verified: boolean
   return walkSourced(pool, '').map((e) => ({ key: e.key, asOf: String(e.s.asOf ?? ''), verified: Boolean(e.s.verified) }));
 }
 
+/** Derived values are computed from verified primary data (e.g. ladder levels mapped from OEWS percentiles, typical bonus assumptions). */
+export function isDerived(key: string): boolean {
+  return /\.levels\.\d+\./.test(key) || /\.bonusTypical$/.test(key);
+}
+
+/** Months after which a dataset counts as stale, by its normal publication cadence. */
+export function staleAfterMonths(key: string): number {
+  if (key.startsWith('OCCUPATIONS') || key.startsWith('METROS')) return 18; // OEWS: annual, published ~11 months after the reference month
+  if (key.startsWith('STATES')) return 14;
+  return 14; // IRS / SSA / loans: annual
+}
+
 export function dataStatus(now: Date): DataStatus {
   const items = collectSourced();
+  const primary = items.filter((i) => !isDerived(i.key));
+  const derivedCount = items.length - primary.length;
+  const primaryUnverifiedCount = primary.filter((i) => !i.verified).length;
   const unverifiedCount = items.filter((i) => !i.verified).length;
-  const staleCount = items.filter((i) => monthsOld(i.asOf, now) > 12).length;
+  const staleCount = primary.filter((i) => monthsOld(i.asOf, now) > staleAfterMonths(i.key)).length;
   return {
     asOf: { irs: data.IRS_AS_OF, tax: String(data.TAX_YEAR), wages: data.WAGES_AS_OF, loans: data.LOANS_AS_OF, ssa: data.SS_AS_OF },
     unverifiedCount,
     totalCount: items.length,
     staleCount,
+    primaryCount: primary.length,
+    primaryUnverifiedCount,
+    derivedCount,
   };
 }
 

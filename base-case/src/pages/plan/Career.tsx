@@ -193,7 +193,7 @@ function PathEditor({ p, i, active, occOptions, metros, canRemove }: { p: Career
               </tbody>
             </Table>
           ) : (
-            <div className="grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 grid-cols-1 xl:grid-cols-2">
               {levels.map((l, li) => (
                 <Field key={li} label={`${li + 1}. ${l.title}`} htmlFor={`yo-${p.id}-${li}`} inline>
                   <NumberInput id={`yo-${p.id}-${li}`} compact value={p.yearsOverrides[li] ?? l.years} min={1} max={99} step={1} suffix="yrs" onChange={(v) => update((s) => { if (v == null || v === l.years) delete s.careerPaths[i].yearsOverrides[li]; else s.careerPaths[i].yearsOverrides[li] = v; })} />
