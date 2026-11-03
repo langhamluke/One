@@ -26,7 +26,7 @@ droplet. If you stay on one droplet, the safeguards above apply.
 
 ## Before you start (10 minutes)
 1. **Droplet:** Ubuntu 24.04 or 22.04, at least 1 GB RAM free for Base Case. The script adds 2 GB swap only if none exists.
-2. **A domain name.** HTTPS needs one. Use a subdomain of a domain you already own (for example `plan.yourdomain.com`)
+2. **A domain name.** HTTPS needs one. Use a subdomain of a domain you already own (for example `basecase.slopecycleski.com`)
    or buy one (~$10–15/yr). Create an **A record** pointing that name at the droplet's IP. DigitalOcean DNS works too:
    Networking → Domains.
 3. **SSH access** as root or a sudo user.
