@@ -11,7 +11,7 @@ import { EngineUnavailable } from '@/components/EngineUnavailable';
 import { admin } from '@/api/endpoints';
 import { DEFAULT_DISCLAIMER } from '@/content/legal';
 import { QUESTIONNAIRE_SOURCE } from '@shared/data/questionnaire';
-import { fmtAge, fmtCompact, fmtMoney, fmtPct } from '@/lib/format';
+import { fmtAge, fmtCompact, fmtMoney, fmtPct, toBasis } from '@/lib/format';
 import { PATH_COLORS, REC } from '@/components/charts/common';
 
 export function SummaryPage() {
@@ -85,7 +85,7 @@ export function SummaryPage() {
             <text x={8} y={68} fontSize="7" fill="#6B7078" fontFamily="IBM Plex Mono">{startAge}</text>
             <text x={292} y={68} fontSize="7" fill="#6B7078" fontFamily="IBM Plex Mono" textAnchor="end">{retAge}</text>
           </svg>
-          <div className="num text-xxs text-ink-3">Start {fmtMoney(derived.active.startingSalary)} · peak {fmtMoney(derived.active.peakSalary)} · debt-free {fmtAge(derived.active.debtFreeAge)}</div>
+          <div className="num text-xxs text-ink-3">Start {fmtMoney(toBasis(derived.active.startingSalary, Math.max(0, derived.active.firstIncomeYearIndex), state.assumptions.inflation, 'today'))} · peak {fmtMoney(derived.active.rows.reduce((m, r) => Math.max(m, toBasis(r.wages, r.yearIndex, state.assumptions.inflation, 'today')), 0))} (today's $) · debt-free {fmtAge(derived.active.debtFreeAge)}</div>
         </div>
       </div>
 

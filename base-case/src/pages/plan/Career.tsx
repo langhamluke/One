@@ -10,7 +10,7 @@ import { EngineUnavailable } from '@/components/EngineUnavailable';
 import { PATH_COLORS, REC } from '@/components/charts/common';
 import { OCCUPATIONS, WAGES_AS_OF, WAGES_SOURCE, listMetros, listOccupations } from '@shared/data/careers';
 import { defaultCareerPath, type CareerPath, type LadderLevel, type Track } from '@shared/lib/inputs';
-import { fmtCompact, fmtMoney, fmtNum, fmtPct } from '@/lib/format';
+import { fmtCompact, fmtMoney, fmtNum, fmtPct, toBasis } from '@/lib/format';
 
 function uid(): string {
   return `path-${Math.random().toString(36).slice(2, 7)}`;
@@ -120,10 +120,10 @@ export function CareerPage() {
                 </thead>
                 <tbody>
                   {([
-                    ['Starting salary', (p: typeof derived.paths[number]) => fmtMoney(p.startingSalary)],
-                    ['Peak salary', (p: typeof derived.paths[number]) => fmtMoney(p.peakSalary)],
-                    ['Lifetime earnings', (p: typeof derived.paths[number]) => fmtCompact(p.lifetimeEarnings)],
-                    ['Net worth at retirement', (p: typeof derived.paths[number]) => fmtCompact(p.netWorthAtRetirement)],
+                    ['Starting salary', (p: typeof derived.paths[number]) => fmtMoney(toBasis(p.startingSalary, Math.max(0, p.firstIncomeYearIndex), state.assumptions.inflation, basis))],
+                    ['Peak salary', (p: typeof derived.paths[number]) => fmtMoney(p.rows.reduce((m, r) => Math.max(m, toBasis(r.wages, r.yearIndex, state.assumptions.inflation, basis)), 0))],
+                    ['Lifetime earnings', (p: typeof derived.paths[number]) => fmtCompact(p.rows.reduce((s, r) => s + toBasis(r.wages + r.bonus + r.equityComp, r.yearIndex, state.assumptions.inflation, basis), 0))],
+                    ['Net worth at retirement', (p: typeof derived.paths[number]) => fmtCompact(toBasis(p.netWorthAtRetirement, Math.max(0, retirementAge - state.profile.age), state.assumptions.inflation, basis))],
                     ['P(success)', (p: typeof derived.paths[number]) => (p.pathId === state.activePathId ? fmtPct(derived.mc.successProbability, 0) : '—')],
                     ['Debt-free age', (p: typeof derived.paths[number]) => (p.debtFreeAge == null ? (derived.debt.totalBalance ? 'Never' : 'Now') : String(p.debtFreeAge))],
                   ] as const).map(([label, fn]) => (
@@ -134,7 +134,7 @@ export function CareerPage() {
                   ))}
                 </tbody>
               </Table>
-              <p className="text-xxs text-ink-3 mt-2">Nominal dollars. P(success) runs for the active path only.</p>
+              <p className="text-xxs text-ink-3 mt-2">{basis === 'today' ? "Today's dollars" : 'Nominal dollars'}. P(success) runs for the active path only.</p>
             </Panel>
           </>
         ) : <Panel title="Career ladder comparison"><p className="text-sm text-ink-3">Computing…</p></Panel>}
@@ -167,7 +167,7 @@ function PathEditor({ p, i, active, occOptions, metros, canRemove }: { p: Career
         <Field label="Metro" htmlFor={`cp-metro-${p.id}`}><Select id={`cp-metro-${p.id}`} value={p.metro} onChange={(e) => set('metro', e.target.value)} options={metros} /></Field>
         <Field label="Track" htmlFor={`cp-track-${p.id}`} help="Where in the pay band you land: low = 25th, mid = median, high = 75th percentile."><Select id={`cp-track-${p.id}`} value={p.track} onChange={(e) => set('track', e.target.value as Track)} options={[{ value: 'low', label: 'Low (p25)' }, { value: 'mid', label: 'Mid (p50)' }, { value: 'high', label: 'High (p75)' }]} /></Field>
         <Field label="Start level" htmlFor={`cp-start-${p.id}`}><Select id={`cp-start-${p.id}`} value={String(p.startLevelIndex)} onChange={(e) => set('startLevelIndex', Number(e.target.value))} options={levels.length ? levels.map((l, li) => ({ value: String(li), label: `${li + 1}. ${l.title}` })) : [{ value: '0', label: '1. Entry' }]} /></Field>
-        <Field label="Merit raise (real)" htmlFor={`cp-merit-${p.id}`}><NumberInput id={`cp-merit-${p.id}`} value={p.meritRaise} scale={100} digits={1} min={0} max={0.15} step={0.005} suffix="%/yr" onChange={(v) => set('meritRaise', v ?? 0)} /></Field>
+        <Field label="Raise within level" help="Nominal annual raise inside a level (inflation plus merit). Promotions add the jump between level pay bands." htmlFor={`cp-merit-${p.id}`}><NumberInput id={`cp-merit-${p.id}`} value={p.meritRaise} scale={100} digits={1} min={0} max={0.15} step={0.005} suffix="%/yr" onChange={(v) => set('meritRaise', v ?? 0)} /></Field>
         <Field label="Bonus override" htmlFor={`cp-bonus-${p.id}`}><NumberInput id={`cp-bonus-${p.id}`} value={p.bonusPctOverride} allowEmpty placeholder="level default" scale={100} min={0} max={1} step={0.01} suffix="%" onChange={(v) => set('bonusPctOverride', v)} /></Field>
         <Field label="Starts in" htmlFor={`cp-offset-${p.id}`} help="Years until this path starts paying; 0 = already working."><NumberInput id={`cp-offset-${p.id}`} value={p.startYearOffset} min={0} max={10} step={1} suffix="yrs" onChange={(v) => set('startYearOffset', v ?? 0)} /></Field>
         <Field label="Income before start" htmlFor={`cp-pre-${p.id}`}><NumberInput id={`cp-pre-${p.id}`} value={p.preStartIncome} min={0} max={500000} step={1000} prefix="$" suffix="/yr" onChange={(v) => set('preStartIncome', v ?? 0)} /></Field>

@@ -1,33 +1,82 @@
 /**
- * Placeholder legal copy. Replace these strings with the firm's reviewed text.
+ * Legal and methodology copy shown in the app. DRAFTS for attorney / CCO review before any real client use.
  * Format: lines starting with "# " are headings; blank lines separate paragraphs.
+ * Full documents: docs/PRIVACY_POLICY.md, docs/COMPLIANCE_NOTES.md.
  */
-export const PRIVACY_TEXT = `# Privacy
-Base Case stores the plan information you enter so your advisor can review it. Plan data is encrypted at rest and is only visible to you, your assigned advisor and firm administrators.
+export const PRIVACY_TEXT = `# Privacy (summary — draft for attorney review)
+Base Case stores the planning information you enter so that you, your assigned advisor and the firm's administrators can work on your plan. Plan data, assistant conversations and two-factor secrets are encrypted at the application layer before they are stored, and every staff view of a client plan is recorded in an audit log.
+
+# What we collect
+Your email address and a display name (first name or nickname), the plan inputs you enter (age, state and metro, household details, income and career choices, spending, balances, debts, benefits, goals, insurance status and risk-questionnaire answers), questions you ask the in-app assistant, and technical data such as IP address, browser and timestamps.
 
 # What we ask you not to enter
-Use a nickname and ballpark figures. Never enter Social Security numbers, account numbers, dates of birth or health details. The planning model does not need them.
+Use a nickname and ballpark figures. Never enter Social Security numbers, dates of birth, account numbers, lender names, government ID numbers or health information. The planning model does not need them, fields are labelled to discourage it, and we will delete such data on request.
 
-# Sessions and security
-Sessions are tied to a secure cookie and expire automatically. Staff accounts can be required to use multi-factor authentication. Every login, change and review is written to an audit log.
+# How your information is used
+To run the planning model, to let your advisor review and approve changes, to answer your questions about your own plan, to keep the service secure, and to meet legal and record-keeping obligations. We do not sell personal information, use it for advertising, or train machine-learning models on it.
 
-# Assistant
-When the in-app assistant is enabled, your plan figures may be sent to a language-model provider to draft explanations. The assistant never changes your plan and its answers are not advice.
+# The assistant
+When the assistant is enabled, your question and a summary of your own plan are sent to Anthropic's Claude API to draft an answer. No other person's data, no credentials and no secrets are included. Under Anthropic's commercial API terms, inputs and outputs are not used to train its models. The assistant has no web access, cannot change your plan, and its answers are educational, not advice.
+
+# Retention and deletion
+Plan data is kept while your account is active. Where an investment adviser uses Base Case with you, its record-keeping rules may require retention for at least five years. You can export your plan at any time and request deletion; we will honor the request within 30 days unless the law or a firm retention obligation requires otherwise, in which case we will tell you.
+
+# Security incidents
+If we become aware of unauthorized access to your information, we will investigate promptly, notify any adviser whose clients are affected within 72 hours of becoming aware, and notify affected individuals as required by law.
+
+# Your rights
+You can view, correct and export your data in the application and ask us to delete it. Colorado residents have additional rights under the Colorado Privacy Act; we honor access, correction and deletion requests regardless of whether that Act applies.
 
 # Contact
-Questions about your data go to your advisor or the firm administrator.`;
+Questions about your data go to your advisor or the firm administrator. The full policy is published by the operator of this deployment.`;
 
-export const TERMS_TEXT = `# Terms of use
-Base Case is an educational planning tool. The figures it produces are projections built from the inputs you provide and published public data, not guarantees.
+export const TERMS_TEXT = `# Terms of use (summary — draft for attorney review)
+Base Case is an educational financial-planning tool. The figures it produces are hypothetical projections built from the inputs you provide, published public data and stated assumptions. They are not guarantees, forecasts or promises of future results.
 
 # Not advice
-Nothing in this application is individualized investment, tax or legal advice. Review every number with your advisor before acting on it.
+Nothing in this application is individualized investment, tax or legal advice, and nothing here creates an advisory relationship with the software operator. Where a registered investment adviser uses Base Case with you, that adviser's agreement and disclosures govern its advice. Review every number with your advisor before acting on it.
+
+# Hypothetical projections
+Results are generated by an interactive analysis tool and are hypothetical in nature. They may vary with each use and over time as inputs, data and assumptions change. The methodology, limitations and key assumptions are described on the Methodology page and the Data & Sources page.
 
 # Data sources
-Public data (tax brackets, contribution limits, wage statistics, loan rules) is cited with its source and as-of date. Items flagged VERIFY have not been confirmed against a primary source and may change.
+Public data (tax brackets, contribution limits, wage statistics, student-loan rules, Social Security parameters) is cited with its source and as-of date. Items flagged VERIFY have not been confirmed against a primary source and may be wrong; items marked self-reported came from you. Laws and limits change; the as-of dates tell you how current the data is.
+
+# No products
+Base Case uses generic asset classes only. It does not select, recommend or favor any security, fund, account or provider.
+
+# Provisional changes
+Changes you make are drafts until an advisor or administrator approves them. Approval records who approved what and when.
 
 # Your responsibilities
-Keep your login private, enable multi-factor authentication when offered, and tell your advisor if anything in your plan is out of date.`;
+Keep your login private, enable two-factor authentication when offered, enter accurate ballpark figures, and tell your advisor when anything in your plan is out of date.`;
+
+export const METHODOLOGY_TEXT = `# Methodology and key assumptions
+Base Case is an interactive analysis tool. Its outputs are hypothetical and depend on your inputs and on the assumptions below. Results may vary with each use and over time.
+
+# Risk profile
+A ten-question educational questionnaire (adapted from FNCE 2830, CU Boulder) scores risk tolerance (6–28) and time horizon (4–20) and maps them to one of twelve model equity percentages. Until all questions are answered the plan uses a provisional Moderate profile with the horizon set by years to retirement.
+
+# Careers and pay
+Salaries come from U.S. Bureau of Labor Statistics Occupational Employment and Wage Statistics (national percentile wages) adjusted by a metro wage index, mapped onto a career ladder of levels. Level mapping, promotion timing, bonuses and the within-level growth rate are assumptions you can change; derived values are flagged. Pay is projected in nominal dollars using the inflation assumption and shown in today's dollars by default.
+
+# Taxes and limits
+Federal tax uses the 2026 brackets and standard deduction, FICA uses the 2026 and 2027 Social Security wage bases, and state tax uses the selected preset or your custom rate. Contribution limits are the 2026 IRS limits; future years index the thresholds by the inflation assumption. The model does not itemize deductions or model credits other than those described on the Data & Sources page.
+
+# Cash flow and savings
+Each year: take-home pay minus living expenses and debt payments is allocated in this order — emergency fund to target, planned IRA, goals by priority, planned taxable investing. Anything left is assumed spent. Debts amortize on their own terms; federal student loans follow the plan you select (standard, tiered standard, RAP or IBR) using the rules in effect after July 1, 2026.
+
+# Investments and projections
+Balances grow at the expected return of the allocation for that year. The allocation follows a glide path from the model equity percentage to the landing equity percentage at retirement. The Monte Carlo projection runs 1,000 seeded simulations of correlated lognormal annual returns using the capital-market assumptions shown in Advisor view; these are illustrative long-run assumptions, not forecasts. Probability of success is the share of simulations in which the retirement income target is funded every year to the assumed life expectancy.
+
+# Retirement income
+The default target is 70% of final working-year take-home pay in today's dollars, less estimated Social Security (a simplified benefit formula using the current bend points, or your SSA statement figure if entered) and any pension, grossed up for taxes. Near retirement, enter actual planned spending instead.
+
+# Universe of investments
+Only seven generic asset classes are modeled (US large cap, US small/mid cap, international developed, emerging markets, US aggregate bonds, TIPS, cash). No securities, funds or providers are considered, selected or favored.
+
+# Limitations
+The model simplifies taxes, benefits, loan servicing and market behavior; it does not model sequence-of-returns timing within a year, taxes on retirement withdrawals beyond a flat gross-up, state-specific credits, or changes in law. Figures flagged VERIFY may be inaccurate. Discuss the results with your advisor.`;
 
 export const DEFAULT_DISCLAIMER =
-  'Projections are educational estimates based on your inputs and public data; they are not guarantees or individualized investment, tax or legal advice.';
+  'Prepared for discussion purposes. Hypothetical projections based on stated assumptions and publicly available salary and tax data as of the dates shown; not investment, tax, or legal advice. Actual results will vary.';

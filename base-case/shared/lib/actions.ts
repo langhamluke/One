@@ -151,20 +151,25 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   }
 
   // Loan-plan choice
-  const fed = state.debts.find((d) => d.kind === 'federal_student' && d.balance > 0);
-  if (fed) {
+  const feds = state.debts.filter((d) => d.kind === 'federal_student' && d.balance > 0);
+  if (feds.length > 0) {
     const agi = Math.max(0, row.grossIncome - row.employeePretax401k - row.hsaEmployee);
+    const householdSize = 1 + state.profile.dependents + (state.profile.filingStatus === 'mfj' ? 1 : 0);
+    // RAP is ONE payment per borrower covering every Direct loan; the tiered standard plan is per loan.
     const rap = rapMonthlyPayment(agi, state.profile.dependents);
-    const tieredTerm = tieredStandardTermMonths(fed.originalBalance ?? fed.balance);
-    const tiered = levelPayment(fed.balance, fed.rate, tieredTerm);
-    const current = initialMonthlyPayment(fed, { agi, dependents: state.profile.dependents, householdSize: 1 + state.profile.dependents + (state.profile.filingStatus === 'mfj' ? 1 : 0) });
+    const fedBalance = feds.reduce((s, d) => s + d.balance, 0);
+    const tieredTotal = feds.reduce((s, d) => s + levelPayment(d.balance, d.rate, tieredStandardTermMonths(d.originalBalance ?? d.balance)), 0);
+    const anyRap = feds.some((d) => d.federalPlan === 'rap');
+    const current = (anyRap ? rap : 0) + feds.filter((d) => d.federalPlan !== 'rap').reduce((s, d) => s + initialMonthlyPayment(d, { agi, dependents: state.profile.dependents, householdSize }), 0);
+    const longestTerm = Math.max(...feds.map((d) => tieredStandardTermMonths(d.originalBalance ?? d.balance)));
+    const avgRate = feds.reduce((s, d) => s + d.rate * d.balance, 0) / Math.max(1, fedBalance);
     items.push({
       id: 'action-loans-plan',
       rank: items.length + 1,
       category: 'loans',
-      title: `Compare RAP vs tiered standard: RAP ${fmtMoney(rap)}/mo vs ${fmtMoney(tiered)}/mo`,
-      detail: `${fed.name}: ${fed.federalPlan ?? 'standard'} plan pays about ${fmtMoney(current)}/mo. RAP is ${fmtPct((rap * 12) / Math.max(1, agi), 1)} of AGI with interest waived and a $50/mo principal match; the tiered standard plan runs ${tieredTerm / 12} years at ${fmtPct(fed.rate, 2)}.`,
-      amount: Math.abs(rap - tiered) * 12,
+      title: `Compare RAP vs tiered standard: RAP ${fmtMoney(rap)}/mo vs ${fmtMoney(tieredTotal)}/mo`,
+      detail: `${feds.length === 1 ? feds[0].name : `${feds.length} federal loans (${fmtMoney(fedBalance)})`}: the current plan choice pays about ${fmtMoney(current)}/mo. RAP is ${fmtPct((rap * 12) / Math.max(1, agi), 1)} of AGI for all federal loans combined, with unpaid interest waived and a $50/mo principal match; the tiered standard plan runs up to ${longestTerm / 12} years at about ${fmtPct(avgRate, 2)}. RAP forgives any balance left after 360 payments.`,
+      amount: Math.abs(rap - tieredTotal) * 12,
     });
   }
 

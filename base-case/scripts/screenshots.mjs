@@ -23,7 +23,7 @@ const ACCOUNTS = {
 };
 
 const ROUTES = {
-  client: ['/', '/plan/profile', '/plan/risk', '/plan/career', '/plan/plan', '/plan/future', '/plan/summary', '/proposals', '/assistant', '/playbook', '/data', '/account', '/privacy', '/terms'],
+  client: ['/', '/plan/profile', '/plan/risk', '/plan/career', '/plan/plan', '/plan/future', '/plan/summary', '/proposals', '/assistant', '/playbook', '/data', '/account', '/privacy', '/terms', '/methodology'],
   advisor: ['/', '/clients', '/proposals', '/assistant', '/playbook', '/data', '/account'],
   admin: ['/', '/clients', '/proposals', '/admin/users', '/admin/audit', '/admin/settings', '/data', '/account'],
 };

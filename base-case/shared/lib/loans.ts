@@ -8,6 +8,8 @@
  *    medical 36, other 60. Credit cards: 3% of balance, $25 minimum, recomputed monthly.
  *  - 'tiered_standard': term from TIERED_STANDARD by originalBalance ?? balance (10/15/20/25 years).
  *  - 'rap': payment = max($10, tier% * AGI / 12 - $50 * dependents); the tier applies to the WHOLE AGI (cliffs).
+ *    RAP is a per-BORROWER payment, so when several loans are on RAP the payment (and the $50 principal match) is
+ *    prorated across them by outstanding balance.
  *    AGI is the plan year's gross wages minus pre-tax deductions (passed in by the ledger). Unpaid interest is waived
  *    (balance never grows); if principal paid < $50 the government adds up to $50 so principal falls by >= $50.
  *    Forgiveness after 360 payments (flagged advisory: tax treatment of RAP forgiveness).
@@ -260,6 +262,8 @@ export class LoanSimulator {
 
     for (let m = 0; m < 12; m++) {
       let employerLeft = employerMonthly;
+      const rapActive = active.filter((st) => st.plan === 'rap' && !st.paidOff && st.balance > 0 && st.graceLeft <= 0 && !(st.d.payment !== undefined && st.d.payment > 0));
+      const rapBal = rapActive.reduce((s, st) => s + st.balance, 0);
       for (const st of active) {
         if (st.paidOff || st.balance <= 0) continue;
         const line = perDebt.get(st.d.id)!;
@@ -287,7 +291,7 @@ export class LoanSimulator {
         const interest = st.balance * st.r;
         let scheduled: number;
         if (d.payment !== undefined && d.payment > 0) scheduled = d.payment;
-        else if (st.plan === 'rap') scheduled = rapPayment;
+        else if (st.plan === 'rap') scheduled = rapBal > 0 ? (rapPayment * st.balance) / rapBal : rapPayment;
         else if (st.plan === 'ibr') scheduled = ibrMonthlyPayment(ctx.agi, ctx.householdSize, ctx.year, { inflation: ctx.inflation, standardCap: st.standardCap });
         else if (st.plan === 'card') scheduled = Math.max(25, 0.03 * st.balance);
         else scheduled = st.payment;
@@ -297,7 +301,8 @@ export class LoanSimulator {
         if (st.plan === 'rap') {
           const interestPaid = Math.min(scheduled, interest);
           const principal = scheduled - interestPaid;
-          const match = principal < RAP.principalMatchMonthlyMax.value ? Math.min(RAP.principalMatchMonthlyMax.value - principal, Math.max(0, st.balance - principal)) : 0;
+          const matchCap = RAP.principalMatchMonthlyMax.value * (rapBal > 0 ? Math.min(1, st.balance / rapBal) : 1);
+          const match = principal < matchCap ? Math.min(matchCap - principal, Math.max(0, st.balance - principal)) : 0;
           st.balance -= principal + match;
           res.rapMatch += match;
           res.principal += principal + match;

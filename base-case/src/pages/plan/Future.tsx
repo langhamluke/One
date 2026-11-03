@@ -1,3 +1,4 @@
+import { Link } from 'react-router-dom';
 import { usePlanStore } from '@/state/plan';
 import { useDerived } from '@/state/derived';
 import { usePrefs } from '@/state/prefs';
@@ -34,6 +35,7 @@ export function FuturePage() {
             <Stat label="P50 at retirement" value={fmtCompact(basis === 'today' ? derived.mc.medianAtRetirementReal : derived.mc.medianAtRetirement)} />
             <Stat label="P90 at retirement" value={fmtCompact(basis === 'today' ? derived.mc.p90Real[derived.mc.ages.indexOf(derived.mc.retirementAge)] : derived.mc.p90[derived.mc.ages.indexOf(derived.mc.retirementAge)])} />
           </div>
+          <p className="mt-3 text-xxs text-ink-3">Hypothetical outcomes from an interactive analysis tool, not a forecast. Results vary with each use and over time as inputs, data and assumptions change. <Link to="/methodology" className="underline">Methodology and key assumptions</Link>.</p>
         </Panel>
 
         <Panel title="Year by year" actions={<Button size="sm" variant="ghost" aria-pressed={showTable} onClick={() => toggleTable('future.years')}>{showTable ? 'Hide table' : 'Show table'}</Button>}>

@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { PRIVACY_TEXT, TERMS_TEXT } from '@/content/legal';
+import { METHODOLOGY_TEXT, PRIVACY_TEXT, TERMS_TEXT } from '@/content/legal';
 
 /** Renders the markdown-ish legal strings: "# " headings, blank-line paragraphs. */
 function RenderDoc({ text }: { text: string }) {
@@ -27,17 +27,17 @@ function RenderDoc({ text }: { text: string }) {
   );
 }
 
-export function LegalPage({ kind }: { kind: 'privacy' | 'terms' }) {
+export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'methodology' }) {
   return (
     <div className="min-h-screen px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between mb-4">
-          <h1>{kind === 'privacy' ? 'Privacy' : 'Terms of use'}</h1>
+          <h1>{kind === 'privacy' ? 'Privacy' : kind === 'terms' ? 'Terms of use' : 'Methodology'}</h1>
           <Link to="/" className="text-sm">Back to Base Case</Link>
         </div>
         <div className="card p-6">
-          <RenderDoc text={kind === 'privacy' ? PRIVACY_TEXT : TERMS_TEXT} />
-          <p className="mt-6 text-xxs text-ink-4">Placeholder text pending review.</p>
+          <RenderDoc text={kind === 'privacy' ? PRIVACY_TEXT : kind === 'terms' ? TERMS_TEXT : METHODOLOGY_TEXT} />
+          <p className="mt-6 text-xxs text-ink-4">{kind === 'methodology' ? 'See the Data & Sources page for every figure, its source and as-of date.' : 'Draft pending attorney review; the full document is published by the operator of this deployment.'}</p>
         </div>
       </div>
     </div>

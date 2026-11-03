@@ -59,6 +59,7 @@ export function App() {
             <Route path="/mfa" element={<MfaPage />} />
             <Route path="/privacy" element={<LegalPage kind="privacy" />} />
             <Route path="/terms" element={<LegalPage kind="terms" />} />
+            <Route path="/methodology" element={<LegalPage kind="methodology" />} />
             <Route element={<RequireAuth />}>
               <Route element={<AppShell />}>
                 <Route path="/" element={<HomePage />} />
