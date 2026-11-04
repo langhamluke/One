@@ -32,7 +32,7 @@ droplet. If you stay on one droplet, the safeguards above apply.
 3. **SSH access** as root or a sudo user.
 
 ## Option A: let Claude Code on the droplet do it
-SSH in, start Claude Code in your home directory, and paste this prompt (fill in your email):
+SSH in, start Claude Code in your home directory, and paste this prompt as is:
 
 ```text
 Deploy Base Case on this server. Rules: do not stop, restart, modify or read the configuration or secrets of any
@@ -43,7 +43,7 @@ Steps:
 1. Show me what is listening on ports 80 and 443 and stop if anything is.
 2. git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke/One.git /opt/base-case
 3. Read /opt/base-case/base-case/docs/DEPLOY_DIGITALOCEAN.md and /opt/base-case/base-case/deploy/setup-droplet.sh.
-4. Run: sudo NONINTERACTIVE=1 BRANCH=claude/festive-goldberg-9jofrz DOMAIN=basecase.slopecycleski.com ADMIN_EMAIL=<your email> bash /opt/base-case/base-case/deploy/setup-droplet.sh
+4. Run: sudo NONINTERACTIVE=1 BRANCH=claude/festive-goldberg-9jofrz DOMAIN=basecase.slopecycleski.com ADMIN_EMAIL=langhamluke14@gmail.com bash /opt/base-case/base-case/deploy/setup-droplet.sh
 5. Confirm https://basecase.slopecycleski.com/api/health returns ok and show `docker stats --no-stream`.
 6. Do not print the contents of deploy/.env.production. Tell me the command to read the admin password myself.
 ```
