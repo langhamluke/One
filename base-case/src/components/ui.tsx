@@ -532,7 +532,7 @@ export function Dialog({ open, onClose, title, children, footer, width = 'md' }:
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
       <div className="absolute inset-0 bg-ink/40" onClick={onClose} aria-hidden />
-      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={cx('relative card w-full max-h-[90vh] overflow-auto shadow-pop focus:outline-none', width === 'lg' ? 'max-w-3xl' : 'max-w-lg')}>
+      <div ref={ref} role="dialog" aria-modal="true" aria-labelledby={titleId} tabIndex={-1} className={cx('relative card w-full max-h-[90vh] overflow-auto shadow-pop focus:outline-none text-ink text-sm text-left', width === 'lg' ? 'max-w-3xl' : 'max-w-lg')}>
         <header className="flex items-center justify-between gap-2 px-4 py-3 border-b border-line-2">
           <h2 id={titleId}>{title}</h2>
           <button type="button" onClick={onClose} aria-label="Close" className="rounded p-1 text-ink-3 hover:bg-paper-3 focus-visible:ring-2 focus-visible:ring-edit focus-visible:outline-none"><X className="h-4 w-4" aria-hidden /></button>

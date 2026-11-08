@@ -1,6 +1,6 @@
 # Base Case — Design System ("The Model Desk")
 
-Palette (applied 2026-11-08): cool gray #F2F2F2 page with #CBCBCB hairlines, deep green #174D38 as the brand / recommended-path color, rich brown #4D1717 for genuine problems, steel blue #2E5E86 for anything editable. Asset classes use muted greens and tans.
+Palette (applied 2026-11-08): cool gray #E2E3E5 page with #B4B7BB hairlines, deep green #174D38 as the brand / recommended-path color, rich brown #4D1717 for genuine problems, steel blue #2E5E86 for anything editable. Asset classes use muted greens and tans.
 
 Base Case is the planning tool a sharp friend who works in finance would build for you: a clean,
 well-set financial model, not a bank brochure and not a game. The metaphor is **the model desk** —
@@ -12,7 +12,7 @@ paper, ink, hairline rules, tabular numbers, one deep-green accent for the *base
    quiet (medium weight), labels are small caps-ish (11px, letter-spacing 0.06em, ink-3).
 3. **Restraint.** No gradients on content, no glassmorphism, no emoji, no confetti, no sound. Motion is
    limited to charts drawing in (≤ 600 ms) and panels fading (≤ 150 ms); all disabled under `prefers-reduced-motion`.
-4. **Light, paper surface.** `paper` #F2F2F2 page, `paper-2` #FFFFFF cards, `line` #CBCBCB 1px borders,
+4. **Light, paper surface.** `paper` #E2E3E5 page, `paper-2` #FFFFFF cards, `line` #B4B7BB 1px borders,
    10px radius, shadow-card only. Page background carries a faint 24px grid (blueprint nod, 3% ink).
 5. **Accessible.** WCAG AA contrast everywhere (ink on paper ≥ 12:1; semantic colors on white ≥ 4.5:1 for text).
    Everything keyboard reachable with visible focus rings (2px `edit` outline, 2px offset). Works at 1440, 1024 and 768 px.

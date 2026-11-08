@@ -23,8 +23,8 @@ export function SalaryChart({ paths, activeId, basis, inflation, retirementAge }
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
-            <CartesianGrid stroke="#DEDEDE" vertical={false} />
-            <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#CBCBCB' }} />
+            <CartesianGrid stroke="#C8CBCF" vertical={false} />
+            <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#B4B7BB' }} />
             <YAxis tickFormatter={(v: number) => fmtCompact(v)} tickLine={false} axisLine={false} width={52} />
             <Tooltip {...tooltipStyle} formatter={(v: number) => fmtMoney(v)} labelFormatter={(l) => `Age ${l}`} />
             {paths.length > 1 && <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />}

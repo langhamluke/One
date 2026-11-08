@@ -44,7 +44,7 @@ export function LadderChart({ paths, activeId, startAge, retirementAge, lifeAge 
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block max-w-full" aria-hidden>
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={x(t)} x2={x(t)} y1={top} y2={h - 22} stroke="#DEDEDE" />
+            <line x1={x(t)} x2={x(t)} y1={top} y2={h - 22} stroke="#C8CBCF" />
             <text x={x(t)} y={h - 8} textAnchor="middle" fontSize="10" fill="#6B6B6B" fontFamily="IBM Plex Mono">{t}</text>
           </g>
         ))}

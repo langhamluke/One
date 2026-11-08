@@ -9,9 +9,9 @@ export default {
       },
       colors: {
         // Surfaces (warm paper + ink). One meaning per semantic color.
-        paper: { DEFAULT: '#F2F2F2', 2: '#FFFFFF', 3: '#E6E6E6' },
+        paper: { DEFAULT: '#E2E3E5', 2: '#FFFFFF', 3: '#D3D5D8' },
         ink: { DEFAULT: '#1A1A1A', 2: '#3D3D3D', 3: '#6B6B6B', 4: '#9C9C9C' },
-        line: { DEFAULT: '#CBCBCB', 2: '#DEDEDE' },
+        line: { DEFAULT: '#B4B7BB', 2: '#C8CBCF' },
         // Semantic (strict): editable, recommended, caution, danger, ok
         edit: { DEFAULT: '#2E5E86', soft: '#E4ECF3' },        // anything the user can change
         rec: { DEFAULT: '#174D38', soft: '#E3EDE7' },         // recommended path / targets / base case
