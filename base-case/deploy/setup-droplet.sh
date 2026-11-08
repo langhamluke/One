@@ -111,7 +111,7 @@ docker compose -f deploy/docker-compose.yml --env-file "$ENV_FILE" up -d --build
 
 echo "==> Nightly database backup at 03:17"
 install -m 755 deploy/backup.sh /usr/local/bin/base-case-backup
-( crontab -l 2>/dev/null | grep -v base-case-backup; echo "17 3 * * * /usr/local/bin/base-case-backup >> /var/log/base-case-backup.log 2>&1" ) | crontab -
+( { crontab -l 2>/dev/null || true; } | { grep -v base-case-backup || true; }; echo "17 3 * * * /usr/local/bin/base-case-backup >> /var/log/base-case-backup.log 2>&1" ) | crontab -
 
 DOMAIN_SET=$(grep '^DOMAIN=' "$ENV_FILE" | cut -d= -f2)
 echo
