@@ -113,6 +113,7 @@ const pct = (x: unknown, digits = 0): string => {
 };
 
 type Intent =
+  | 'glossary'
   | 'success'
   | 'first'
   | 'emergency'
@@ -125,6 +126,8 @@ type Intent =
   | 'unverified'
   | 'refuse'
   | 'unknown';
+
+const GLOSSARY_RE = /\b(what is|what's|whats|define|meaning of|explain|what does .* mean)\b/i;
 
 const INTENTS: [Intent, RegExp][] = [
   ['refuse', /\b(other client|another client|someone else'?s|system prompt|secret|api key|password|credential|browse|search the web|open (this|the) (url|link)|http[s]?:\/\/|run (code|a script))\b/i],
@@ -141,8 +144,42 @@ const INTENTS: [Intent, RegExp][] = [
 ];
 
 export function classifyIntent(q: string): Intent {
+  if (GLOSSARY_RE.test(q) && findTerm(q)) return 'glossary';
   for (const [intent, re] of INTENTS) if (re.test(q)) return intent;
+  if (findTerm(q)) return 'glossary';
   return 'unknown';
+}
+
+/** Plain-English glossary. Each entry: patterns, then a definition (kept neutral and educational). */
+const GLOSSARY: { key: string; re: RegExp; text: string }[] = [
+  { key: 'coast-fire', re: /coast\s*-?\s*fire/i, text: 'Coast FIRE is the point where what you have already invested will grow, with no further contributions, into enough to retire at your target age. After reaching it you only need to earn enough to cover living costs; the retirement account "coasts". It depends on the return you assume, so treat the number as a range.' },
+  { key: 'fire', re: /\b(fire movement|fire number|financial independence|\bfire\b|lean fire|fat fire|barista fire)/i, text: 'FIRE stands for Financial Independence, Retire Early: saving a high share of income so investment income can cover living costs early. The FIRE number is usually 25 times annual spending (the 4% rule). Lean FIRE assumes frugal spending, Fat FIRE a higher budget, Barista FIRE part-time work covering some costs.' },
+  { key: 'four-percent', re: /4\s*%\s*rule|four percent rule|safe withdrawal/i, text: 'The 4% rule is a rule of thumb that a portfolio can support withdrawing about 4% of its starting value each year, adjusted for inflation, over a roughly 30-year retirement. It is a planning shortcut, not a guarantee; this plan uses a Monte Carlo simulation instead of a fixed rate.' },
+  { key: 'roth', re: /\broth\b(?! ira phase)/i, text: 'A Roth account (Roth IRA or Roth 401(k)) is funded with money you have already paid tax on; growth and qualified withdrawals in retirement are tax-free. A traditional (pre-tax) account is the reverse: a deduction now, taxes on withdrawal. Roth tends to win when your tax rate today is lower than you expect in retirement, which is common early in a career.' },
+  { key: 'backdoor', re: /backdoor/i, text: 'A backdoor Roth IRA is a two-step move for people above the Roth IRA income limit: contribute to a traditional IRA (non-deductible), then convert it to Roth. It works cleanly only if you hold no other pre-tax IRA money (the pro-rata rule); otherwise part of the conversion is taxable.' },
+  { key: 'hsa', re: /\bhsa\b|health savings/i, text: 'A Health Savings Account is available with a high-deductible health plan. Contributions are pre-tax (and skip payroll tax when made through work), growth is tax-free, and withdrawals for medical costs are tax-free, which is why it is called triple tax-advantaged. Unused money rolls over and can be invested.' },
+  { key: 'match', re: /employer match|401\(?k\)? match|matching/i, text: 'An employer match is money your employer adds to your 401(k) when you contribute, for example 100% of the first 4% of pay. It is part of your compensation, so contributing at least enough to get the full match is usually the first investing step after an emergency fund. Vesting rules may require you to stay a few years to keep it.' },
+  { key: 'vesting', re: /vest(ing|ed)?\b/i, text: 'Vesting is the schedule on which employer contributions (401(k) match, RSUs, pension benefits) become yours to keep. Your own contributions are always 100% yours; leaving before you are vested forfeits the unvested employer portion.' },
+  { key: 'emergency', re: /emergency fund/i, text: 'An emergency fund is cash set aside for job loss or large surprise expenses, kept in a high-yield savings account rather than invested. This plan targets a number of months of essential spending based on how stable your income is.' },
+  { key: 'index', re: /index fund|etf|expense ratio/i, text: 'An index fund or ETF holds all the securities in a market index (such as a total US stock market index) at very low cost. The expense ratio is the annual fee as a percentage of assets; 0.03% to 0.20% is low, above 0.75% is expensive. Base Case models generic asset classes, not specific funds.' },
+  { key: 'rap', re: /\brap\b|repayment assistance/i, text: 'RAP (Repayment Assistance Plan) is the federal student-loan plan that started July 1, 2026: the payment is 1% to 10% of your adjusted gross income depending on income tier, minus $50 a month per dependent, with a $10 minimum. Unpaid interest is waived, principal falls by at least $50 a month, and any balance left after 30 years of payments is forgiven.' },
+  { key: 'tiered', re: /tiered standard|standard plan/i, text: 'The tiered standard plan is the fixed-payment federal student-loan plan after July 1, 2026. The term depends on how much you borrowed: 10 years under $25,000, 15 years to $50,000, 20 years to $100,000, 25 years above that.' },
+  { key: 'sbloc', re: /\bsbloc\b|securities[- ]based|portfolio line|pledged asset line/i, text: 'An SBLOC is a securities-based line of credit: you borrow against a taxable brokerage account without selling, at a variable rate (usually SOFR plus a spread). It is a demand loan, so a market drop can force you to add collateral or have holdings sold. Proceeds cannot be used to buy more securities.' },
+  { key: 'heloc', re: /\bheloc\b|home equity line/i, text: 'A HELOC is a home equity line of credit secured by your home, at a variable rate tied to prime. Interest is tax-deductible only when the money buys, builds or substantially improves the home, and only if you itemize.' },
+  { key: 'rsu', re: /\brsus?\b|restricted stock/i, text: 'RSUs (restricted stock units) are company shares granted to you that vest over time. At vesting they are taxed as ordinary income at the share price that day; after that they are just stock you own, with capital gains or losses from that price.' },
+  { key: 'espp', re: /\bespp\b|stock purchase plan/i, text: 'An ESPP lets you buy employer stock through payroll at a discount, often 15%, sometimes with a lookback to the lower of two prices. The discount is near-free money if you sell soon after purchase; holding adds single-stock risk.' },
+  { key: 'apr', re: /\bapr\b|\bapy\b/i, text: 'APR is the yearly interest rate on a loan without compounding; APY is the yearly rate on savings including compounding. Compare loans by APR and savings accounts by APY.' },
+  { key: 'credit-score', re: /credit score|fico/i, text: 'A credit score (such as FICO) summarizes how you have handled credit. Payment history and how much of your available credit you use matter most; length of history, new accounts and credit mix matter less. Paying in full and keeping balances low builds it fastest.' },
+  { key: 'dca', re: /dollar[- ]cost|\bdca\b/i, text: 'Dollar-cost averaging means investing a fixed amount on a schedule regardless of prices, which is what automatic 401(k) and IRA contributions do. It removes timing decisions; lump sums invested immediately have historically done slightly better on average but feel riskier.' },
+  { key: 'compound', re: /compound(ing)? interest|compound growth/i, text: 'Compound growth is earning returns on past returns. At 7% a year money doubles roughly every ten years, which is why early contributions matter far more than later ones.' },
+  { key: 'term-life', re: /term life|life insurance/i, text: 'Term life insurance pays a fixed amount if you die during the term (often 20 or 30 years) and is inexpensive when young. It matters once someone depends on your income; permanent (whole) life is far costlier and rarely needed for new graduates.' },
+  { key: 'disability', re: /disability insurance|long[- ]term disability/i, text: 'Long-term disability insurance replaces part of your income (typically 60%) if illness or injury stops you working for months or years. For a new graduate, earning power is the biggest asset, which is why this plan flags missing coverage.' },
+  { key: 'monte-carlo', re: /monte carlo|simulation|probability of success/i, text: 'A Monte Carlo simulation runs the plan through many (here 1,000) randomized sequences of market returns to see how often the retirement income target is met. The probability of success is the share of those runs that never run out of money before the assumed life expectancy.' },
+  { key: 'glide', re: /glide ?path/i, text: 'A glide path gradually reduces the share of stocks in a portfolio as retirement approaches, trading some growth for less volatility when there is less time to recover from a downturn.' },
+];
+
+export function findTerm(q: string): (typeof GLOSSARY)[number] | undefined {
+  return GLOSSARY.find((g) => g.re.test(q));
 }
 
 const DECISION_RE = /\b(should i|which (is|one)|better|do first|what (should|do) i do|is it worth|ok to|can i afford)\b/i;
@@ -177,6 +214,26 @@ export function offlineAnswer(ctx: PlanContext, question: string): string {
   const lines: string[] = [];
 
   switch (intent) {
+    case 'glossary': {
+      const term = findTerm(question)!;
+      lines.push(term.text);
+      if (term.key === 'coast-fire' || term.key === 'fire') {
+        const r = d?.retirement;
+        if (r && r.targetIncomeReal > 0 && r.retirementAge > r.currentAge) {
+          const years = r.retirementAge - r.currentAge;
+          const inflation = Number(i.assumptions?.inflation ?? 0.025);
+          const realReturn = Math.max(0, (1 + r.expectedReturnYear1) / (1 + inflation) - 1);
+          const fireNumber = r.targetIncomeReal * 25;
+          const coastNumber = fireNumber / Math.pow(1 + realReturn, years);
+          lines.push(
+            `For this plan: the retirement income target is ${money(r.targetIncomeReal)} a year in today's dollars, so a 4%-rule FIRE number is about ${money(fireNumber)}. With ${years} years to age ${r.retirementAge} and the plan's expected real return of ${pct(realReturn, 1)}, the Coast FIRE number today is about ${money(coastNumber)}; the plan currently has ${money(r.investableNow)} invested${r.investableNow >= coastNumber ? ', so it is already past that point' : `, about ${pct(coastNumber > 0 ? r.investableNow / coastNumber : 0)} of the way there`}. These are rules of thumb; the plan's own ${pct(r.successProbability)} success probability comes from the full simulation.`,
+          );
+        } else if (!d) {
+          lines.push(`I can compute this plan's Coast FIRE number once the projection engine is available.${engineNote(ctx)}`);
+        }
+      }
+      break;
+    }
     case 'refuse':
       lines.push(
         'I can only discuss this plan. I cannot access other clients, system settings or secrets, and I have no web access or tools. Ask me about this plan\'s savings rate, emergency fund, debts, taxes, risk profile or action list.',

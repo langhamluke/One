@@ -30,6 +30,7 @@ export interface DerivedSummary {
   years: Record<string, number | string>[];
   paths: { id: string; name: string; startingSalary: number; peakSalary: number; lifetimeEarnings: number; netWorthAtRetirement: number; debtFreeAge: number | null }[];
   dataQuality: { unverifiedCount: number; userProvidedCount: number; unverified: { label: string; source: string; asOf: string }[] };
+  retirement: { targetIncomeReal: number; retirementAge: number; currentAge: number; investableNow: number; expectedReturnYear1: number; inflation: number; successProbability: number; medianAtRetirementReal: number; lifeExpectancy: number };
 }
 
 export function round(x: unknown, digits = 0): unknown {
@@ -89,6 +90,17 @@ export function summarizeDerived(d: Derived): DerivedSummary {
       netWorthAtRetirement: p.netWorthAtRetirement,
       debtFreeAge: p.debtFreeAge,
     })),
+    retirement: {
+      targetIncomeReal: d.mc.targetIncomeReal,
+      retirementAge: d.mc.retirementAge,
+      currentAge: rows[0]?.age ?? 0,
+      investableNow: rows[0]?.investable ?? 0,
+      expectedReturnYear1: rows[0]?.expectedReturn ?? 0,
+      inflation: 0,
+      successProbability: d.mc.successProbability,
+      medianAtRetirementReal: d.mc.medianAtRetirementReal,
+      lifeExpectancy: d.mc.ages.length ? d.mc.ages[d.mc.ages.length - 1] : 95,
+    },
     dataQuality: {
       unverifiedCount: d.dataQuality.unverifiedCount,
       userProvidedCount: d.dataQuality.userProvidedCount,
