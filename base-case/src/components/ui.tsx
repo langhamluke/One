@@ -1,8 +1,9 @@
 /* Small, consistent UI kit. No third-party UI library. */
 import {
-  createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useId, useLayoutEffect, useMemo, useRef, useState,
   type ButtonHTMLAttributes, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown, ChevronRight, HelpCircle, Loader2, X } from 'lucide-react';
 import { usePrefs } from '@/state/prefs';
 import { usePlanStore } from '@/state/plan';
@@ -352,7 +353,8 @@ function usePopover() {
   useEffect(() => {
     if (!open) return;
     const onDoc = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const t = e.target as Node;
+      if (ref.current && !ref.current.contains(t) && !(t instanceof Element && t.closest('[data-floating]'))) setOpen(false);
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false);
@@ -365,6 +367,35 @@ function usePopover() {
     };
   }, [open]);
   return { open, setOpen, ref };
+}
+
+/** Tooltip body rendered in a portal at a fixed position, so overflow/sticky ancestors (e.g. the readout strip)
+ *  cannot clip it and it never pushes neighbouring layout. Stays within the viewport horizontally. */
+function Floating({ anchor, width, id, children }: { anchor: HTMLElement | null; width: number; id: string; children: ReactNode }) {
+  const [pos, setPos] = useState<{ top: number; left: number } | null>(null);
+  useLayoutEffect(() => {
+    if (!anchor) return;
+    const place = () => {
+      const r = anchor.getBoundingClientRect();
+      const margin = 8;
+      const left = Math.max(margin, Math.min(r.left, window.innerWidth - width - margin));
+      setPos({ top: r.bottom + 4, left });
+    };
+    place();
+    window.addEventListener('scroll', place, true);
+    window.addEventListener('resize', place);
+    return () => {
+      window.removeEventListener('scroll', place, true);
+      window.removeEventListener('resize', place);
+    };
+  }, [anchor, width]);
+  if (!pos) return null;
+  return createPortal(
+    <span role="tooltip" id={id} data-floating style={{ position: 'fixed', top: pos.top, left: pos.left, width }} className="z-[60] rounded-md border border-line bg-paper-2 p-2 text-xs text-ink-2 shadow-pop text-left font-normal normal-case tracking-normal">
+      {children}
+    </span>,
+    document.body,
+  );
 }
 
 export function HelpTip({ text, label = 'Explain this number' }: { text: string; label?: string }) {
@@ -386,11 +417,7 @@ export function HelpTip({ text, label = 'Explain this number' }: { text: string;
       >
         <HelpCircle className="h-3.5 w-3.5" aria-hidden />
       </button>
-      {open && (
-        <span role="tooltip" id={id} className="absolute left-0 top-full z-30 mt-1 w-64 rounded-md border border-line bg-paper-2 p-2 text-xs text-ink-2 shadow-pop">
-          {text}
-        </span>
-      )}
+      {open && <Floating anchor={ref.current} width={256} id={id}>{text}</Floating>}
     </span>
   );
 }
@@ -414,13 +441,13 @@ export function VerifyTag({ source, asOf, note, label = 'Verify', url }: { sourc
         {label}
       </button>
       {open && (
-        <span role="tooltip" id={id} className="absolute left-0 top-full z-30 mt-1 w-72 rounded-md border border-line bg-paper-2 p-2 text-xs text-ink-2 shadow-pop">
+        <Floating anchor={ref.current} width={288} id={id}>
           <span className="block font-medium text-ink">Not verified against a primary source</span>
           {source && <span className="block mt-1">Source: {source}</span>}
           {asOf && <span className="block">As of: {asOf}</span>}
           {note && <span className="block mt-1 text-ink-3">{note}</span>}
           {url && <a className="block mt-1 break-all" href={url} target="_blank" rel="noreferrer noopener">{url}</a>}
-        </span>
+        </Floating>
       )}
     </span>
   );

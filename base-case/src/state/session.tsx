@@ -42,6 +42,28 @@ export function SessionProvider({ children }: { children: ReactNode }) {
     void refresh();
   }, [refresh]);
 
+  // Another tab may sign in as a different user (one cookie jar per browser). When this tab regains focus, re-check
+  // who the session belongs to and reload if it changed, so a stale tab never acts as the wrong user.
+  const meId = me?.user.id ?? null;
+  useEffect(() => {
+    if (!meId) return;
+    const check = async () => {
+      if (document.visibilityState === 'hidden') return;
+      try {
+        const m = await auth.me({ noRedirect: true });
+        if (m.user.id !== meId) window.location.reload();
+      } catch (e) {
+        if (e instanceof ApiError && e.status === 401) window.location.reload();
+      }
+    };
+    window.addEventListener('focus', check);
+    document.addEventListener('visibilitychange', check);
+    return () => {
+      window.removeEventListener('focus', check);
+      document.removeEventListener('visibilitychange', check);
+    };
+  }, [meId]);
+
   const logout = useCallback(async () => {
     try {
       await auth.logout();
