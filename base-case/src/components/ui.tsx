@@ -487,17 +487,24 @@ export function Chip({ tone = 'neutral', children, className, title }: { tone?: 
 export function Dialog({ open, onClose, title, children, footer, width = 'md' }: { open: boolean; onClose: () => void; title: ReactNode; children: ReactNode; footer?: ReactNode; width?: 'md' | 'lg' }) {
   const ref = useRef<HTMLDivElement>(null);
   const titleId = useId();
+  // Keep the latest onClose in a ref so the effect below depends only on `open`. Parents usually pass an inline
+  // arrow function, which is a new identity on every render; depending on it re-ran the effect (and re-focused
+  // the first button) on every keystroke inside the dialog.
+  const onCloseRef = useRef(onClose);
+  onCloseRef.current = onClose;
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
     const el = ref.current;
     const focusables = () => Array.from(el?.querySelectorAll<HTMLElement>('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])') ?? []);
-    const first = focusables()[0];
+    // Focus the first field rather than the close button, so typing can start immediately.
+    const all = focusables();
+    const first = all.find((f) => f.matches('input,select,textarea')) ?? all.find((f) => f.getAttribute('aria-label') !== 'Close') ?? all[0];
     (first ?? el)?.focus();
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         e.preventDefault();
-        onClose();
+        onCloseRef.current();
       }
       if (e.key === 'Tab') {
         const f = focusables();
@@ -520,7 +527,7 @@ export function Dialog({ open, onClose, title, children, footer, width = 'md' }:
       document.body.style.overflow = prevOverflow;
       prev?.focus?.();
     };
-  }, [open, onClose]);
+  }, [open]);
   if (!open) return null;
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="presentation">
