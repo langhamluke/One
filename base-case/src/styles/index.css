@@ -7,12 +7,12 @@
     font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
     font-size: 14px;
     line-height: 20px;
-    color: #14161a;
-    background-color: #f7f6f2;
+    color: #1a1a1a;
+    background-color: #f2f2f2;
     -webkit-font-smoothing: antialiased;
   }
   body {
-    background-color: #f7f6f2;
+    background-color: #f2f2f2;
     background-image: linear-gradient(rgba(20, 22, 26, 0.03) 1px, transparent 1px),
       linear-gradient(90deg, rgba(20, 22, 26, 0.03) 1px, transparent 1px);
     background-size: 24px 24px;
@@ -33,14 +33,14 @@
     font-variant-numeric: tabular-nums;
   }
   :focus-visible {
-    outline: 2px solid #1f5eff;
+    outline: 2px solid #2e5e86;
     outline-offset: 2px;
   }
   button, input, select, textarea {
     font: inherit;
     color: inherit;
   }
-  a { color: #1f5eff; }
+  a { color: #2e5e86; }
   a:hover { text-decoration: underline; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
@@ -58,7 +58,7 @@
     line-height: 14px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #6b7078;
+    color: #6b6b6b;
     font-weight: 500;
   }
   .num {
@@ -67,21 +67,21 @@
   }
   .card {
     background: #ffffff;
-    border: 1px solid #dad7cf;
+    border: 1px solid #cbcbcb;
     border-radius: 10px;
     box-shadow: 0 1px 2px rgba(20, 22, 26, 0.04), 0 1px 1px rgba(20, 22, 26, 0.03);
   }
   .input-base {
     background: #ffffff;
-    border: 1px solid #dad7cf;
+    border: 1px solid #cbcbcb;
     border-radius: 6px;
     min-height: 34px;
     padding: 6px 10px;
     width: 100%;
   }
   .input-base:focus-within {
-    border-color: #1f5eff;
-    box-shadow: 0 0 0 2px #e8efff;
+    border-color: #2e5e86;
+    box-shadow: 0 0 0 2px #e4ecf3;
   }
   input[type='range'] {
     -webkit-appearance: none;
@@ -93,12 +93,12 @@
   }
   input[type='range']::-webkit-slider-runnable-track {
     height: 4px;
-    background: #dad7cf;
+    background: #cbcbcb;
     border-radius: 2px;
   }
   input[type='range']::-moz-range-track {
     height: 4px;
-    background: #dad7cf;
+    background: #cbcbcb;
     border-radius: 2px;
   }
   input[type='range']::-webkit-slider-thumb {
@@ -108,34 +108,34 @@
     height: 16px;
     margin-top: -6px;
     border-radius: 50%;
-    background: #1f5eff;
+    background: #2e5e86;
     border: 2px solid #ffffff;
-    box-shadow: 0 0 0 1px #1f5eff;
+    box-shadow: 0 0 0 1px #2e5e86;
     cursor: pointer;
   }
   input[type='range']::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #1f5eff;
+    background: #2e5e86;
     border: 2px solid #ffffff;
-    box-shadow: 0 0 0 1px #1f5eff;
+    box-shadow: 0 0 0 1px #2e5e86;
     cursor: pointer;
   }
   input[type='range']:focus-visible {
     outline: none;
   }
   input[type='range']:focus-visible::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px #e8efff, 0 0 0 4px #1f5eff;
+    box-shadow: 0 0 0 3px #e4ecf3, 0 0 0 4px #2e5e86;
   }
   input[type='range']:focus-visible::-moz-range-thumb {
-    box-shadow: 0 0 0 3px #e8efff, 0 0 0 4px #1f5eff;
+    box-shadow: 0 0 0 3px #e4ecf3, 0 0 0 4px #2e5e86;
   }
   .recharts-wrapper, .recharts-surface { outline: none; }
   .recharts-cartesian-axis-tick-value, .recharts-legend-item-text {
     font-family: 'IBM Plex Mono', ui-monospace, monospace;
     font-size: 11px;
-    fill: #6b7078;
+    fill: #6b6b6b;
   }
   .recharts-tooltip-wrapper { outline: none; }
 }

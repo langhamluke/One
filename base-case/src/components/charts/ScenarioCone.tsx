@@ -32,8 +32,8 @@ export function ScenarioCone({ mc, basis, inflation, height = 300, compact = fal
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
-          <CartesianGrid stroke="#E9E7E1" vertical={false} />
-          <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#DAD7CF' }} />
+          <CartesianGrid stroke="#DEDEDE" vertical={false} />
+          <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#CBCBCB' }} />
           <YAxis tickFormatter={(v: number) => fmtCompact(v)} tickLine={false} axisLine={false} width={56} />
           <Tooltip {...tooltipStyle} formatter={(v: number | number[], name: string) => (Array.isArray(v) ? [`${fmtMoney(v[0])} – ${fmtMoney(v[1])}`, name] : [fmtMoney(v), name])} labelFormatter={(l) => `Age ${l}`} />
           {!compact && <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />}

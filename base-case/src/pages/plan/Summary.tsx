@@ -82,8 +82,8 @@ export function SummaryPage() {
                 </g>
               );
             })}
-            <text x={8} y={68} fontSize="7" fill="#6B7078" fontFamily="IBM Plex Mono">{startAge}</text>
-            <text x={292} y={68} fontSize="7" fill="#6B7078" fontFamily="IBM Plex Mono" textAnchor="end">{retAge}</text>
+            <text x={8} y={68} fontSize="7" fill="#6B6B6B" fontFamily="IBM Plex Mono">{startAge}</text>
+            <text x={292} y={68} fontSize="7" fill="#6B6B6B" fontFamily="IBM Plex Mono" textAnchor="end">{retAge}</text>
           </svg>
           <div className="num text-xxs text-ink-3">Start {fmtMoney(toBasis(derived.active.startingSalary, Math.max(0, derived.active.firstIncomeYearIndex), state.assumptions.inflation, 'today'))} · peak {fmtMoney(derived.active.rows.reduce((m, r) => Math.max(m, toBasis(r.wages, r.yearIndex, state.assumptions.inflation, 'today')), 0))} (today's $) · debt-free {fmtAge(derived.active.debtFreeAge)}</div>
         </div>

@@ -10,7 +10,7 @@ function AuthFrame({ title, children, footer }: { title: string; children: React
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
         <div className="flex items-center gap-2 mb-5">
-          <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="7" fill="#14161A" /><path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="#7A3EF0" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /><circle cx="24" cy="9" r="2.5" fill="#F7F6F2" /></svg>
+          <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="7" fill="#1A1A1A" /><path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /><circle cx="24" cy="9" r="2.5" fill="#F2F2F2" /></svg>
           <span className="font-semibold text-base tracking-tight">Base Case</span>
         </div>
         <div className="card p-5">

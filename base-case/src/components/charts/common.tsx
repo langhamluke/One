@@ -2,13 +2,13 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { useReducedMotion } from 'framer-motion';
 import { Button, Table, cx, td, tdNum, th, thNum } from '@/components/ui';
 
-export const PATH_COLORS = ['#14161A', '#7A3EF0', '#0F8B8D', '#C2410C'];
-export const REC = '#7A3EF0';
-export const INK4 = '#9A9FA6';
-export const INK3 = '#6B7078';
-export const LINE = '#DAD7CF';
+export const PATH_COLORS = ['#1A1A1A', '#174D38', '#0F6E6E', '#8A5A2B'];
+export const REC = '#174D38';
+export const INK4 = '#9C9C9C';
+export const INK3 = '#6B6B6B';
+export const LINE = '#CBCBCB';
 export const ASSET_COLORS: Record<string, string> = {
-  uslc: '#3B5B8C', ussmid: '#6C8CC1', intl: '#8FA8C8', em: '#B9C9DE', bonds: '#B08B5B', tips: '#D2B48C', cash: '#E6D7BE',
+  uslc: '#2F5F4A', ussmid: '#4F8068', intl: '#7FA592', em: '#AFC8BA', bonds: '#8B6F47', tips: '#B59B73', cash: '#D9C9AD',
 };
 
 export function pathColor(index: number, active: boolean): string {
@@ -37,9 +37,9 @@ export function useAnim(): boolean {
 }
 
 export const tooltipStyle = {
-  contentStyle: { background: '#FFFFFF', border: '1px solid #DAD7CF', borderRadius: 6, boxShadow: '0 8px 24px rgba(20,22,26,0.12)', fontSize: 12, padding: '6px 8px' },
-  labelStyle: { color: '#6B7078', fontFamily: 'IBM Plex Mono', fontSize: 11 },
-  itemStyle: { color: '#14161A', fontFamily: 'IBM Plex Mono', padding: 0 },
+  contentStyle: { background: '#FFFFFF', border: '1px solid #CBCBCB', borderRadius: 6, boxShadow: '0 8px 24px rgba(20,22,26,0.12)', fontSize: 12, padding: '6px 8px' },
+  labelStyle: { color: '#6B6B6B', fontFamily: 'IBM Plex Mono', fontSize: 11 },
+  itemStyle: { color: '#1A1A1A', fontFamily: 'IBM Plex Mono', padding: 0 },
 };
 
 /** Chart container with a "Show table" toggle for a text alternative. */

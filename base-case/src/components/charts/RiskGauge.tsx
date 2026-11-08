@@ -25,21 +25,21 @@ export function RiskGauge({ value, min, max, label, category, provisional, bands
     prev = b.max + 1;
     return { a0, a1: Math.min(180, a1), label: b.label, i };
   });
-  const shades = ['#E6D7BE', '#D2B48C', '#B9C9DE', '#8FA8C8'];
+  const shades = ['#D9C9AD', '#B59B73', '#AFC8BA', '#7FA592'];
   return (
     <div className="flex flex-col items-center">
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`${label}: ${value == null ? 'not scored' : `${value} of ${max}`}, ${category}`}>
         {segs.map((s) => (
           <path key={s.i} d={arc(s.a0, s.a1, r)} fill="none" stroke={shades[s.i % shades.length]} strokeWidth={14} strokeLinecap="butt" />
         ))}
-        <path d={arc(0, 180, r)} fill="none" stroke="#14161A" strokeWidth={1} opacity={0.15} />
-        <text x={cx - r} y={cy + 14} fontSize="10" fill="#6B7078" fontFamily="IBM Plex Mono" textAnchor="middle">{min}</text>
-        <text x={cx + r} y={cy + 14} fontSize="10" fill="#6B7078" fontFamily="IBM Plex Mono" textAnchor="middle">{max}</text>
+        <path d={arc(0, 180, r)} fill="none" stroke="#1A1A1A" strokeWidth={1} opacity={0.15} />
+        <text x={cx - r} y={cy + 14} fontSize="10" fill="#6B6B6B" fontFamily="IBM Plex Mono" textAnchor="middle">{min}</text>
+        <text x={cx + r} y={cy + 14} fontSize="10" fill="#6B6B6B" fontFamily="IBM Plex Mono" textAnchor="middle">{max}</text>
         <g style={{ transform: `rotate(${angle}deg)`, transformOrigin: `${cx}px ${cy}px`, transition: reduced ? 'none' : 'transform 600ms cubic-bezier(0.22, 1, 0.36, 1)' }}>
-          <line x1={cx} y1={cy} x2={cx} y2={cy - r + 4} stroke={value == null ? '#9A9FA6' : '#14161A'} strokeWidth={2} strokeLinecap="round" />
+          <line x1={cx} y1={cy} x2={cx} y2={cy - r + 4} stroke={value == null ? '#9C9C9C' : '#1A1A1A'} strokeWidth={2} strokeLinecap="round" />
         </g>
-        <circle cx={cx} cy={cy} r={5} fill="#14161A" />
-        <text x={cx} y={cy - 24} textAnchor="middle" fontSize="22" fontWeight={500} fill="#14161A" fontFamily="IBM Plex Mono">{value ?? '—'}</text>
+        <circle cx={cx} cy={cy} r={5} fill="#1A1A1A" />
+        <text x={cx} y={cy - 24} textAnchor="middle" fontSize="22" fontWeight={500} fill="#1A1A1A" fontFamily="IBM Plex Mono">{value ?? '—'}</text>
       </svg>
       <div className="label-caps">{label}</div>
       <div className={`text-sm font-medium ${provisional ? 'text-warn' : 'text-ink'}`}>{category}</div>

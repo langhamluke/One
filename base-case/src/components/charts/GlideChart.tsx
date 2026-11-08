@@ -10,8 +10,8 @@ export function GlideChart({ glidePath, retirementAge, height = 160, frame = tru
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <AreaChart data={data} margin={{ top: 8, right: 12, left: 0, bottom: 0 }}>
-          <CartesianGrid stroke="#E9E7E1" vertical={false} />
-          <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#DAD7CF' }} />
+          <CartesianGrid stroke="#DEDEDE" vertical={false} />
+          <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#CBCBCB' }} />
           <YAxis domain={[0, 100]} tickFormatter={(v: number) => `${v}%`} tickLine={false} axisLine={false} width={48} />
           <Tooltip {...tooltipStyle} formatter={(v: number) => [`${v}%`, 'Equity']} labelFormatter={(l) => `Age ${l}`} />
           <ReferenceLine x={retirementAge} stroke={REC} strokeDasharray="3 3" />

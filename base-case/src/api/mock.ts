@@ -231,7 +231,7 @@ export async function mockRequest(method: Method, rawPath: string, body?: unknow
   if (method === 'POST' && path === '/api/auth/mfa/setup') {
     const u = me();
     const otpauthUrl = `otpauth://totp/BaseCase:${encodeURIComponent(u.email)}?secret=JBSWY3DPEHPK3PXP&issuer=BaseCase`;
-    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21' shape-rendering='crispEdges'><rect width='21' height='21' fill='#fff'/>${Array.from({ length: 160 }, (_, i) => ((i * 7919) % 5 === 0 ? `<rect x='${(i * 13) % 21}' y='${(i * 5) % 21}' width='1' height='1' fill='#14161A'/>` : '')).join('')}<rect x='1' y='1' width='5' height='5' fill='none' stroke='#14161A'/><rect x='15' y='1' width='5' height='5' fill='none' stroke='#14161A'/><rect x='1' y='15' width='5' height='5' fill='none' stroke='#14161A'/></svg>`;
+    const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 21 21' shape-rendering='crispEdges'><rect width='21' height='21' fill='#fff'/>${Array.from({ length: 160 }, (_, i) => ((i * 7919) % 5 === 0 ? `<rect x='${(i * 13) % 21}' y='${(i * 5) % 21}' width='1' height='1' fill='#1A1A1A'/>` : '')).join('')}<rect x='1' y='1' width='5' height='5' fill='none' stroke='#1A1A1A'/><rect x='15' y='1' width='5' height='5' fill='none' stroke='#1A1A1A'/><rect x='1' y='15' width='5' height='5' fill='none' stroke='#1A1A1A'/></svg>`;
     return { otpauthUrl, qrDataUrl: `data:image/svg+xml;utf8,${encodeURIComponent(svg)}` };
   }
   if (method === 'POST' && path === '/api/auth/mfa/enable') {

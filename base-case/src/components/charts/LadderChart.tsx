@@ -44,12 +44,12 @@ export function LadderChart({ paths, activeId, startAge, retirementAge, lifeAge 
       <svg width={w} height={h} viewBox={`0 0 ${w} ${h}`} className="block max-w-full" aria-hidden>
         {ticks.map((t) => (
           <g key={t}>
-            <line x1={x(t)} x2={x(t)} y1={top} y2={h - 22} stroke="#E9E7E1" />
-            <text x={x(t)} y={h - 8} textAnchor="middle" fontSize="10" fill="#6B7078" fontFamily="IBM Plex Mono">{t}</text>
+            <line x1={x(t)} x2={x(t)} y1={top} y2={h - 22} stroke="#DEDEDE" />
+            <text x={x(t)} y={h - 8} textAnchor="middle" fontSize="10" fill="#6B6B6B" fontFamily="IBM Plex Mono">{t}</text>
           </g>
         ))}
-        <line x1={x(retirementAge)} x2={x(retirementAge)} y1={top} y2={h - 22} stroke="#7A3EF0" strokeDasharray="3 3" />
-        <text x={Math.min(x(retirementAge), w - padR - 2)} y={top + 2} textAnchor={x(retirementAge) > w - 60 ? 'end' : 'middle'} fontSize="9" fill="#7A3EF0" fontFamily="IBM Plex Mono">retire {retirementAge}</text>
+        <line x1={x(retirementAge)} x2={x(retirementAge)} y1={top} y2={h - 22} stroke="#174D38" strokeDasharray="3 3" />
+        <text x={Math.min(x(retirementAge), w - padR - 2)} y={top + 2} textAnchor={x(retirementAge) > w - 60 ? 'end' : 'middle'} fontSize="9" fill="#174D38" fontFamily="IBM Plex Mono">retire {retirementAge}</text>
         {paths.map((p, pi) => {
           const active = p.pathId === activeId;
           const color = pathColor(pi, active);
@@ -63,13 +63,13 @@ export function LadderChart({ paths, activeId, startAge, retirementAge, lifeAge 
               <line x1={x(startAge)} x2={x(lastAge)} y1={y} y2={y} stroke={color} strokeWidth={active ? 3 : 2} strokeLinecap="round" opacity={active ? 1 : 0.7} />
               {rungs.map((r, i) => (
                 <g key={i}>
-                  <rect x={x(r.age) - 4} y={y - 4} width={8} height={8} fill={r.kind === 'gap' ? '#D6342B' : r.kind === 'school' ? '#D98A00' : color} stroke="#fff" strokeWidth={1.5} />
+                  <rect x={x(r.age) - 4} y={y - 4} width={8} height={8} fill={r.kind === 'gap' ? '#4D1717' : r.kind === 'school' ? '#B5740A' : color} stroke="#fff" strokeWidth={1.5} />
                   <title>{`${r.label} at ${r.age}: ${fmtCompact(r.pay)}`}</title>
                 </g>
               ))}
               {labels.map((l, i) =>
                 l.lane < 0 ? null : (
-                  <text key={i} x={Math.min(l.x, w - padR - l.width)} y={y - 10 - l.lane * 11} fontSize="9.5" fill="#3C4048" fontFamily="IBM Plex Mono">{l.text}</text>
+                  <text key={i} x={Math.min(l.x, w - padR - l.width)} y={y - 10 - l.lane * 11} fontSize="9.5" fill="#3D3D3D" fontFamily="IBM Plex Mono">{l.text}</text>
                 ),
               )}
             </g>

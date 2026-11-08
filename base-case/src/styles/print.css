@@ -7,7 +7,7 @@
   html, body {
     background: #ffffff !important;
     background-image: none !important;
-    color: #14161a;
+    color: #1a1a1a;
     font-size: 10.5px;
     line-height: 14px;
   }
@@ -27,7 +27,7 @@
   }
   .print-page .card {
     box-shadow: none;
-    border: 1px solid #dad7cf;
+    border: 1px solid #cbcbcb;
     break-inside: avoid;
   }
   .print-page h1 { font-size: 16px; line-height: 20px; }

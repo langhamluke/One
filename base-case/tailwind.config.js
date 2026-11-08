@@ -9,19 +9,19 @@ export default {
       },
       colors: {
         // Surfaces (warm paper + ink). One meaning per semantic color.
-        paper: { DEFAULT: '#F7F6F2', 2: '#FFFFFF', 3: '#EFEDE7' },
-        ink: { DEFAULT: '#14161A', 2: '#3C4048', 3: '#6B7078', 4: '#9A9FA6' },
-        line: { DEFAULT: '#DAD7CF', 2: '#E9E7E1' },
+        paper: { DEFAULT: '#F2F2F2', 2: '#FFFFFF', 3: '#E6E6E6' },
+        ink: { DEFAULT: '#1A1A1A', 2: '#3D3D3D', 3: '#6B6B6B', 4: '#9C9C9C' },
+        line: { DEFAULT: '#CBCBCB', 2: '#DEDEDE' },
         // Semantic (strict): editable, recommended, caution, danger, ok
-        edit: { DEFAULT: '#1F5EFF', soft: '#E8EFFF' },        // anything the user can change
-        rec: { DEFAULT: '#7A3EF0', soft: '#F0E9FF' },         // recommended path / targets / base case
-        ok: { DEFAULT: '#1B9E5A', soft: '#E4F6EC' },          // on track / normal
-        warn: { DEFAULT: '#D98A00', soft: '#FFF3DC' },        // caution / unverified data
-        danger: { DEFAULT: '#D6342B', soft: '#FDE8E6' },      // genuine problems only
+        edit: { DEFAULT: '#2E5E86', soft: '#E4ECF3' },        // anything the user can change
+        rec: { DEFAULT: '#174D38', soft: '#E3EDE7' },         // recommended path / targets / base case
+        ok: { DEFAULT: '#2B7A4B', soft: '#E3F0E8' },          // on track / normal
+        warn: { DEFAULT: '#B5740A', soft: '#F7EBD6' },        // caution / unverified data
+        danger: { DEFAULT: '#4D1717', soft: '#F0E3E3' },      // genuine problems only
         // Asset classes: muted blues/tans that never collide with semantics
         asset: {
-          uslc: '#3B5B8C', ussmid: '#6C8CC1', intl: '#8FA8C8', em: '#B9C9DE',
-          bonds: '#B08B5B', tips: '#D2B48C', cash: '#E6D7BE',
+          uslc: '#2F5F4A', ussmid: '#4F8068', intl: '#7FA592', em: '#AFC8BA',
+          bonds: '#8B6F47', tips: '#B59B73', cash: '#D9C9AD',
         },
       },
       borderRadius: { card: '10px', pill: '999px' },

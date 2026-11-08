@@ -1,8 +1,10 @@
 # Base Case — Design System ("The Model Desk")
 
+Palette (applied 2026-11-08): cool gray #F2F2F2 page with #CBCBCB hairlines, deep green #174D38 as the brand / recommended-path color, rich brown #4D1717 for genuine problems, steel blue #2E5E86 for anything editable. Asset classes use muted greens and tans.
+
 Base Case is the planning tool a sharp friend who works in finance would build for you: a clean,
 well-set financial model, not a bank brochure and not a game. The metaphor is **the model desk** —
-paper, ink, hairline rules, tabular numbers, one violet accent for the *base case* (the recommended path).
+paper, ink, hairline rules, tabular numbers, one deep-green accent for the *base case* (the recommended path).
 
 ## Principles
 1. **One meaning per color.** Never reuse a semantic color for decoration.
@@ -10,7 +12,7 @@ paper, ink, hairline rules, tabular numbers, one violet accent for the *base cas
    quiet (medium weight), labels are small caps-ish (11px, letter-spacing 0.06em, ink-3).
 3. **Restraint.** No gradients on content, no glassmorphism, no emoji, no confetti, no sound. Motion is
    limited to charts drawing in (≤ 600 ms) and panels fading (≤ 150 ms); all disabled under `prefers-reduced-motion`.
-4. **Light, paper surface.** `paper` #F7F6F2 page, `paper-2` #FFFFFF cards, `line` #DAD7CF 1px borders,
+4. **Light, paper surface.** `paper` #F2F2F2 page, `paper-2` #FFFFFF cards, `line` #CBCBCB 1px borders,
    10px radius, shadow-card only. Page background carries a faint 24px grid (blueprint nod, 3% ink).
 5. **Accessible.** WCAG AA contrast everywhere (ink on paper ≥ 12:1; semantic colors on white ≥ 4.5:1 for text).
    Everything keyboard reachable with visible focus rings (2px `edit` outline, 2px offset). Works at 1440, 1024 and 768 px.
@@ -18,16 +20,16 @@ paper, ink, hairline rules, tabular numbers, one violet accent for the *base cas
 ## Color language (Tailwind tokens in tailwind.config.js)
 | Token | Hex | Meaning | Use |
 |---|---|---|---|
-| `edit` | #1F5EFF | **Editable** | input borders on focus, slider thumbs, "edit" affordances, links |
-| `rec` | #7A3EF0 | **Recommended / base case** | median line, model allocation ring, active path, targets |
-| `ok` | #1B9E5A | **On track** | success chips, positive deltas |
-| `warn` | #D98A00 | **Caution / unverified** | VERIFY tags, caution alerts, provisional profile badge |
-| `danger` | #D6342B | **Genuine problem** | warnings (shortfall, negative cash flow). Nothing else. |
-| `ink`/`ink-2/3/4` | #14161A… | Text hierarchy | primary / secondary / labels / disabled |
+| `edit` | #2E5E86 | **Editable** | input borders on focus, slider thumbs, "edit" affordances, links |
+| `rec` | #174D38 | **Recommended / base case** | median line, model allocation ring, active path, targets |
+| `ok` | #2B7A4B | **On track** | success chips, positive deltas |
+| `warn` | #B5740A | **Caution / unverified** | VERIFY tags, caution alerts, provisional profile badge |
+| `danger` | #4D1717 | **Genuine problem** | warnings (shortfall, negative cash flow). Nothing else. |
+| `ink`/`ink-2/3/4` | #1A1A1A… | Text hierarchy | primary / secondary / labels / disabled |
 | `asset.*` | muted blues & tans | Asset classes | donut and glide chart only |
 
 Comparison paths (CAREER screen) use a neutral ordinal palette distinct from semantics:
-path 1 = ink (#14161A), path 2 = rec (#7A3EF0), path 3 = #0F8B8D (teal), path 4 = #C2410C (rust).
+path 1 = ink (#1A1A1A), path 2 = rec (#174D38), path 3 = #0F6E6E (teal), path 4 = #8A5A2B (rust).
 The *active* path is always drawn in `rec`; other paths take their ordinal color.
 
 ## Typography
