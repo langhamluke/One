@@ -14,7 +14,14 @@
   .no-print, nav, header[data-shell], aside[data-shell], [data-readout-strip], [data-draft-banner], [data-stepper] {
     display: none !important;
   }
+  /* Chrome's print dialog (unlike headless PDF) honours min-height: 100vh and flex wrappers, which pushed the
+     summary onto a blank second page. Flatten every wrapper and let the one-pager flow from the top. */
+  html, body, #root { height: auto !important; min-height: 0 !important; overflow: visible !important; }
+  .min-h-screen, [class*="min-h-screen"] { min-height: 0 !important; }
+  .lg\:flex { display: block !important; }
   main, [data-shell-main] {
+    display: block !important;
+    width: 100% !important;
     margin: 0 !important;
     padding: 0 !important;
     max-width: none !important;
@@ -23,8 +30,19 @@
     width: 100%;
     max-width: 7.6in;
     margin: 0 auto;
-    page-break-inside: avoid;
+    /* No page-break-inside: avoid here. On a block taller than the page Chrome moves the whole block to a fresh
+       page (blank page 1) instead of flowing it. Cards below keep their own break-inside: avoid. */
   }
+  .print-page .grid { break-inside: avoid; }
+  /* Paper is ~7.6in (~730px) wide, below Tailwind's md breakpoint, so responsive grids would collapse to one column
+     and spill onto a second page. Force the desktop column counts when printing. */
+  .print-page .md\:grid-cols-2, .print-page .lg\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .print-page .md\:grid-cols-3, .print-page .lg\:grid-cols-3 { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+  .print-page .md\:grid-cols-4, .print-page .lg\:grid-cols-4 { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+  .print-page .md\:col-span-2, .print-page .lg\:col-span-2 { grid-column: span 2 / span 2 !important; }
+  .print-page .md\:col-span-3, .print-page .lg\:col-span-3 { grid-column: span 3 / span 3 !important; }
+  .print-page .gap-3 { gap: 0.5rem !important; }
+  .print-page .card { padding: 0.45rem !important; }
   .print-page .card {
     box-shadow: none;
     border: 1px solid #cbcbcb;
@@ -33,6 +51,6 @@
   .print-page h1 { font-size: 16px; line-height: 20px; }
   .print-page h2 { font-size: 11px; line-height: 14px; }
   .print-page .readout-value { font-size: 16px !important; line-height: 20px !important; }
-  .print-page svg { max-height: 1.6in; }
+  .print-page svg { max-height: 1.35in; }
   a { color: inherit; text-decoration: none; }
 }

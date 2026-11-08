@@ -105,7 +105,9 @@ try {
         await page.goto(`${BASE_URL}/plan/summary`, { waitUntil: 'networkidle' });
         await page.waitForTimeout(800);
         await page.emulateMedia({ media: 'print' });
-        const pdf = await page.pdf({ format: 'Letter', printBackground: true, preferCSSPageSize: true });
+        // Mimic Chrome's real print dialog (default margins, headers/footers, no CSS page size) rather than the
+        // friendlier headless defaults: the blank-first-page bug only showed up under the dialog's settings.
+        const pdf = await page.pdf({ format: 'Letter', printBackground: false, preferCSSPageSize: false, displayHeaderFooter: true, margin: { top: '0.4in', bottom: '0.4in', left: '0.4in', right: '0.4in' }, headerTemplate: '<div style="font-size:8px;width:100%;text-align:center">Base Case</div>', footerTemplate: '<div style="font-size:8px;width:100%;text-align:center"><span class="pageNumber"></span>/<span class="totalPages"></span></div>' });
         fs.writeFileSync(path.join(outDir, 'summary.pdf'), pdf);
         const pages = (pdf.toString('latin1').match(/\/Type\s*\/Page[^s]/g) || []).length;
         process.stdout.write(`PDF pages: ${pages}\n`);
