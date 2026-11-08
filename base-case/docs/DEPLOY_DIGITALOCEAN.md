@@ -26,9 +26,10 @@ droplet. If you stay on one droplet, the safeguards above apply.
 
 ## Before you start (10 minutes)
 1. **Droplet:** Ubuntu 24.04 or 22.04, at least 1 GB RAM free for Base Case. The script adds 2 GB swap only if none exists.
-2. **A domain name.** HTTPS needs one. Use a subdomain of a domain you already own (for example `basecase.slopecycleski.com`)
-   or buy one (~$10–15/yr). Create an **A record** pointing that name at the droplet's IP. DigitalOcean DNS works too:
-   Networking → Domains.
+2. **A web address.** Easiest: none. Leave `DOMAIN` unset and the installer uses a free automatic address,
+   `basecase.<droplet-ip-with-dashes>.sslip.io`, which needs no DNS setup and still gets a real HTTPS certificate.
+   Later, to use your own name (for example `basecase.slopecycleski.com`), add an **A record** for `basecase` pointing at
+   the droplet's IP wherever the domain's DNS is managed, change `DOMAIN=` in `deploy/.env.production`, and run `deploy/update.sh`.
 3. **SSH access** as root or a sudo user.
 
 ## Option A: let Claude Code on the droplet do it
@@ -43,8 +44,9 @@ Steps:
 1. Show me what is listening on ports 80 and 443 and stop if anything is.
 2. git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke/One.git /opt/base-case
 3. Read /opt/base-case/base-case/docs/DEPLOY_DIGITALOCEAN.md and /opt/base-case/base-case/deploy/setup-droplet.sh.
-4. Run: sudo NONINTERACTIVE=1 BRANCH=claude/festive-goldberg-9jofrz DOMAIN=basecase.slopecycleski.com ADMIN_EMAIL=langhamluke14@gmail.com bash /opt/base-case/base-case/deploy/setup-droplet.sh
-5. Confirm https://basecase.slopecycleski.com/api/health returns ok and show `docker stats --no-stream`.
+4. Run: sudo NONINTERACTIVE=1 BRANCH=claude/festive-goldberg-9jofrz ADMIN_EMAIL=langhamluke14@gmail.com bash /opt/base-case/base-case/deploy/setup-droplet.sh
+   (no DOMAIN given on purpose: the script picks a free automatic address of the form basecase.<ip>.sslip.io)
+5. Tell me the exact https:// address it chose, confirm that address + /api/health returns ok, and show `docker stats --no-stream`.
 6. Do not print the contents of deploy/.env.production. Tell me the command to read the admin password myself.
 ```
 

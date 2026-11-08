@@ -5,6 +5,7 @@
 #
 # Interactive:      sudo bash deploy/setup-droplet.sh
 # Non-interactive:  sudo DOMAIN=plan.example.com ADMIN_EMAIL=you@example.com NONINTERACTIVE=1 bash deploy/setup-droplet.sh
+#   (omit DOMAIN to get a free automatic address: basecase.<public-ip>.sslip.io)
 #   optional env:   ADMIN_PASSWORD (generated if unset), DEMO_SEED=0|1, ANTHROPIC_API_KEY, BRANCH, ENABLE_AUTO_UPDATES=1
 set -euo pipefail
 
@@ -72,12 +73,18 @@ cd "$APP_DIR/base-case"
 ENV_FILE="deploy/.env.production"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "==> Configuration"
-  ask DOMAIN "Domain for Base Case (DNS A record must point at this droplet): "
+  ask DOMAIN "Domain for Base Case (Enter for an automatic free address via sslip.io): "
+  if [[ -z "${DOMAIN:-}" ]]; then
+    PUB_IP=$(curl -4 -fsS --max-time 10 https://api.ipify.org || curl -4 -fsS --max-time 10 https://ifconfig.me || true)
+    [[ "$PUB_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Could not detect the public IPv4 address; pass DOMAIN=... explicitly." >&2; exit 1; }
+    DOMAIN="basecase.${PUB_IP//./-}.sslip.io"
+    echo "No domain given: using the automatic address https://${DOMAIN} (sslip.io resolves it to ${PUB_IP}; HTTPS certificate is still issued normally)."
+  fi
   ask ADMIN_EMAIL "Admin email: "
   ask ADMIN_PASSWORD "Admin password (12+ characters, Enter to generate one): " secret
   ask DEMO_SEED "Load demo personas and demo accounts? [0/1]: "
   ask ANTHROPIC_API_KEY "Anthropic API key for the assistant (Enter to skip): "
-  [[ -n "${DOMAIN:-}" && -n "${ADMIN_EMAIL:-}" ]] || { echo "DOMAIN and ADMIN_EMAIL are required." >&2; exit 1; }
+  [[ -n "${ADMIN_EMAIL:-}" ]] || { echo "ADMIN_EMAIL is required." >&2; exit 1; }
   GENERATED=0
   if [[ -z "${ADMIN_PASSWORD:-}" ]]; then ADMIN_PASSWORD="BC-$(openssl rand -base64 18 | tr -d '/+=\n')"; GENERATED=1; fi
   [[ ${#ADMIN_PASSWORD} -ge 12 ]] || { echo "Admin password must be at least 12 characters." >&2; exit 1; }
