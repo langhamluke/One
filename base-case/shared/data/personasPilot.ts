@@ -1,6 +1,6 @@
 /**
  * Flight Plan demo personas: the five pilots shipped with the original Flight Plan build, mapped onto PlanState.
- * Fictional pseudonyms; the Denver flight student is a real test client under the pseudonym he chose ("Steve Jobs").
+ * Fictional pseudonyms, plus one real client (Nick, the Denver flight student) seeded as an invited account.
  *
  * Mapping notes (Flight Plan -> Base Case): flight-school loans become private student loans on a 10-year term;
  * "other debt" becomes a personal loan; monthly expenses x 12 = living expenses; Roth share of deferrals sets the
@@ -199,13 +199,13 @@ function dale(): PlanState {
 }
 
 // ---------------------------------------------------------------------------------------------
-// e) "Steve Jobs" - Denver flight student (pseudonym), 21, 220 hours, three years to a regional
+// e) Nick - Denver flight student (real client), 21, 220 hours, three years to a regional
 // ---------------------------------------------------------------------------------------------
 function student(): PlanState {
   const s = defaultPlanStateFor('flight-plan');
   s.profile = {
     ...s.profile,
-    nickname: 'Steve Jobs',
+    nickname: 'Nick',
     age: 21,
     retirementAge: 65,
     filingStatus: 'single',
@@ -234,7 +234,7 @@ function student(): PlanState {
     airlinePath('regional-dal', 'Regional → Delta (ref)', 'regional-dal', ms),
   ];
   s.activePathId = 'regional-ual';
-  s.notes = 'Denver flight student (pseudonym), 220 hours, three years from a regional. No deferrals yet: the first action is a Roth IRA once there is earned income, then the regional 401(k) from the first paycheck.';
+  s.notes = 'Denver flight student, 220 hours, three years from a regional. No deferrals yet: the first action is a Roth IRA once there is earned income, then the regional 401(k) from the first paycheck.';
   return s;
 }
 
@@ -255,5 +255,5 @@ export const PILOT_REFERENCE_PERSONAS: Persona[] = [
  * the Users screen, and can set their real e-mail address there first). Nickname only; no account numbers.
  */
 export const PILOT_SEED_CLIENTS: Persona[] = [
-  { key: 'student', name: 'Steve Jobs', tagline: 'Denver flight student (pseudonym), 21: three years to a regional, no deferrals yet', email: `steve@${DOMAIN}`, state: student() },
+  { key: 'student', name: 'Nick Horvath', tagline: 'Denver flight student, 21: three years to a regional, no deferrals yet', email: `nick@${DOMAIN}`, state: student() },
 ];

@@ -20,11 +20,12 @@ npm install
 cp .env.example .env
 npm run dev
 ```
-Open http://localhost:5173. On first start the API seeds demo accounts (local only) and prints them:
+Open http://localhost:5173. On first start the API seeds demo accounts (local only) and prints them. There is no
+demo admin: set `BOOTSTRAP_ADMIN_EMAIL` / `BOOTSTRAP_ADMIN_PASSWORD` in `.env` before the first start (or run
+`npm run create-admin`) to get your own admin login.
 
 | Account | Email | Password |
 |---|---|---|
-| Admin | admin@demo.basecase.local | BaseCase-Admin-2026! |
 | Advisor | advisor@demo.basecase.local | BaseCase-Advisor-2026! |
 | Clients (personas) | maya@demo.basecase.local … | BaseCase-Client-2026! |
 
@@ -47,7 +48,7 @@ assistant, playbook, data ledger, audit log, one-page print) and the same design
 | Personas | Nurse, engineer, teacher, analyst, electrician | Fresh CFI, regional FO, FedEx FO, senior AA captain, Denver flight student |
 
 ```bash
-PRODUCT=flight-plan npm run dev        # local Flight Plan with pilot demo accounts (admin@demo.flightplan.local …)
+PRODUCT=flight-plan npm run dev        # local Flight Plan with pilot demo accounts (advisor@demo.flightplan.local …)
 ```
 Paths can also be mixed inside one plan (an airline path next to an occupation ladder, for a pilot weighing a career
 change). Airline data: `shared/data/airlines.ts`; engine: `shared/lib/airline.ts`; sharing with friends and advisors:

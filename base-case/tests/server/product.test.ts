@@ -39,7 +39,8 @@ describe('product configuration', () => {
     vi.spyOn(console, 'log').mockImplementation(() => {});
     await runDemoSeed(t.deps, { print: false });
     const accounts = demoAccounts('flight-plan');
-    expect(accounts.admin.email).toBe('admin@demo.flightplan.local');
+    expect(accounts.advisor.email).toBe('advisor@demo.flightplan.local');
+    expect('admin' in accounts).toBe(false);
     const cookie = await login(t, accounts.advisor.email, DEMO.advisor.password, '42.1.0.1');
     const me = await json(await req(t, 'GET', '/api/me', { cookie }));
     expect(me.firm.product).toBe('flight-plan');
@@ -57,10 +58,10 @@ describe('product configuration', () => {
     const advisor = await login(fp, demoAccounts('flight-plan').advisor.email, DEMO.advisor.password, '42.1.0.2');
     const clients = await json(await req(fp, 'GET', '/api/clients', { cookie: advisor }));
     expect(clients.length).toBe(PILOT_PERSONAS.length + PILOT_SEED_CLIENTS.length);
-    const steve = clients.find((c: { email: string }) => c.email === PILOT_SEED_CLIENTS[0].email);
-    expect(steve).toBeDefined();
-    const stevePlan = await json(await req(fp, 'GET', `/api/plans/${steve.id}`, { cookie: advisor }));
-    expect(stevePlan.state.profile.nickname).toBe('Steve Jobs');
+    const nick = clients.find((c: { email: string }) => c.email === PILOT_SEED_CLIENTS[0].email);
+    expect(nick).toBeDefined();
+    const nickPlan = await json(await req(fp, 'GET', `/api/plans/${nick.id}`, { cookie: advisor }));
+    expect(nickPlan.state.profile.nickname).toBe('Nick');
     const jordan = clients.find((c: { email: string }) => c.email === PILOT_PERSONAS[0].email);
     const plan = await json(await req(fp, 'GET', `/api/plans/${jordan.id}`, { cookie: advisor }));
     expect(plan.state.product).toBe('flight-plan');

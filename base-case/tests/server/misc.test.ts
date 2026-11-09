@@ -197,15 +197,17 @@ describe('small utilities', () => {
 });
 
 describe('demo seed', () => {
-  it('creates admin, advisor, persona clients with plans and a submitted proposal; idempotent; prints credentials', async () => {
+  it('creates advisor and persona clients with plans and a submitted proposal, no admin; idempotent; prints credentials', async () => {
     const t = await makeApp();
     const log = vi.spyOn(console, 'log').mockImplementation(() => {});
     try {
       const r1 = await runDemoSeed(t.deps);
-      expect(r1.created.length).toBeGreaterThanOrEqual(4);
+      expect(r1.created.length).toBeGreaterThanOrEqual(3);
+      expect(r1.credentials.some((c) => c.role === 'admin')).toBe(false);
       expect(log).toHaveBeenCalled();
-      expect(String(log.mock.calls[0][0])).toContain(DEMO.admin.email);
-      expect(String(log.mock.calls[0][0])).toContain(DEMO.admin.password);
+      expect(String(log.mock.calls[0][0])).toContain(DEMO.advisor.email);
+      expect(String(log.mock.calls[0][0])).toContain(DEMO.advisor.password);
+      expect(String(log.mock.calls[0][0])).not.toMatch(/admin/i);
       const r2 = await runDemoSeed(t.deps, { print: false });
       expect(r2.created).toEqual([]);
       const advisor = await login(t, DEMO.advisor.email, DEMO.advisor.password, '42.0.0.1');
@@ -220,8 +222,8 @@ describe('demo seed', () => {
       expect(props[0].clientId).toBe(first.id);
       const client = await login(t, first.email, DEMO.clientPassword, '42.0.0.2');
       expect((await json(await req(t, 'GET', '/api/plans/me', { cookie: client }))).version).toBe(1);
-      const admin = await login(t, DEMO.admin.email, DEMO.admin.password, '42.0.0.3');
-      expect((await req(t, 'GET', '/api/admin/users', { cookie: admin })).status).toBe(200);
+      const admins = await t.deps.db.select().from((await import('../../server/db/schema')).users);
+      expect(admins.filter((u) => u.role === 'admin')).toEqual([]);
     } finally {
       log.mockRestore();
       await t.close();

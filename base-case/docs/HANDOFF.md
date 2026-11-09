@@ -4,7 +4,7 @@
 Flight Plan (the pilot planner that existed only as a built `flight-plan.html`) is now a **product of this codebase**:
 `PRODUCT=flight-plan` gives an instance the Flight Plan name, the PREFLIGHT → CHECKLIST → FLIGHT PLAN → CRUISE →
 LANDING → BRIEFING phases, the pilot questionnaire wording and Pilot Supplement, one demo pilot (Jordan) plus three reference pilots for tests
-and one seeded real client (Steve, invited, no password), and airline career
+and one seeded real client (Nick Horvath, invited, no password); the demo seed no longer creates an admin (bootstrap admin only), and airline career
 paths, with every Base Case feature (roles, drafts and approval, assistant, playbook, data ledger, admin, print) and the
 Base Case design. New: `shared/product.ts`, `shared/data/airlines.ts` (pay scales, retirement plans, paths; every rate
 Sourced, interpolations flagged), `shared/lib/airline.ts` (seat/longevity/flow/furlough simulation, FedEx pension and

@@ -22,8 +22,16 @@ const DOMAIN = PRODUCT === 'flight-plan' ? 'demo.flightplan.local' : 'demo.basec
 const ACCOUNTS = {
   client: { email: process.env.CLIENT_EMAIL || (PRODUCT === 'flight-plan' ? `jordan@${DOMAIN}` : `maya@${DOMAIN}`), password: 'BaseCase-Client-2026!' },
   advisor: { email: `advisor@${DOMAIN}`, password: 'BaseCase-Advisor-2026!' },
-  admin: { email: `admin@${DOMAIN}`, password: 'BaseCase-Admin-2026!' },
+  // The seed creates no admin: pass the bootstrap admin (ADMIN_EMAIL/ADMIN_PASSWORD, or BOOTSTRAP_ADMIN_* from .env).
+  admin: {
+    email: process.env.ADMIN_EMAIL || process.env.BOOTSTRAP_ADMIN_EMAIL || '',
+    password: process.env.ADMIN_PASSWORD || process.env.BOOTSTRAP_ADMIN_PASSWORD || '',
+  },
 };
+if (!ACCOUNTS.admin.email && (!onlyRole || onlyRole === 'admin')) {
+  console.error('No admin credentials: set ADMIN_EMAIL/ADMIN_PASSWORD (or BOOTSTRAP_ADMIN_EMAIL/PASSWORD) or pass --role client|advisor.');
+  process.exit(2);
+}
 
 const ROUTES = {
   client: ['/', '/plan/profile', '/plan/risk', '/plan/career', '/plan/plan', '/plan/future', '/plan/summary', '/proposals', '/assistant', '/playbook', '/data', '/account', '/privacy', '/terms', '/methodology'],

@@ -17,17 +17,18 @@ import { writePlan } from './services/plans';
 import { PROPOSAL_AAD } from './services/proposals';
 
 export const DEMO = {
-  admin: { email: 'admin@demo.basecase.local', password: 'BaseCase-Admin-2026!', displayName: 'Demo Admin' },
   advisor: { email: 'advisor@demo.basecase.local', password: 'BaseCase-Advisor-2026!', displayName: 'Demo Advisor' },
   clientPassword: 'BaseCase-Client-2026!',
   sampleProposalTitle: 'Try: raise 401(k) to 10%',
 } as const;
 
-/** Demo staff accounts live on the product's demo domain (admin@demo.flightplan.local for Flight Plan). */
+/**
+ * Demo staff accounts live on the product's demo domain (advisor@demo.flightplan.local for Flight Plan). There is no
+ * demo admin: the real administrator comes from BOOTSTRAP_ADMIN_EMAIL/PASSWORD (or `npm run create-admin`).
+ */
 export function demoAccounts(product: string) {
   const domain = productConfig(product).demoDomain;
   return {
-    admin: { ...DEMO.admin, email: `admin@${domain}` },
     advisor: { ...DEMO.advisor, email: `advisor@${domain}` },
   };
 }
@@ -69,17 +70,20 @@ export interface SeedResult {
   credentials: { role: string; email: string; password: string; name: string }[];
 }
 
-/** Idempotent demo seed: admin, advisor, one client per persona (assigned to the advisor), one submitted proposal. */
+/**
+ * Idempotent demo seed: advisor, one client per persona (assigned to the advisor), one submitted proposal, plus the
+ * product's real seed clients. No admin is created; seeded plans are written as the first existing admin (the
+ * bootstrap admin) or, failing that, as the demo advisor.
+ */
 export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {}): Promise<SeedResult> {
   const created: string[] = [];
   const credentials: SeedResult['credentials'] = [];
   const accounts = demoAccounts(deps.config.product);
-  const admin = await ensureUser(deps, { ...accounts.admin, role: 'admin' });
-  if (admin.created) created.push(admin.user.email);
-  credentials.push({ role: 'admin', email: admin.user.email, password: DEMO.admin.password, name: admin.user.displayName });
   const advisor = await ensureUser(deps, { ...accounts.advisor, role: 'advisor' });
   if (advisor.created) created.push(advisor.user.email);
   credentials.push({ role: 'advisor', email: advisor.user.email, password: DEMO.advisor.password, name: advisor.user.displayName });
+  const [existingAdmin] = await deps.db.select({ id: users.id }).from(users).where(eq(users.role, 'admin')).limit(1);
+  const actorId = existingAdmin?.id ?? advisor.user.id;
 
   let first: { user: UserRow; state: PlanState } | null = null;
   for (const persona of personasFor(deps.config.product)) {
@@ -91,12 +95,12 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
     const state = mergePlanState(persona.state);
     const [existingPlan] = await deps.db.select({ version: plans.version }).from(plans).where(eq(plans.clientId, res.user.id)).limit(1);
     if (!existingPlan) {
-      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId: admin.user.id, reason: 'seed' }, tx));
+      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId, reason: 'seed' }, tx));
     }
     first ??= { user: res.user, state };
   }
 
-  // Real clients (e.g. Flight Plan's Steve): account + starting plan, no password. The admin opens Users, sets the
+  // Real clients (e.g. Flight Plan's Nick): account + starting plan, no password. The admin opens Users, sets the
   // real e-mail address, and sends the invite link; nothing is printed for them.
   for (const client of seedClientsFor(deps.config.product)) {
     const res = await ensureUser(deps, { email: client.email, role: 'client', displayName: client.name });
@@ -106,7 +110,7 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
     const state = mergePlanState(client.state);
     const [existingPlan] = await deps.db.select({ version: plans.version }).from(plans).where(eq(plans.clientId, res.user.id)).limit(1);
     if (!existingPlan) {
-      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId: admin.user.id, reason: 'seed' }, tx));
+      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId, reason: 'seed' }, tx));
     }
   }
 
@@ -175,6 +179,7 @@ export async function bootstrap(deps: AppDeps): Promise<void> {
   if (demoSeed) {
     deps.logger.info('running demo seed (DEMO_SEED=1)');
     await runDemoSeed(deps);
+    if (!bootstrapAdminEmail) deps.logger.warn('demo seed creates no admin: set BOOTSTRAP_ADMIN_EMAIL/BOOTSTRAP_ADMIN_PASSWORD or run `npm run create-admin`');
   } else if (!bootstrapAdminEmail) {
     deps.logger.warn('no users exist: set BOOTSTRAP_ADMIN_EMAIL/BOOTSTRAP_ADMIN_PASSWORD or run `npm run create-admin -- --email ... --password ...`');
   }

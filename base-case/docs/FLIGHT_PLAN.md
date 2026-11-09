@@ -45,14 +45,14 @@ pilot-aware system prompt.
 cd base-case && npm install && cp .env.example .env
 PRODUCT=flight-plan npm run dev
 ```
-Demo accounts print on first start: `admin@demo.flightplan.local` / `advisor@demo.flightplan.local` and one demo pilot
-(`jordan@demo.flightplan.local`, the fresh CFI) with the passwords in the console. Set `BOOTSTRAP_ADMIN_EMAIL` /
+Demo accounts print on first start: `advisor@demo.flightplan.local` and one demo pilot (`jordan@demo.flightplan.local`,
+the fresh CFI) with the passwords in the console. There is no demo admin. Set `BOOTSTRAP_ADMIN_EMAIL` /
 `BOOTSTRAP_ADMIN_PASSWORD` in `.env` to create your own admin login on the first start (the database must be empty:
 delete `data/pg` to start over). A Base Case instance and a Flight Plan instance need separate databases
 (`BASE_CASE_DATA_DIR` or `DATABASE_URL`). `.env` is read on start, so restart `npm run dev` after editing it; the
 Tailwind theme is also only rebuilt on a restart.
 
-**Steve's plan** (a real friend, under a pseudonym) is seeded as an *invited* client with no password. To hand it to
+**Nick Horvath's plan** (a real client) is seeded as an *invited* client with no password. To hand it to
 him: Users → Edit → set his real e-mail address → Save → Reset password → copy the link and send it; he picks a
 password and lands on his Preflight with everything filled in. Nothing about him is printed in the console.
 

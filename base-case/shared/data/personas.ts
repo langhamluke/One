@@ -376,7 +376,7 @@ export function personasFor(product: ProductKey | string | undefined | null): Pe
 /** Every persona across both products (data-integrity tests, seed look-ups). */
 export const ALL_PERSONAS: Persona[] = [...PERSONAS, ...PILOT_PERSONAS, ...PILOT_REFERENCE_PERSONAS, ...PILOT_SEED_CLIENTS];
 
-/** Real clients seeded for a product (invited, no password). Flight Plan: Steve. Base Case: none. */
+/** Real clients seeded for a product (invited, no password). Flight Plan: Nick Horvath. Base Case: none. */
 export function seedClientsFor(product: ProductKey | string | undefined | null): Persona[] {
   return product === 'flight-plan' ? PILOT_SEED_CLIENTS : [];
 }
