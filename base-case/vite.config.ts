@@ -9,7 +9,7 @@ function productAttr() {
   return {
     name: 'product-attr',
     transformIndexHtml(html: string) {
-      return html.replace(/data-product="[a-z-]+"/, `data-product="${product}"`);
+      return html.replace(/data-product="[a-z-]+"/, `data-product="${product}"`).replace(/href="\/favicon[a-z-]*\.svg"/, `href="/${product === 'flight-plan' ? 'favicon-flight-plan' : 'favicon'}.svg"`);
     },
   };
 }

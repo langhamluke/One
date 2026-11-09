@@ -68,6 +68,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.title = product.name;
     document.documentElement.dataset.product = product.key;
+    // Tab icon: the original Flight Plan chevron (magenta on near-black) or the Base Case line chart.
+    const icon = document.getElementById('favicon') as HTMLLinkElement | null;
+    if (icon) icon.href = product.key === 'flight-plan' ? '/favicon-flight-plan.svg' : '/favicon.svg';
   }, [product.name, product.key]);
 
   // Another tab may sign in as a different user (one cookie jar per browser). When this tab regains focus, re-check

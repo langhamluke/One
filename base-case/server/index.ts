@@ -29,7 +29,8 @@ if (config.env === 'production') {
     app.get('*', (c) => {
       if (c.req.path.startsWith('/api')) return c.json({ error: 'Not found', code: 'not_found' }, 404);
       // The build may have been made for either product; stamp this instance's product on <html> for the first paint.
-      return c.html(fs.readFileSync(indexFile, 'utf8').replace(/data-product="[a-z-]+"/, `data-product="${config.product}"`));
+      const icon = config.product === 'flight-plan' ? 'favicon-flight-plan' : 'favicon';
+      return c.html(fs.readFileSync(indexFile, 'utf8').replace(/data-product="[a-z-]+"/, `data-product="${config.product}"`).replace(/href="\/favicon[a-z-]*\.svg"/, `href="/${icon}.svg"`));
     });
     logger.info('serving static frontend', { dir: distDir });
   } else {
