@@ -7,7 +7,9 @@ import { EngineUnavailable } from '@/components/EngineUnavailable';
 import { AlertLedger } from '@/components/AlertLedger';
 import { listStates } from '@shared/data/states';
 import { listMetros } from '@shared/data/careers';
-import { CURRENT_YEAR, type Debt, type DebtKind, type FederalPlan, type Goal, type GoalKind } from '@shared/lib/inputs';
+import { AIRLINES, PILOT_STAGES, isMajorStage, isRegionalStage, listAirlines, type EmployerChoice, type PilotStage } from '@shared/data/airlines';
+import { CURRENT_YEAR, defaultPilotProfile, isPilotPlan, type Debt, type DebtKind, type FederalPlan, type Goal, type GoalKind } from '@shared/lib/inputs';
+import { FAA_RETIREMENT_AGE } from '@shared/lib/airline';
 import { fmtMoney, fmtPct } from '@/lib/format';
 
 const DEBT_KINDS: { value: DebtKind; label: string }[] = [
@@ -38,11 +40,42 @@ export function ProfilePage() {
   const ins = state.insurance;
   const states = listStates();
   const metros = listMetros();
+  const pilot = isPilotPlan(state);
+  const pp = p.pilot ?? defaultPilotProfile();
+  const employerOptions: { value: EmployerChoice; label: string }[] = [
+    { value: 'none', label: 'None yet (student / instructing)' },
+    ...listAirlines().filter((a) => a.id !== 'cfi').map((a) => ({ value: a.id, label: a.name })),
+  ];
+  const employerFits = (stage: PilotStage, employer: EmployerChoice): boolean => {
+    if (employer === 'none') return !isRegionalStage(stage) && !isMajorStage(stage);
+    const kind = AIRLINES[employer].kind;
+    if (isRegionalStage(stage)) return kind === 'regional';
+    if (isMajorStage(stage)) return kind === 'major' || kind === 'cargo';
+    return false;
+  };
 
   return (
     <div className="grid gap-4 lg:grid-cols-12">
       <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
-        <Note tone="rec">Use a nickname and ballpark numbers. Never enter SSNs, account numbers or health details.</Note>
+        <Note tone="rec">Use a nickname and ballpark numbers. Never enter SSNs, account numbers, certificate numbers or health details.</Note>
+
+        {pilot && (
+          <Panel title="Position" subtitle="where you are in the career today" collapseKey="profile.pilot">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Current position" htmlFor="pl-stage">
+                <Select id="pl-stage" value={pp.stage} onChange={(e) => update((s) => { const stage = e.target.value as PilotStage; const cur = s.profile.pilot ?? defaultPilotProfile(); const employer = employerFits(stage, cur.employer) ? cur.employer : isRegionalStage(stage) ? 'regional' : isMajorStage(stage) ? (stage.startsWith('cargo') ? 'fedex' : 'american') : 'none'; s.profile.pilot = { ...cur, stage, employer, yearsAtEmployer: employer === cur.employer ? cur.yearsAtEmployer : 0 }; })} options={PILOT_STAGES} />
+              </Field>
+              <Field label="Current employer" htmlFor="pl-emp" help="Sets the pay scale and longevity for the first leg of every path. Pilots already at a major stay there on every path.">
+                <Select id="pl-emp" value={pp.employer} onChange={(e) => update((s) => { const cur = s.profile.pilot ?? defaultPilotProfile(); s.profile.pilot = { ...cur, employer: e.target.value as EmployerChoice }; })} options={employerOptions.map((o) => ({ ...o, disabled: !employerFits(pp.stage, o.value) }))} />
+              </Field>
+              <Field label="Years at employer" htmlFor="pl-yrs" help="Longevity step on the pay scale (year 1 = 0 years)."><NumberInput id="pl-yrs" value={pp.yearsAtEmployer} min={0} max={45} step={1} suffix="yrs" disabled={pp.employer === 'none'} onChange={(v) => update((s) => { s.profile.pilot = { ...(s.profile.pilot ?? defaultPilotProfile()), yearsAtEmployer: v ?? 0 }; })} /></Field>
+              <Field label="Flight hours" htmlFor="pl-hours" help="Context for ATP minimums (1,500 or R-ATP 1,000/1,250); not used in pay math."><NumberInput id="pl-hours" value={pp.hours} min={0} max={50000} step={50} suffix="hrs" onChange={(v) => update((s) => { s.profile.pilot = { ...(s.profile.pilot ?? defaultPilotProfile()), hours: v ?? 0 }; })} /></Field>
+              <Field label="Credit hours per month" htmlFor="pl-credit" help="Annual pay = rate × credit × 12. Treated as TFP per month on Southwest paths."><NumberInput id="pl-credit" value={pp.creditHours} min={0} max={200} step={1} suffix="hrs" onChange={(v) => update((s) => { s.profile.pilot = { ...(s.profile.pilot ?? defaultPilotProfile()), creditHours: v ?? 80 }; })} /></Field>
+              <Field label="Domicile / base" htmlFor="pl-dom"><TextInput id="pl-dom" value={pp.domicile} onChange={(e) => update((s) => { s.profile.pilot = { ...(s.profile.pilot ?? defaultPilotProfile()), domicile: e.target.value }; })} placeholder="e.g. DFW" maxLength={60} /></Field>
+            </div>
+            {p.retirementAge > FAA_RETIREMENT_AGE && <Note tone="warn" className="mt-3">Airline flying ends at {FAA_RETIREMENT_AGE} (FAA); the projection retires the pilot at {FAA_RETIREMENT_AGE} even though the retirement age above is {p.retirementAge}.</Note>}
+          </Panel>
+        )}
 
         <Panel title="About you" collapseKey="profile.about">
           <div className="grid gap-3 sm:grid-cols-2">
@@ -63,9 +96,9 @@ export function ProfilePage() {
             )}
             <Field label="Dependents" htmlFor="pf-dep"><NumberInput id="pf-dep" value={p.dependents} min={0} max={10} step={1} onChange={(v) => update((s) => { s.profile.dependents = v ?? 0; })} /></Field>
             <Field label="Spouse / partner income" htmlFor="pf-spouse" help="Annual wages of a partner included in the household plan; 0 if none."><NumberInput id="pf-spouse" value={p.spouseIncome} min={0} max={5_000_000} step={1000} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.profile.spouseIncome = v ?? 0; })} /></Field>
-            <Field label="Graduation year" htmlFor="pf-grad"><NumberInput id="pf-grad" value={p.graduationYear} min={CURRENT_YEAR - 15} max={CURRENT_YEAR + 8} step={1} onChange={(v) => update((s) => { s.profile.graduationYear = v ?? CURRENT_YEAR; })} /></Field>
+            {!pilot && <Field label="Graduation year" htmlFor="pf-grad"><NumberInput id="pf-grad" value={p.graduationYear} min={CURRENT_YEAR - 15} max={CURRENT_YEAR + 8} step={1} onChange={(v) => update((s) => { s.profile.graduationYear = v ?? CURRENT_YEAR; })} /></Field>}
             <Field label="Degree" htmlFor="pf-degree"><Select id="pf-degree" value={p.degree} onChange={(e) => update((s) => { s.profile.degree = e.target.value as typeof p.degree; })} options={[{ value: 'bachelor', label: "Bachelor's" }, { value: 'associate', label: "Associate's" }, { value: 'master', label: "Master's" }, { value: 'professional', label: 'Professional (JD/MD)' }, { value: 'doctoral', label: 'Doctoral' }, { value: 'trade', label: 'Trade / certificate' }, { value: 'none', label: 'No degree' }]} /></Field>
-            <Field label="Field of study" htmlFor="pf-field"><TextInput id="pf-field" value={p.fieldOfStudy ?? ''} onChange={(e) => update((s) => { s.profile.fieldOfStudy = e.target.value || undefined; })} placeholder="optional" maxLength={60} /></Field>
+            {!pilot && <Field label="Field of study" htmlFor="pf-field"><TextInput id="pf-field" value={p.fieldOfStudy ?? ''} onChange={(e) => update((s) => { s.profile.fieldOfStudy = e.target.value || undefined; })} placeholder="optional" maxLength={60} /></Field>}
           </div>
         </Panel>
 
@@ -105,6 +138,7 @@ export function ProfilePage() {
         </Panel>
 
         <Panel title="Benefits" collapseKey="profile.benefits" defaultCollapsed>
+          {pilot && <Note className="mb-3">Airline paths use the carrier's own company contribution (for example 18% non-elective at the majors) and its §415(c) excess rule. The match fields below apply only to non-airline paths.</Note>}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Employer match rate" htmlFor="bn-match" help="1.0 = dollar for dollar; 0.5 = fifty cents per dollar."><NumberInput id="bn-match" value={b.matchRate} scale={100} min={0} max={3} step={0.25} suffix="%" onChange={(v) => update((s) => { s.benefits.matchRate = v ?? 0; })} /></Field>
             <Field label="Match applies up to" htmlFor="bn-cap" help="Deferrals up to this share of pay are matched."><NumberInput id="bn-cap" value={b.matchCapPct} scale={100} min={0} max={0.25} step={0.005} digits={1} suffix="% of pay" onChange={(v) => update((s) => { s.benefits.matchCapPct = v ?? 0; })} /></Field>
@@ -159,11 +193,12 @@ export function ProfilePage() {
           )}
         </Panel>
 
-        <Panel title="Insurance" collapseKey="profile.insurance" defaultCollapsed>
+        <Panel title="Insurance" collapseKey="profile.insurance" defaultCollapsed={!pilot}>
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Health coverage" htmlFor="in-health"><Select id="in-health" value={ins.health} onChange={(e) => update((s) => { s.insurance.health = e.target.value as typeof ins.health; })} options={[{ value: 'employer', label: 'Employer plan' }, { value: 'parent', label: "Parent's plan (under 26)" }, { value: 'marketplace', label: 'Marketplace' }, { value: 'none', label: 'None' }]} /></Field>
             <div className="flex flex-col gap-2">
-              <Toggle id="in-dis" checked={ins.disability} onChange={(v) => update((s) => { s.insurance.disability = v; })} label="Own disability policy" />
+              <Toggle id="in-dis" checked={ins.disability} onChange={(v) => update((s) => { s.insurance.disability = v; })} label={pilot ? 'Own-occupation disability policy' : 'Own disability policy'} description={pilot ? 'Pays when you cannot work as a pilot, even if you could do another job' : undefined} />
+              {pilot && <Toggle id="in-lol" checked={!!ins.lossOfLicense} onChange={(v) => update((s) => { s.insurance.lossOfLicense = v; })} label="Loss-of-license coverage" description="Pays when a medical certificate denial grounds you" />}
               <Toggle id="in-life" checked={ins.life} onChange={(v) => update((s) => { s.insurance.life = v; })} label="Own term life policy" />
               <Toggle id="in-rent" checked={ins.renters} onChange={(v) => update((s) => { s.insurance.renters = v; })} label="Renters / homeowners insurance" />
             </div>

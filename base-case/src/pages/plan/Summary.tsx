@@ -11,6 +11,7 @@ import { EngineUnavailable } from '@/components/EngineUnavailable';
 import { admin } from '@/api/endpoints';
 import { DEFAULT_DISCLAIMER } from '@/content/legal';
 import { QUESTIONNAIRE_SOURCE } from '@shared/data/questionnaire';
+import { productConfig } from '@shared/product';
 import { fmtAge, fmtCompact, fmtMoney, fmtPct, toBasis } from '@/lib/format';
 import { PATH_COLORS, REC } from '@/components/charts/common';
 
@@ -45,8 +46,8 @@ export function SummaryPage() {
 
       <header className="flex flex-wrap items-end justify-between gap-2 border-b border-ink pb-2">
         <div>
-          <div className="label-caps">{me?.firm.name ?? 'Base Case'}</div>
-          <h1>Plan summary — {state.profile.nickname || 'Client'}</h1>
+          <div className="label-caps">{me?.firm.name ?? productConfig(state.product).name}</div>
+          <h1>{state.product === 'flight-plan' ? 'Briefing' : 'Plan summary'} — {state.profile.nickname || 'Client'}</h1>
         </div>
         <div className="text-xs text-ink-3 num text-right">{date}<br />Active path: {derived.active.name}</div>
       </header>

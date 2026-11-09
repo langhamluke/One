@@ -10,8 +10,9 @@ import { MODEL_EQUITY, allocationFromEquity } from '../../shared/data/models';
 import { QUESTIONS, SUPPLEMENT, RISK_BANDS, HORIZON_BANDS } from '../../shared/data/questionnaire';
 import { OCCUPATIONS, METROS } from '../../shared/data/careers';
 import { STATES } from '../../shared/data/states';
-import { PERSONAS } from '../../shared/data/personas';
-import { PLAYBOOK } from '../../shared/data/playbook';
+import { ALL_PERSONAS, PERSONAS } from '../../shared/data/personas';
+import { PILOT_PLAYBOOK, PLAYBOOK } from '../../shared/data/playbook';
+import { AIRLINES, AIRLINE_PATHS, AIRLINE_IDS } from '../../shared/data/airlines';
 
 function isSourced(x: unknown): x is Sourced<unknown> {
   return !!x && typeof x === 'object' && 'value' in (x as object) && 'source' in (x as object) && 'asOf' in (x as object);
@@ -37,6 +38,7 @@ describe('sourced values are well-formed', () => {
     ...collect(OCCUPATIONS, 'careers'),
     ...collect(METROS, 'metros'),
     ...collect(STATES, 'states'),
+    ...collect(AIRLINES, 'airlines'),
   ];
   it('has at least a few dozen sourced values', () => {
     expect(all.length).toBeGreaterThan(40);

@@ -4,8 +4,25 @@
  * Rates are fractions (0.04 = 4%).
  */
 import type { AssetClass, FilingStatus, Sourced } from './types';
+import type { AirlinePathChoice, EmployerChoice, ExcessHandling, Milestones, PilotStage } from '../data/airlines';
+import { productConfig, type ProductKey } from '../product';
 
 export const PLAN_STATE_VERSION = 1;
+
+/** Where an airline pilot is today. Present on Flight Plan plans (and on any plan with an airline career path). */
+export interface PilotProfile {
+  stage: PilotStage;
+  /** Current employer ('none' for students and CFIs) */
+  employer: EmployerChoice;
+  /** Total flight hours logged (context for ATP minimums; not used in pay math) */
+  hours: number;
+  /** Years at the current employer (sets longevity / seniority) */
+  yearsAtEmployer: number;
+  /** Credit hours (or Southwest TFP) per month; annual pay = rate × credit × 12 */
+  creditHours: number;
+  /** Base / domicile, free text (context only) */
+  domicile: string;
+}
 
 export interface Profile {
   /** First name or nickname only. No full legal names, SSNs, DOBs, or account numbers. */
@@ -29,6 +46,8 @@ export interface Profile {
   graduationYear: number;
   degree: 'associate' | 'bachelor' | 'master' | 'professional' | 'doctoral' | 'trade' | 'none';
   fieldOfStudy?: string;
+  /** Airline-pilot position (Flight Plan) */
+  pilot?: PilotProfile;
 }
 
 export interface BalanceSheet {
@@ -175,6 +194,8 @@ export interface Insurance {
   life: boolean;
   health: 'employer' | 'parent' | 'marketplace' | 'none';
   renters: boolean;
+  /** Loss-of-license (medical certificate) coverage; pilots only */
+  lossOfLicense?: boolean;
 }
 
 /** One rung of a career ladder. Salary bands are Sourced so VERIFY tags can be rendered. */
@@ -198,9 +219,33 @@ export interface LadderLevel {
 
 export type Track = 'low' | 'mid' | 'high';
 
+export type CareerKind = 'ladder' | 'airline';
+
+/** Airline career path: regional → major progression driven by seat, longevity and contract pay scales. */
+export interface AirlinePathConfig {
+  /** A regional→major path, or 'stay' at the current employer */
+  pathId: AirlinePathChoice;
+  /** Client edits to the path's default milestones (years) */
+  milestones: Partial<Milestones>;
+  /** Profit sharing as a fraction of base pay in regional/major years (0.1 = 10%) */
+  profitSharingPct: number;
+  /** Nominal pay growth per year after the last dated contract raise */
+  payGrowthAfterContract: number;
+  /** Envoy pays FOs at the captain rate after 750 hours (year 2+) */
+  envoyCaRateRule: boolean;
+  /** FedEx retirement election: legacy defined-benefit pension or market-based cash balance plan */
+  fedexOption: 'legacy' | 'mbcb';
+  /** Override the airline's handling of company contributions above §415(c) */
+  excessHandlingOverride?: ExcessHandling;
+}
+
 export interface CareerPath {
   id: string;
   name: string;
+  /** 'ladder' (occupation ladder, default) or 'airline' (seat / longevity pay scales) */
+  kind?: CareerKind;
+  /** Airline settings when kind === 'airline' */
+  airline?: AirlinePathConfig;
   /** Key into OCCUPATIONS in shared/data/careers.ts, or 'custom' */
   occupationCode: string;
   /** Metro key or 'national' */
@@ -261,6 +306,10 @@ export interface WhatIf {
   retireAtOverride?: number;
   /** Spend this much less per year (today's dollars) */
   spendingCut: number;
+  /** Airline paths: push captain upgrades later by N years */
+  upgradeDelayYears: number;
+  /** Airline paths: N zero-pay furlough years after joining the major; seniority is frozen */
+  furloughYears: number;
 }
 
 export interface CMAEntry {
@@ -304,6 +353,8 @@ export interface Assumptions {
 
 export interface PlanState {
   version: number;
+  /** Which product the plan was created in (sets wording, supplement semantics, personas) */
+  product: ProductKey;
   profile: Profile;
   balanceSheet: BalanceSheet;
   debts: Debt[];
@@ -376,7 +427,26 @@ export function defaultWhatIf(): WhatIf {
     },
     extraSavingsRatePct: 0,
     spendingCut: 0,
+    upgradeDelayYears: 0,
+    furloughYears: 0,
   };
+}
+
+export function defaultPilotProfile(): PilotProfile {
+  return { stage: 'regional_fo', employer: 'regional', hours: 1500, yearsAtEmployer: 0, creditHours: 80, domicile: '' };
+}
+
+export function defaultAirlineConfig(pathId: AirlinePathChoice = 'envoy-aa'): AirlinePathConfig {
+  return { pathId, milestones: {}, profitSharingPct: 0, payGrowthAfterContract: 0.03, envoyCaRateRule: true, fedexOption: 'legacy' };
+}
+
+export function defaultAirlinePath(id = 'path-1', pathId: AirlinePathChoice = 'envoy-aa', name?: string): CareerPath {
+  return { ...defaultCareerPath(id), name: name ?? 'Path 1', kind: 'airline', airline: defaultAirlineConfig(pathId) };
+}
+
+/** True when the plan is a pilot plan: created in Flight Plan, or carrying an airline career path. */
+export function isPilotPlan(state: Pick<PlanState, 'product' | 'careerPaths'>): boolean {
+  return state.product === 'flight-plan' || (state.careerPaths ?? []).some((p) => p.kind === 'airline');
 }
 
 export function defaultBenefits(): Benefits {
@@ -443,6 +513,7 @@ export function emptySupplement(): Record<string, number | null> {
 export function defaultPlanState(): PlanState {
   return {
     version: PLAN_STATE_VERSION,
+    product: 'base-case',
     profile: {
       nickname: '',
       age: 22,
@@ -462,7 +533,7 @@ export function defaultPlanState(): PlanState {
     benefits: defaultBenefits(),
     savings: defaultSavings(),
     goals: [],
-    insurance: { disability: false, life: false, health: 'employer', renters: false },
+    insurance: { disability: false, life: false, health: 'employer', renters: false, lossOfLicense: false },
     answers: emptyAnswers(),
     portfolioAmount: 100000,
     supplement: emptySupplement(),
@@ -472,6 +543,32 @@ export function defaultPlanState(): PlanState {
     assumptions: defaultAssumptions(),
     notes: '',
   };
+}
+
+/**
+ * Default plan for a product. Flight Plan starts as a regional first officer with two airline paths to compare
+ * (Envoy → American and Regional → Southwest), retirement at the FAA age limit and no degree fields in play.
+ */
+export function defaultPlanStateFor(product: ProductKey): PlanState {
+  const s = defaultPlanState();
+  s.product = product;
+  const cfg = productConfig(product);
+  s.profile.retirementAge = cfg.defaultRetirementAge;
+  if (product === 'flight-plan') {
+    s.profile.age = 25;
+    s.profile.stateCode = 'TX';
+    s.profile.pilot = defaultPilotProfile();
+    s.profile.graduationYear = CURRENT_YEAR - 3;
+    s.profile.degree = 'bachelor';
+    s.profile.fieldOfStudy = 'Aviation';
+    s.balanceSheet.cash = 10000;
+    s.savings.deferralPct = 0.1;
+    s.savings.deferralType = 'split';
+    s.savings.rothSplit = 0.5;
+    s.careerPaths = [defaultAirlinePath('path-1', 'envoy-aa', 'Envoy → American'), defaultAirlinePath('path-2', 'regional-swa', 'Regional → Southwest')];
+    s.activePathId = 'path-1';
+  }
+  return s;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -509,25 +606,29 @@ export function mergePlanState(saved: unknown): PlanState {
   if (!merged.careerPaths.some((p) => p.id === merged.activePathId)) {
     merged.activePathId = merged.careerPaths[0].id;
   }
+  // Older saves have no product tag: infer it from the career paths (an airline path means Flight Plan).
+  if (s.product !== 'base-case' && s.product !== 'flight-plan') {
+    merged.product = merged.careerPaths.some((p) => p.kind === 'airline') ? 'flight-plan' : 'base-case';
+  }
   merged.version = PLAN_STATE_VERSION;
   return merged;
 }
 
-/** Wrapper used for JSON export/import. */
+/** Wrapper used for JSON export/import. `app` is the product tag; both products read each other's files. */
 export interface PlanExport {
-  app: 'base-case';
+  app: ProductKey;
   version: number;
   exported: string;
   state: PlanState;
 }
 
 export function exportPlan(state: PlanState): PlanExport {
-  return { app: 'base-case', version: PLAN_STATE_VERSION, exported: new Date().toISOString(), state };
+  return { app: state.product ?? 'base-case', version: PLAN_STATE_VERSION, exported: new Date().toISOString(), state };
 }
 
 export function importPlan(json: unknown): PlanState {
-  if (!isObj(json) || json.app !== 'base-case' || !isObj(json.state)) {
-    throw new Error('Not a Base Case plan file');
+  if (!isObj(json) || (json.app !== 'base-case' && json.app !== 'flight-plan') || !isObj(json.state)) {
+    throw new Error('Not a Base Case / Flight Plan plan file');
   }
   return mergePlanState(json.state);
 }

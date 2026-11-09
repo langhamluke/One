@@ -13,6 +13,9 @@ import { planRoutes } from './routes/plans';
 import { proposalRoutes } from './routes/proposals';
 import { chatRoutes } from './routes/chat';
 import { dataRoutes } from './routes/data';
+import { getSetting } from './services/settings';
+import { productConfig } from '../shared/product';
+import type { ProductInfo } from '../shared/api';
 
 export const BODY_LIMIT_BYTES = 512 * 1024;
 
@@ -39,7 +42,14 @@ export function createApp(deps: AppDeps) {
   api.use('*', loadSession(deps));
   api.use('*', requireMfaIfEnabled);
 
-  api.get('/health', (c) => c.json({ ok: true, time: deps.clock.now().toISOString(), db: deps.dbKind, assistant: deps.config.anthropicApiKey ? 'claude' : 'offline' }));
+  api.get('/health', (c) => c.json({ ok: true, time: deps.clock.now().toISOString(), db: deps.dbKind, product: deps.config.product, assistant: deps.config.anthropicApiKey ? 'claude' : 'offline' }));
+  // Public product descriptor (name, tagline, firm) so the sign-in page can brand itself before any session exists.
+  api.get('/product', async (c) => {
+    const p = productConfig(deps.config.product);
+    const firmName = await getSetting(deps, 'firmName');
+    const res: ProductInfo = { key: p.key, name: p.name, tagline: p.tagline, firmName };
+    return c.json(res);
+  });
   api.route('/', authRoutes(deps));
   api.route('/admin', adminRoutes(deps));
   api.route('/clients', clientRoutes(deps));

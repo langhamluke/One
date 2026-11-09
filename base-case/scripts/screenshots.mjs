@@ -4,7 +4,7 @@
  * fails loudly on console errors, failed requests, and any request to a non-local host,
  * checks for horizontal overflow, screenshots to ./screenshots/, and prints the SUMMARY to PDF (expects 1 page).
  *
- * Usage: BASE_URL=http://localhost:8787 node scripts/screenshots.mjs [--role client|advisor|admin] [--quick]
+ * Usage: BASE_URL=http://localhost:8787 [PRODUCT=flight-plan] node scripts/screenshots.mjs [--role client|advisor|admin] [--quick]
  */
 import { chromium } from 'playwright';
 import fs from 'node:fs';
@@ -16,10 +16,13 @@ const onlyRole = args.includes('--role') ? args[args.indexOf('--role') + 1] : nu
 const quick = args.includes('--quick');
 const WIDTHS = quick ? [1280] : [1440, 1024, 768];
 
+// PRODUCT=flight-plan reviews a Flight Plan instance (pilot demo accounts live on demo.flightplan.local).
+const PRODUCT = (process.env.PRODUCT || 'base-case').toLowerCase() === 'flight-plan' ? 'flight-plan' : 'base-case';
+const DOMAIN = PRODUCT === 'flight-plan' ? 'demo.flightplan.local' : 'demo.basecase.local';
 const ACCOUNTS = {
-  client: { email: process.env.CLIENT_EMAIL || 'maya@demo.basecase.local', password: 'BaseCase-Client-2026!' },
-  advisor: { email: 'advisor@demo.basecase.local', password: 'BaseCase-Advisor-2026!' },
-  admin: { email: 'admin@demo.basecase.local', password: 'BaseCase-Admin-2026!' },
+  client: { email: process.env.CLIENT_EMAIL || (PRODUCT === 'flight-plan' ? `jordan@${DOMAIN}` : `maya@${DOMAIN}`), password: 'BaseCase-Client-2026!' },
+  advisor: { email: `advisor@${DOMAIN}`, password: 'BaseCase-Advisor-2026!' },
+  admin: { email: `admin@${DOMAIN}`, password: 'BaseCase-Admin-2026!' },
 };
 
 const ROUTES = {

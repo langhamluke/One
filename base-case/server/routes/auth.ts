@@ -137,6 +137,7 @@ export function authRoutes(deps: AppDeps) {
         name: s.firmName,
         assistantMode: deps.config.anthropicApiKey && s.assistantEnabled ? 'claude' : 'offline',
         dataAsOf: latestDataAsOf(),
+        product: deps.config.product,
       },
     };
     if (user.totpEnabled && !session.mfaVerified) res.mfaPending = true;

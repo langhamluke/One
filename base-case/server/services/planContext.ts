@@ -3,17 +3,21 @@
  * PlanState minus notes, plus the engine's headline/alerts/actions/first 10 year rows when computeDerived works.
  * Numbers are rounded; no emails, no other clients.
  */
-import type { PlanState } from '../../shared/lib/inputs';
+import { isPilotPlan, type PlanState } from '../../shared/lib/inputs';
 import type { Derived } from '../../shared/lib/derived';
 import { computeDerived } from '../../shared/lib/engine';
 import { IRS_AS_OF, TAX_YEAR, WAGES_AS_OF, LOANS_AS_OF, SS_AS_OF } from '../../shared/data';
+import { AIRLINES_AS_OF } from '../../shared/data/airlines';
+import type { ProductKey } from '../../shared/product';
 
 export interface PlanContext {
+  /** Product the plan belongs to ('base-case' graduates, 'flight-plan' airline pilots) */
+  product: ProductKey;
   /** Plan inputs without free-text notes */
   inputs: Record<string, unknown>;
   derived: DerivedSummary | null;
   derivedError: string | null;
-  dataAsOf: { irs: string; taxYear: number; wages: string; loans: string; ssa: string };
+  dataAsOf: { irs: string; taxYear: number; wages: string; loans: string; ssa: string; airlines?: string };
 }
 
 export interface DerivedSummary {
@@ -70,6 +74,7 @@ export function summarizeDerived(d: Derived): DerivedSummary {
       age: r.age,
       stage: r.stage,
       level: r.levelTitle,
+      ...(r.airline ? { airline: r.airline.id, seat: r.airline.seat, rate: r.airline.rate } : {}),
       wages: r.wages,
       grossIncome: r.grossIncome,
       takeHome: r.takeHome,
@@ -123,5 +128,6 @@ export function buildPlanContext(state: PlanState): PlanContext {
   } catch (err) {
     derivedError = err instanceof Error ? err.message.slice(0, 200) : 'engine unavailable';
   }
-  return { inputs, derived, derivedError, dataAsOf: { irs: IRS_AS_OF, taxYear: TAX_YEAR, wages: WAGES_AS_OF, loans: LOANS_AS_OF, ssa: SS_AS_OF } };
+  const product: ProductKey = isPilotPlan(state) ? 'flight-plan' : 'base-case';
+  return { product, inputs, derived, derivedError, dataAsOf: { irs: IRS_AS_OF, taxYear: TAX_YEAR, wages: WAGES_AS_OF, loans: LOANS_AS_OF, ssa: SS_AS_OF, ...(product === 'flight-plan' ? { airlines: AIRLINES_AS_OF } : {}) } };
 }

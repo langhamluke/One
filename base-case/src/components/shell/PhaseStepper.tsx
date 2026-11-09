@@ -3,22 +3,21 @@ import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Check } from 'lucide-react';
 import { cx } from '@/components/ui';
 import { usePlanStore } from '@/state/plan';
+import { useProduct } from '@/state/session';
 import { QUESTIONS } from '@shared/data/questionnaire';
+import { PRODUCTS } from '@shared/product';
 
-export const PHASES = [
-  { key: 'profile', label: 'Profile' },
-  { key: 'risk', label: 'Risk' },
-  { key: 'career', label: 'Career' },
-  { key: 'plan', label: 'Plan' },
-  { key: 'future', label: 'Future' },
-  { key: 'summary', label: 'Summary' },
-] as const;
+/** Base Case phase labels (Flight Plan renames them PREFLIGHT → CHECKLIST → FLIGHT PLAN → CRUISE → LANDING → BRIEFING). */
+export const PHASES = PRODUCTS['base-case'].phases;
 
 export function PhaseStepper({ basePath }: { basePath: string }) {
   const loc = useLocation();
   const navigate = useNavigate();
   const ref = useRef<HTMLElement>(null);
   const state = usePlanStore((s) => s.state);
+  const product = useProduct();
+  // Labels follow the plan's product when it differs from the deployment's (an advisor opening a pilot plan on Base Case).
+  const PHASES = (state.product && PRODUCTS[state.product] ? PRODUCTS[state.product] : product).phases;
   const current = PHASES.findIndex((p) => loc.pathname.startsWith(`${basePath}/${p.key}`));
   const complete: Record<string, boolean> = {
     profile: state.profile.nickname.trim().length > 0,
@@ -41,6 +40,7 @@ export function PhaseStepper({ basePath }: { basePath: string }) {
         <NavLink
           key={p.key}
           to={`${basePath}/${p.key}`}
+          title={p.hint}
           aria-current={i === current ? 'step' : undefined}
           className={({ isActive }) =>
             cx(

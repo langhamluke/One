@@ -7,7 +7,7 @@
  * PlanState: inputs are clamped first (sanitizeState) and any unexpected failure degrades to an empty Derived with an
  * 'engine-error' alert rather than crashing the UI.
  */
-import { CURRENT_YEAR, defaultCareerPath, type CareerPath, type Debt, type Goal, type PlanState } from './inputs';
+import { CURRENT_YEAR, defaultAirlineConfig, defaultCareerPath, defaultPilotProfile, type CareerPath, type Debt, type Goal, type PlanState } from './inputs';
 import type { Derived, MonteCarloResult, PathResult } from './derived';
 import { riskProfile } from './scoring';
 import { allocationFromEquity, modelEquity as modelEquityFor } from '../data/models';
@@ -54,6 +54,7 @@ export function sanitizeState(s: PlanState): PlanState {
   const gs = wi.gradSchool;
   const paths: CareerPath[] = (s.careerPaths?.length ? s.careerPaths : [defaultCareerPath('path-1')]).map((cp) => ({
     ...cp,
+    kind: cp.kind === 'airline' ? 'airline' : 'ladder',
     yearsOverrides: cp.yearsOverrides ?? {},
     startLevelIndex: cl(cp.startLevelIndex, 0, 50, 0),
     meritRaise: cl(cp.meritRaise, -0.5, 1, 0.03),
@@ -61,7 +62,28 @@ export function sanitizeState(s: PlanState): PlanState {
     startYearOffset: cl(cp.startYearOffset, 0, 60, 0),
     preStartIncome: cl(cp.preStartIncome, 0, 1e8, 0),
     bonusPctOverride: cp.bonusPctOverride === undefined ? undefined : cl(cp.bonusPctOverride, 0, 5, 0),
+    airline:
+      cp.kind === 'airline'
+        ? {
+            ...defaultAirlineConfig(),
+            ...(cp.airline ?? {}),
+            milestones: Object.fromEntries(Object.entries(cp.airline?.milestones ?? {}).map(([k, v]) => [k, cl(v, 0, 40, 0)])),
+            profitSharingPct: cl(cp.airline?.profitSharingPct, 0, 1, 0),
+            payGrowthAfterContract: cl(cp.airline?.payGrowthAfterContract, -0.2, 0.2, 0.03),
+          }
+        : cp.airline,
   }));
+  const pilot = p.pilot
+    ? {
+        ...defaultPilotProfile(),
+        ...p.pilot,
+        hours: cl(p.pilot.hours, 0, 50000, 0),
+        yearsAtEmployer: cl(p.pilot.yearsAtEmployer, 0, 45, 0),
+        creditHours: cl(p.pilot.creditHours, 0, 200, 80),
+      }
+    : paths.some((x) => x.kind === 'airline')
+      ? defaultPilotProfile()
+      : undefined;
   const debts: Debt[] = (s.debts ?? []).map((d) => ({
     ...d,
     balance: cl(d.balance, 0, 1e9, 0),
@@ -84,6 +106,7 @@ export function sanitizeState(s: PlanState): PlanState {
     ...s,
     profile: {
       ...p,
+      pilot,
       age,
       retirementAge,
       dependents: cl(p.dependents, 0, 20, 0),
@@ -142,6 +165,8 @@ export function sanitizeState(s: PlanState): PlanState {
       layoffYearOffset: cl(wi.layoffYearOffset, 0, 60, 3),
       extraSavingsRatePct: cl(wi.extraSavingsRatePct, 0, 1, 0),
       spendingCut: cl(wi.spendingCut, -1e7, 1e7, 0),
+      upgradeDelayYears: cl(wi.upgradeDelayYears, 0, 20, 0),
+      furloughYears: cl(wi.furloughYears, 0, 10, 0),
       retireAtOverride: wi.retireAtOverride === undefined ? undefined : Math.max(age, cl(wi.retireAtOverride, 30, 100, retirementAge)),
       gradSchool: {
         ...gs,

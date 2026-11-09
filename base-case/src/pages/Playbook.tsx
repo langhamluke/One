@@ -1,26 +1,29 @@
 import { useState } from 'react';
 import { Page } from '@/components/shell/AppShell';
 import { Chip, EmptyState, PageHeader, Panel, SourceLine, cx } from '@/components/ui';
-import { PLAYBOOK, type LifeStage, type PlaybookTopic } from '@shared/data/playbook';
-import { useSession, isStaff } from '@/state/session';
+import { playbookFor, type LifeStage, type PlaybookTopic } from '@shared/data/playbook';
+import { useSession, isStaff, useProduct } from '@/state/session';
 import { usePrefs } from '@/state/prefs';
 
 const STAGES: { key: LifeStage; label: string }[] = [
   { key: 'student', label: 'Student' }, { key: 'first-job', label: 'First job' }, { key: 'early-career', label: 'Early career' }, { key: 'growing', label: 'Growing' }, { key: 'all', label: 'Any stage' },
 ];
-const AREAS: PlaybookTopic['area'][] = ['banking', 'credit', 'tax', 'insurance', 'investing', 'education', 'housing', 'estate', 'tools', 'retirement'];
+const AREAS: PlaybookTopic['area'][] = ['career', 'banking', 'credit', 'tax', 'insurance', 'investing', 'education', 'housing', 'estate', 'tools', 'retirement'];
 
 export function PlaybookPage() {
   const [area, setArea] = useState<'all' | PlaybookTopic['area']>('all');
   const { me } = useSession();
+  const product = useProduct();
   const viewMode = usePrefs((s) => s.viewMode);
   const advisor = isStaff(me?.user.role) && viewMode === 'advisor';
-  const topics = PLAYBOOK.filter((t) => area === 'all' || t.area === area);
+  const all = playbookFor(product.key);
+  const areas = AREAS.filter((a) => all.some((t) => t.area === a));
+  const topics = all.filter((t) => area === 'all' || t.area === area);
   return (
     <Page>
       <PageHeader title="Playbook" subtitle="Life-stage guidance with sources. Category-level only; no product endorsements." />
       <div className="flex flex-wrap gap-1 mb-4" role="group" aria-label="Filter by area">
-        {(['all', ...AREAS] as const).map((a) => (
+        {(['all', ...areas] as const).map((a) => (
           <button key={a} type="button" aria-pressed={area === a} onClick={() => setArea(a)} className={cx('rounded-pill border px-2.5 py-0.5 text-xs capitalize focus-visible:ring-2 focus-visible:ring-edit focus-visible:outline-none', area === a ? 'bg-ink text-paper border-ink' : 'bg-paper-2 border-line text-ink-2')}>{a}</button>
         ))}
       </div>

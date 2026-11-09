@@ -78,5 +78,15 @@ Only seven generic asset classes are modeled (US large cap, US small/mid cap, in
 # Limitations
 The model simplifies taxes, benefits, loan servicing and market behavior; it does not model sequence-of-returns timing within a year, taxes on retirement withdrawals beyond a flat gross-up, state-specific credits, or changes in law. Figures flagged VERIFY may be inaccurate. Discuss the results with your advisor.`;
 
+/** Shown above the shared methodology on Flight Plan deployments. */
+export const PILOT_METHODOLOGY_TEXT = `# Airline careers and pay (Flight Plan)
+Pay for each projection year is the contract rate for the pilot's seat (first officer or captain), fleet (narrowbody or widebody) and longevity year, multiplied by credit hours per month and twelve, plus any profit sharing. Rates are nominal contract rates from published or reported pay scales; dated contract raises apply first, then a pay-growth assumption (default 3% a year) after the last listed raise. Longevity steps that were not published are linearly interpolated and flagged VERIFY, as are proxy scales (United and Delta reuse American's scale until a real one is entered).
+
+# Career events
+The path moves from student or CFI to a regional, then to a major (hired, or a guaranteed flow such as Envoy to American) after editable milestones: years to regional, regional captain upgrade, years to major, major captain upgrade and widebody. A pilot already at a regional keeps that regional and its longevity; a pilot already at a major stays there on every path. What-ifs delay upgrades or insert furlough years right after joining the major with seniority frozen. Airline flying ends at the FAA age limit of 65.
+
+# Company retirement contributions
+Airline 401(k) contributions are non-elective percentages of pay (15–18% at the majors). Total annual additions are capped by §415(c); company money above the cap is paid as taxable cash (invested after tax in the projection), credited to a market-based cash balance plan, or forfeited, according to the carrier's contract and the path's override. Southwest's 2% cash balance credit and FedEx's legacy pension or market-based cash balance alternative are modelled from reported contract terms and flagged where unverified.`;
+
 export const DEFAULT_DISCLAIMER =
   'Prepared for discussion purposes. Hypothetical projections based on stated assumptions and publicly available salary and tax data as of the dates shown; not investment, tax, or legal advice. Actual results will vary.';

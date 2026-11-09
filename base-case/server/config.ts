@@ -1,6 +1,8 @@
 /**
  * Server configuration, resolved once from the environment. Nothing here is logged verbatim.
  */
+import { productConfig, productFromEnv, type ProductKey } from '../shared/product';
+
 export type NodeEnv = 'development' | 'production' | 'test';
 
 export interface Config {
@@ -15,6 +17,8 @@ export interface Config {
   masterKeyHex: string | null;
   anthropicApiKey: string | null;
   chatModel: string;
+  /** Which product this instance serves: 'base-case' (graduates) or 'flight-plan' (airline pilots) */
+  product: ProductKey;
   firmName: string;
   bootstrapAdminEmail: string | null;
   bootstrapAdminPassword: string | null;
@@ -32,7 +36,9 @@ function str(v: string | undefined): string | null {
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Config {
   const nodeEnv: NodeEnv = env.NODE_ENV === 'production' ? 'production' : env.NODE_ENV === 'test' ? 'test' : 'development';
   const demoSeedRaw = str(env.DEMO_SEED);
+  const product = productFromEnv(env.PRODUCT);
   return {
+    product,
     env: nodeEnv,
     port: Number(str(env.PORT) ?? 8787) || 8787,
     appOrigin: (str(env.APP_ORIGIN) ?? 'http://localhost:5173').replace(/\/+$/, ''),
@@ -41,7 +47,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Config {
     masterKeyHex: str(env.BASE_CASE_MASTER_KEY),
     anthropicApiKey: str(env.ANTHROPIC_API_KEY),
     chatModel: str(env.BASE_CASE_CHAT_MODEL) ?? 'claude-opus-5-5',
-    firmName: str(env.FIRM_NAME) ?? 'Base Case',
+    firmName: str(env.FIRM_NAME) ?? productConfig(product).name,
     bootstrapAdminEmail: str(env.BOOTSTRAP_ADMIN_EMAIL),
     bootstrapAdminPassword: str(env.BOOTSTRAP_ADMIN_PASSWORD),
     demoSeed: demoSeedRaw === null ? nodeEnv !== 'production' : demoSeedRaw === '1' || demoSeedRaw.toLowerCase() === 'true',
@@ -61,6 +67,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     masterKeyHex: 'a'.repeat(64),
     anthropicApiKey: null,
     chatModel: 'claude-opus-5-5',
+    product: 'base-case',
     firmName: 'Test Firm',
     bootstrapAdminEmail: null,
     bootstrapAdminPassword: null,

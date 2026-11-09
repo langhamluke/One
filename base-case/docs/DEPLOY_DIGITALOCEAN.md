@@ -1,6 +1,15 @@
-# Deploy Base Case on your DigitalOcean droplet
+# Deploy Base Case or Flight Plan on your DigitalOcean droplet
 
 Tested end to end on 2026-11-03 with the exact files in `deploy/` (Postgres 16, the app image, Caddy 2 with automatic HTTPS).
+
+## Base Case or Flight Plan?
+The same image serves either product. The setup script asks **Product to serve** (`base-case` or `flight-plan`) and
+writes `PRODUCT=` and a matching `FIRM_NAME=` into `deploy/.env.production`; the automatic address becomes
+`flightplan.<ip>.sslip.io` for Flight Plan. In non-interactive mode pass `PRODUCT=flight-plan` on the command line.
+To run **both** products, use two droplets (or two clones in different directories with different `DOMAIN`, ports and
+Postgres volumes): each product needs its own database, because plans, users and invites are per instance.
+To switch an existing instance, change `PRODUCT=` in `deploy/.env.production` and run `deploy/update.sh`; existing
+plans keep working (each plan carries its own product tag).
 
 ## What runs on the droplet
 | Container | Role | Exposed |
@@ -44,8 +53,8 @@ Steps:
 1. Show me what is listening on ports 80 and 443 and stop if anything is.
 2. git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke/One.git /opt/base-case
 3. Read /opt/base-case/base-case/docs/DEPLOY_DIGITALOCEAN.md and /opt/base-case/base-case/deploy/setup-droplet.sh.
-4. Run: sudo NONINTERACTIVE=1 BRANCH=claude/festive-goldberg-9jofrz ADMIN_EMAIL=langhamluke14@gmail.com bash /opt/base-case/base-case/deploy/setup-droplet.sh
-   (no DOMAIN given on purpose: the script picks a free automatic address of the form basecase.<ip>.sslip.io)
+4. Run: sudo NONINTERACTIVE=1 PRODUCT=flight-plan BRANCH=claude/festive-goldberg-9jofrz ADMIN_EMAIL=langhamluke14@gmail.com bash /opt/base-case/base-case/deploy/setup-droplet.sh
+   (PRODUCT=base-case for the graduate product; no DOMAIN given on purpose: the script picks a free automatic address of the form flightplan.<ip>.sslip.io or basecase.<ip>.sslip.io)
 5. Tell me the exact https:// address it chose, confirm that address + /api/health returns ok, and show `docker stats --no-stream`.
 6. Do not print the contents of deploy/.env.production. Tell me the command to read the admin password myself.
 ```
@@ -58,8 +67,8 @@ git clone --branch claude/festive-goldberg-9jofrz https://github.com/langhamluke
 ```bash
 sudo BRANCH=claude/festive-goldberg-9jofrz bash /opt/base-case/base-case/deploy/setup-droplet.sh
 ```
-It asks for your domain, admin email, admin password (or generates one), demo accounts yes/no, and an optional
-Anthropic key; writes all secrets to `/opt/base-case/base-case/deploy/.env.production` (root-only); builds; starts; and
+It asks for the product (base-case / flight-plan), your domain, admin email, admin password (or generates one), demo
+accounts yes/no, and an optional Anthropic key; writes all secrets to `/opt/base-case/base-case/deploy/.env.production` (root-only); builds; starts; and
 schedules a nightly database backup at 03:17 with 14-day retention. After the branch is merged into `main`, drop the
 `--branch` and `BRANCH=` parts.
 

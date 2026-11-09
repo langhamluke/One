@@ -6,7 +6,7 @@
 # Interactive:      sudo bash deploy/setup-droplet.sh
 # Non-interactive:  sudo DOMAIN=plan.example.com ADMIN_EMAIL=you@example.com NONINTERACTIVE=1 bash deploy/setup-droplet.sh
 #   (omit DOMAIN to get a free automatic address: basecase.<public-ip>.sslip.io)
-#   optional env:   ADMIN_PASSWORD (generated if unset), DEMO_SEED=0|1, ANTHROPIC_API_KEY, BRANCH, ENABLE_AUTO_UPDATES=1
+#   optional env:   PRODUCT=base-case|flight-plan (default base-case), ADMIN_PASSWORD (generated if unset), DEMO_SEED=0|1, ANTHROPIC_API_KEY, BRANCH, ENABLE_AUTO_UPDATES=1
 set -euo pipefail
 
 REPO_URL="${REPO_URL:-https://github.com/langhamluke/One.git}"
@@ -73,11 +73,15 @@ cd "$APP_DIR/base-case"
 ENV_FILE="deploy/.env.production"
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "==> Configuration"
-  ask DOMAIN "Domain for Base Case (Enter for an automatic free address via sslip.io): "
+  ask PRODUCT "Product to serve: base-case (new graduates) or flight-plan (airline pilots) [base-case]: "
+  PRODUCT=${PRODUCT:-base-case}
+  case "$PRODUCT" in base-case|flight-plan) ;; *) echo "PRODUCT must be base-case or flight-plan." >&2; exit 1;; esac
+  PRODUCT_NAME=$([[ "$PRODUCT" == flight-plan ]] && echo "Flight Plan" || echo "Base Case")
+  ask DOMAIN "Domain for ${PRODUCT_NAME} (Enter for an automatic free address via sslip.io): "
   if [[ -z "${DOMAIN:-}" ]]; then
     PUB_IP=$(curl -4 -fsS --max-time 10 https://api.ipify.org || curl -4 -fsS --max-time 10 https://ifconfig.me || true)
     [[ "$PUB_IP" =~ ^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "Could not detect the public IPv4 address; pass DOMAIN=... explicitly." >&2; exit 1; }
-    DOMAIN="basecase.${PUB_IP//./-}.sslip.io"
+    DOMAIN="$([[ "$PRODUCT" == flight-plan ]] && echo flightplan || echo basecase).${PUB_IP//./-}.sslip.io"
     echo "No domain given: using the automatic address https://${DOMAIN} (sslip.io resolves it to ${PUB_IP}; HTTPS certificate is still issued normally)."
   fi
   ask ADMIN_EMAIL "Admin email: "
@@ -94,7 +98,8 @@ DOMAIN=${DOMAIN}
 POSTGRES_PASSWORD=$(openssl rand -hex 24)
 BASE_CASE_MASTER_KEY=$(openssl rand -hex 32)
 SESSION_SECRET=$(openssl rand -base64 48 | tr -d '\n')
-FIRM_NAME=Base Case
+PRODUCT=${PRODUCT}
+FIRM_NAME=${PRODUCT_NAME}
 BOOTSTRAP_ADMIN_EMAIL=${ADMIN_EMAIL}
 BOOTSTRAP_ADMIN_PASSWORD=${ADMIN_PASSWORD}
 DEMO_SEED=$([[ "${DEMO_SEED:-0}" =~ ^(1|y|Y|yes)$ ]] && echo 1 || echo 0)

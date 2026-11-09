@@ -209,3 +209,63 @@ export const SUPPLEMENT: SupplementQuestion[] = [
     ],
   },
 ];
+
+/**
+ * Pilot Supplement (Flight Plan): the original four pilot questions, verbatim from the Flight Plan build.
+ * Option VALUES share the Base Case meaning so the emergency-fund rule needs no branching:
+ *   s1 = 2 high exposure · s2 = 2 heavy reliance on employer stock / profit sharing · s3 = 0 no coverage · s4 = 0 no second income.
+ */
+export const PILOT_SUPPLEMENT: SupplementQuestion[] = [
+  {
+    id: 's1',
+    text: "How exposed is your income to your airline's health (furlough history, base closures, junior seniority)?",
+    options: [
+      { label: 'Low — senior / stable carrier', value: 0 },
+      { label: 'Moderate', value: 1 },
+      { label: 'High — junior, furlough or base-closure history', value: 2 },
+    ],
+  },
+  {
+    id: 's2',
+    text: 'Do you hold employer stock or rely on profit sharing for regular expenses?',
+    options: [
+      { label: 'No', value: 0 },
+      { label: 'Some (under 10% of net worth / not budgeted)', value: 1 },
+      { label: 'Heavily (10%+ of net worth or budgeted)', value: 2 },
+    ],
+  },
+  {
+    id: 's3',
+    text: 'Do you have loss-of-license (medical certificate) coverage?',
+    options: [
+      { label: 'Yes — adequate benefit', value: 1 },
+      { label: 'Yes — small / union minimum only', value: 2 },
+      { label: 'No', value: 0 },
+    ],
+  },
+  {
+    id: 's4',
+    text: 'Is there a second household income?',
+    options: [
+      { label: 'Yes — could cover core expenses', value: 1 },
+      { label: 'Yes — modest', value: 2 },
+      { label: 'No — single income', value: 0 },
+    ],
+  },
+];
+
+/** Supplement questions for a product. */
+export function supplementFor(product: string | undefined | null): SupplementQuestion[] {
+  return product === 'flight-plan' ? PILOT_SUPPLEMENT : SUPPLEMENT;
+}
+
+/** Flight Plan restores the two pilot-specific phrases that Base Case generalized (see TEXT_ADAPTATIONS). Scoring is identical. */
+export const PILOT_TEXT: Record<string, Partial<Pick<Question, 'text' | 'help'>>> = {
+  q8: { text: "When do you expect your next major expenditure (e.g., pay off flight-school loans, buy a home, fund a child's education), and how will you pay for it?" },
+  q10: { help: 'For pilots, include disability and loss-of-license (medical certificate) coverage.' },
+};
+
+export function questionsFor(product: string | undefined | null): Question[] {
+  if (product !== 'flight-plan') return QUESTIONS;
+  return QUESTIONS.map((q) => (PILOT_TEXT[q.id] ? { ...q, ...PILOT_TEXT[q.id] } : q));
+}

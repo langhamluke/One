@@ -5,7 +5,7 @@ import { Chip, Field, NumberInput, Panel, RadioCards, Stat, VerifyTag } from '@/
 import { RangeChart } from '@/components/charts/RangeChart';
 import { RiskGauge } from '@/components/charts/RiskGauge';
 import { EngineUnavailable } from '@/components/EngineUnavailable';
-import { HORIZON_BANDS, QUESTIONNAIRE_SOURCE, QUESTIONS, RISK_BANDS, SUPPLEMENT, TEXT_VERIFIED } from '@shared/data/questionnaire';
+import { HORIZON_BANDS, QUESTIONNAIRE_SOURCE, RISK_BANDS, TEXT_VERIFIED, questionsFor, supplementFor } from '@shared/data/questionnaire';
 import { fmtMoney } from '@/lib/format';
 
 export function RiskPage() {
@@ -13,6 +13,9 @@ export function RiskPage() {
   const update = usePlanStore((s) => s.update);
   const { derived, error } = useDerived();
   const advisor = useAdvisorView();
+  const QUESTIONS = questionsFor(state.product);
+  const SUPPLEMENT = supplementFor(state.product);
+  const pilot = state.product === 'flight-plan';
   const answered = QUESTIONS.filter((q) => state.answers[q.id] != null).length;
   const amount = state.portfolioAmount;
   const fmtAmt = fmtMoney(amount);
@@ -52,7 +55,7 @@ export function RiskPage() {
             </Panel>
           );
         })}
-        <Panel title="Supplement" subtitle="not scored; sets your emergency fund">
+        <Panel title={pilot ? 'Pilot supplement' : 'Supplement'} subtitle={pilot ? 'not part of the class score; sets your emergency fund and career-risk alerts' : 'not scored; sets your emergency fund'}>
           <div className="flex flex-col gap-4">
             {SUPPLEMENT.map((sq) => (
               <div key={sq.id}>

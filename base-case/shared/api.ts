@@ -4,6 +4,7 @@
  */
 import type { PlanState } from './lib/inputs';
 import type { Role } from './lib/types';
+import type { ProductKey } from './product';
 
 export interface UserSummary {
   id: string;
@@ -22,9 +23,17 @@ export interface UserSummary {
 
 export interface MeResponse {
   user: UserSummary;
-  firm: { name: string; assistantMode: 'claude' | 'offline'; dataAsOf: string };
+  firm: { name: string; assistantMode: 'claude' | 'offline'; dataAsOf: string; product: ProductKey };
   /** True when the session still needs a TOTP code */
   mfaPending?: boolean;
+}
+
+/** Public (unauthenticated) product descriptor for the sign-in page: GET /api/product */
+export interface ProductInfo {
+  key: ProductKey;
+  name: string;
+  tagline: string;
+  firmName: string;
 }
 
 export interface LoginRequest { email: string; password: string }
@@ -161,6 +170,7 @@ export interface ApiError { error: string; code?: string }
 /** Route table (documentation; the server implements these exactly). */
 export const ROUTES = {
   health: 'GET /api/health',
+  product: 'GET /api/product',
   login: 'POST /api/auth/login',
   mfaVerify: 'POST /api/auth/mfa/verify',
   logout: 'POST /api/auth/logout',

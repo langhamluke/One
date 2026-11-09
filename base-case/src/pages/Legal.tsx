@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
-import { METHODOLOGY_TEXT, PRIVACY_TEXT, TERMS_TEXT } from '@/content/legal';
+import { METHODOLOGY_TEXT, PILOT_METHODOLOGY_TEXT, PRIVACY_TEXT, TERMS_TEXT } from '@/content/legal';
+import { useProduct } from '@/state/session';
 
 /** Renders the markdown-ish legal strings: "# " headings, blank-line paragraphs. */
 function RenderDoc({ text }: { text: string }) {
@@ -28,15 +29,18 @@ function RenderDoc({ text }: { text: string }) {
 }
 
 export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'methodology' }) {
+  const product = useProduct();
+  const text = (kind === 'privacy' ? PRIVACY_TEXT : kind === 'terms' ? TERMS_TEXT : METHODOLOGY_TEXT).replaceAll('Base Case', product.name);
   return (
     <div className="min-h-screen px-4 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="flex items-center justify-between mb-4">
           <h1>{kind === 'privacy' ? 'Privacy' : kind === 'terms' ? 'Terms of use' : 'Methodology'}</h1>
-          <Link to="/" className="text-sm">Back to Base Case</Link>
+          <Link to="/" className="text-sm">Back to {product.name}</Link>
         </div>
         <div className="card p-6">
-          <RenderDoc text={kind === 'privacy' ? PRIVACY_TEXT : kind === 'terms' ? TERMS_TEXT : METHODOLOGY_TEXT} />
+          {product.key === 'flight-plan' && kind === 'methodology' && <RenderDoc text={PILOT_METHODOLOGY_TEXT} />}
+          <RenderDoc text={text} />
           <p className="mt-6 text-xxs text-ink-4">{kind === 'methodology' ? 'See the Data & Sources page for every figure, its source and as-of date.' : 'Draft pending attorney review; the full document is published by the operator of this deployment.'}</p>
         </div>
       </div>

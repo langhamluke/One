@@ -25,6 +25,10 @@ export interface YearRow {
   employeeRoth401k: number;
   employer401k: number;
   employerLoanMatch401k: number;
+  /** Employer cash-balance credits (airline MBCB plans, §415(c) excess routed to a cash balance plan); grows with pre-tax */
+  employerCashBalance: number;
+  /** Company contributions above §415(c) paid out as taxable cash (airline "cash in lieu") */
+  cashInLieu: number;
   hsaEmployee: number;
   hsaEmployer: number;
   esppContribution: number;
@@ -60,6 +64,8 @@ export interface YearRow {
   savingsRateWithEmployer: number;
   limits: { deferralCapped: boolean; s415cCapped: boolean; rothIra: 'full' | 'partial' | 'none'; rothIraAllowed: number };
   flags: string[];
+  /** Airline paths: carrier, seat and rate for the year (display only) */
+  airline?: { id: string; seat?: string; fleet?: string; longevity?: number; rate?: number; caRateAsFo?: boolean };
 }
 
 export interface Waypoint {

@@ -32,6 +32,8 @@ import { LOAN_LIMITS_2026 } from '../data/loans';
 import type { Stage, Waypoint } from './derived';
 import { sourced, type DataQualityItem, type Sourced } from './types';
 import type { LoanInput } from './loans';
+import type { AirlineId, ExcessHandling, Fleet, Milestones, Seat } from '../data/airlines';
+import { simulateAirlinePath } from './airline';
 
 export const TRACK_POSITION: Record<Track, number> = { low: 0.25, mid: 0.5, high: 0.75 };
 
@@ -70,6 +72,20 @@ export interface PayRow {
   coveredBySS: boolean;
   yearsOfService: number;
   gapMonths: number;
+  // ---- Airline paths only (Flight Plan)
+  /** Company non-elective 401(k) contribution as a fraction of pay; replaces the generic match when set */
+  employerPctOverride?: number;
+  /** What the airline does with company money above §415(c) */
+  excessHandling?: ExcessHandling;
+  /** Market-based cash balance credit this year (nominal $) */
+  mbcbCredit?: number;
+  airline?: AirlineId;
+  seat?: Seat;
+  fleet?: Fleet;
+  longevity?: number;
+  /** Rate actually paid this year (per hour / TFP, or annual for CFI), after contract raises */
+  hourlyRate?: number;
+  caRateAsFo?: boolean;
 }
 
 export interface LadderResolution {
@@ -92,6 +108,8 @@ export interface CareerSim {
   gradLoan?: LoanInput;
   flags: string[];
   dataQuality: DataQualityItem[];
+  /** Airline paths only: resolved carriers, effective retirement age and milestones in use */
+  airline?: { regional: AirlineId | null; major: AirlineId | null; retireAt: number; milestones: Milestones };
 }
 
 /** Resolve the ladder for an occupation code (data), a custom ladder (user) or the fallback band (user, flagged). */
@@ -131,7 +149,13 @@ function clampIdx(i: number, n: number): number {
   return Math.min(Math.max(0, Math.floor(Number.isFinite(i) ? i : 0)), Math.max(0, n - 1));
 }
 
+/** Simulate one career path: occupation ladder (default) or airline seat/longevity progression. */
 export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf): CareerSim {
+  if (path.kind === 'airline') return simulateAirlinePath(state, path, whatIf);
+  return simulateLadderPath(state, path, whatIf);
+}
+
+export function simulateLadderPath(state: PlanState, path: CareerPath, whatIf: WhatIf): CareerSim {
   const a = state.assumptions;
   const prof = state.profile;
   const infl = a.inflation;

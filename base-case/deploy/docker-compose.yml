@@ -42,7 +42,9 @@ services:
       DATABASE_URL: postgres://basecase:${POSTGRES_PASSWORD}@db:5432/basecase
       BASE_CASE_MASTER_KEY: ${BASE_CASE_MASTER_KEY:?set BASE_CASE_MASTER_KEY}
       SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
-      FIRM_NAME: ${FIRM_NAME:-Base Case}
+      # base-case (new graduates) or flight-plan (airline pilots); one image serves either
+      PRODUCT: ${PRODUCT:-base-case}
+      FIRM_NAME: ${FIRM_NAME:-}
       BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
       BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
       DEMO_SEED: ${DEMO_SEED:-0}

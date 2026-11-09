@@ -2,16 +2,19 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { auth } from '@/api/endpoints';
 import { MOCK_MODE, errorMessage } from '@/api/client';
-import { useSession } from '@/state/session';
+import { useProduct, useSession } from '@/state/session';
 import { Button, ErrorNote, Field, TextInput } from '@/components/ui';
+import { ProductLogo } from '@/components/shell/AppShell';
 
 function AuthFrame({ title, children, footer }: { title: string; children: React.ReactNode; footer?: React.ReactNode }) {
+  const product = useProduct();
+  const { productInfo } = useSession();
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10">
       <div className="w-full max-w-sm">
-        <div className="flex items-center gap-2 mb-5">
-          <svg width="26" height="26" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="7" fill="#1A1A1A" /><path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /><circle cx="24" cy="9" r="2.5" fill="#F2F2F2" /></svg>
-          <span className="font-semibold text-base tracking-tight">Base Case</span>
+        <div className="mb-5">
+          <ProductLogo size={26} />
+          <p className="mt-1 text-xs text-ink-3">{product.tagline}{productInfo?.firmName && productInfo.firmName !== product.name ? ` · ${productInfo.firmName}` : ''}</p>
         </div>
         <div className="card p-5">
           <h1 className="mb-4">{title}</h1>

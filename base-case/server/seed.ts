@@ -5,7 +5,8 @@ import { and, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { PERSONAS } from '../shared/data/personas';
+import { personasFor } from '../shared/data/personas';
+import { productConfig } from '../shared/product';
 import { mergePlanState, type PlanState } from '../shared/lib/inputs';
 import type { Role } from '../shared/lib/types';
 import type { AppDeps } from './types';
@@ -21,6 +22,15 @@ export const DEMO = {
   clientPassword: 'BaseCase-Client-2026!',
   sampleProposalTitle: 'Try: raise 401(k) to 10%',
 } as const;
+
+/** Demo staff accounts live on the product's demo domain (admin@demo.flightplan.local for Flight Plan). */
+export function demoAccounts(product: string) {
+  const domain = productConfig(product).demoDomain;
+  return {
+    admin: { ...DEMO.admin, email: `admin@${domain}` },
+    advisor: { ...DEMO.advisor, email: `advisor@${domain}` },
+  };
+}
 
 export interface EnsureUserInput {
   email: string;
@@ -62,15 +72,16 @@ export interface SeedResult {
 export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {}): Promise<SeedResult> {
   const created: string[] = [];
   const credentials: SeedResult['credentials'] = [];
-  const admin = await ensureUser(deps, { ...DEMO.admin, role: 'admin' });
+  const accounts = demoAccounts(deps.config.product);
+  const admin = await ensureUser(deps, { ...accounts.admin, role: 'admin' });
   if (admin.created) created.push(admin.user.email);
   credentials.push({ role: 'admin', email: admin.user.email, password: DEMO.admin.password, name: admin.user.displayName });
-  const advisor = await ensureUser(deps, { ...DEMO.advisor, role: 'advisor' });
+  const advisor = await ensureUser(deps, { ...accounts.advisor, role: 'advisor' });
   if (advisor.created) created.push(advisor.user.email);
   credentials.push({ role: 'advisor', email: advisor.user.email, password: DEMO.advisor.password, name: advisor.user.displayName });
 
   let first: { user: UserRow; state: PlanState } | null = null;
-  for (const persona of PERSONAS) {
+  for (const persona of personasFor(deps.config.product)) {
     const res = await ensureUser(deps, { email: persona.email, password: DEMO.clientPassword, role: 'client', displayName: persona.name });
     if (res.created) created.push(res.user.email);
     if (res.user.role !== 'client') continue;
@@ -112,14 +123,16 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
     }
   }
 
-  if (opts.print !== false) printCredentials(credentials, created.length);
+  if (opts.print !== false) printCredentials(credentials, created.length, productConfig(deps.config.product).name);
   return { created, credentials };
 }
 
-export function printCredentials(credentials: SeedResult['credentials'], createdCount: number): void {
+export function printCredentials(credentials: SeedResult['credentials'], createdCount: number, productName = 'Base Case'): void {
+  const title = ` ${productName} demo accounts `;
+  const pad = Math.max(0, 85 - title.length);
   const lines = [
     '',
-    '============================== Base Case demo accounts ==============================',
+    `${'='.repeat(Math.floor(pad / 2))}${title}${'='.repeat(Math.ceil(pad / 2))}`,
     createdCount === 0 ? '(demo accounts already existed; nothing created)' : `(${createdCount} record(s) created)`,
     ...credentials.map((c) => `  ${c.role.padEnd(8)} ${c.email.padEnd(40)} ${c.password}   (${c.name})`),
     'These are LOCAL DEMO credentials. Rotate or delete them before any shared deployment.',

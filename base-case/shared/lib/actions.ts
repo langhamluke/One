@@ -4,7 +4,7 @@
  * then insurance gaps and a loan-plan comparison when relevant.
  */
 import type { ActionItem } from './types';
-import type { PlanState } from './inputs';
+import { isPilotPlan, type PlanState } from './inputs';
 import type { EmergencyFund, PathResult } from './derived';
 import type { LedgerOutput } from './plan';
 import { deferralLimit, hsaLimit, iraLimit } from './limits';
@@ -143,8 +143,32 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   const items: ActionItem[] = core.slice(0, 5).map((it, i) => ({ id: `action-${it.category}-${i}`, rank: i + 1, ...it }));
 
   // Insurance gaps
-  if (!b.disabilityCoverage && !state.insurance.disability) {
+  const pilot = isPilotPlan(state);
+  const noLtd = !b.disabilityCoverage && !state.insurance.disability;
+  const noLol = pilot && !state.insurance.lossOfLicense;
+  if (pilot && (noLtd || noLol)) {
+    items.push({ id: 'action-insurance-pilot', rank: items.length + 1, category: 'insurance', title: `Add ${[noLtd && 'own-occupation disability', noLol && 'loss-of-license'].filter(Boolean).join(' + ')} coverage`, detail: 'Protects the pilot certificate, the engine of the whole plan. Union group plans are a start; check the benefit against the pay projection.' });
+  } else if (noLtd) {
     items.push({ id: 'action-insurance-disability', rank: items.length + 1, category: 'insurance', title: 'Close the disability-insurance gap', detail: 'No long-term disability coverage is recorded. Check the employer plan first; individual coverage typically costs 1-3% of salary.' });
+  }
+
+  // Airline-specific (Flight Plan)
+  if (pilot) {
+    const pp = state.profile.pilot;
+    if (pp?.employer === 'fedex' && (pp.stage === 'cargo_fo' || pp.stage === 'cargo_ca')) {
+      items.push({ id: 'action-fedex-election', rank: items.length + 1, category: 'other', title: 'Model and make the FedEx pension election (Apr–May 30, 2027)', detail: 'Compare the legacy pension and the market-based cash balance plan with the FedEx option on the career path before the irrevocable deadline.' });
+    }
+    const u = ctx.ledger.usage;
+    if (u.s415cSpill > 0.5) {
+      items.push({
+        id: 'action-415c',
+        rank: items.length + 1,
+        category: 'tax',
+        title: `Plan for §415(c) spillover from age ${u.s415cSpillFirstAge ?? '—'}`,
+        detail: u.s415cHandling === 'cash' ? 'Company contributions above the annual-additions limit are paid as taxable cash; invest the after-tax amount in a tax-efficient taxable account rather than spending it.' : u.s415cHandling === 'mbcb' ? 'Excess company contributions go to the market-based cash balance plan; confirm the plan mechanics and keep its balance in the retirement picture.' : 'Excess company contributions are forfeited under the current setting; confirm the plan document.',
+        amount: u.s415cSpill,
+      });
+    }
   }
   if (!state.insurance.renters && state.profile.housingCost > 0) {
     items.push({ id: 'action-insurance-renters', rank: items.length + 1, category: 'insurance', title: 'Add renters insurance', detail: 'Covers belongings and liability for roughly $15-30 a month.' });

@@ -8,6 +8,8 @@
  */
 import { defaultBenefits, defaultCareerPath, defaultPlanState, defaultSavings, defaultWhatIf, type CareerPath, type PlanState } from '../lib/inputs';
 import { FEDERAL_RATES } from './loans';
+import { PILOT_PERSONAS } from './personasPilot';
+import type { ProductKey } from '../product';
 
 export interface Persona {
   key: string;
@@ -363,5 +365,13 @@ export const PERSONAS: Persona[] = [
 ];
 
 export function personaByKey(key: string): Persona | undefined {
-  return PERSONAS.find((p) => p.key === key);
+  return PERSONAS.find((p) => p.key === key) ?? PILOT_PERSONAS.find((p) => p.key === key);
 }
+
+/** Demo personas for a product: graduates for Base Case, pilots for Flight Plan. */
+export function personasFor(product: ProductKey | string | undefined | null): Persona[] {
+  return product === 'flight-plan' ? PILOT_PERSONAS : PERSONAS;
+}
+
+/** Every persona across both products (data-integrity tests, seed look-ups). */
+export const ALL_PERSONAS: Persona[] = [...PERSONAS, ...PILOT_PERSONAS];

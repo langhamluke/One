@@ -30,16 +30,16 @@ export function PlanLayout() {
   const { clientId } = useParams();
   const [sp] = useSearchParams();
   const proposalId = sp.get('proposal');
-  const { me } = useSession();
+  const { me, product } = useSession();
   const role = me?.user.role ?? 'client';
   const staff = isStaff(role);
   const { load, loaded, loading, loadError, reset } = usePlanStore();
 
   useEffect(() => {
     if (staff && !clientId) return;
-    void load({ clientId: clientId ?? null, proposalId, role });
+    void load({ clientId: clientId ?? null, proposalId, role, product: product.key });
     return () => reset();
-  }, [clientId, proposalId, role, staff, load, reset]);
+  }, [clientId, proposalId, role, staff, load, reset, product.key]);
 
   if (staff && !clientId) return <Navigate to="/clients" replace />;
   if (!staff && clientId) return <Navigate to="/plan/profile" replace />;

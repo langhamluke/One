@@ -6,8 +6,9 @@
  */
 import { create } from 'zustand';
 import type { PlanRecord, Proposal } from '@shared/api';
-import { defaultPlanState, mergePlanState, type PlanState } from '@shared/lib/inputs';
+import { defaultPlanState, defaultPlanStateFor, mergePlanState, type PlanState } from '@shared/lib/inputs';
 import type { Role } from '@shared/lib/types';
+import type { ProductKey } from '@shared/product';
 import { plans, proposals } from '@/api/endpoints';
 import { ApiError, errorMessage } from '@/api/client';
 
@@ -28,7 +29,9 @@ interface PlanStore {
   savedAt: string | null;
   saveError: string | null;
   dragging: boolean;
-  load: (args: { clientId: string | null; proposalId?: string | null; role: Role }) => Promise<void>;
+  /** Product of the deployment; new (empty) plans start from this product's defaults */
+  product: ProductKey;
+  load: (args: { clientId: string | null; proposalId?: string | null; role: Role; product?: ProductKey }) => Promise<void>;
   update: (mutate: (draft: PlanState) => void) => void;
   replace: (state: PlanState) => void;
   startDraft: () => Promise<Proposal | null>;
@@ -68,6 +71,7 @@ export const usePlanStore = create<PlanStore>((set, get) => {
     savedAt: null,
     saveError: null,
     dragging: false,
+    product: 'base-case',
 
     reset: () => {
       if (timer) clearTimeout(timer);
@@ -76,11 +80,11 @@ export const usePlanStore = create<PlanStore>((set, get) => {
       set({ clientId: null, approved: null, proposal: null, state: defaultPlanState(), mode: 'view', loaded: false, loading: false, loadError: null, dirty: false, saving: false, savedAt: null, saveError: null });
     },
 
-    load: async ({ clientId, proposalId, role }) => {
+    load: async ({ clientId, proposalId, role, product }) => {
       const seq = ++loadSeq;
       if (timer) clearTimeout(timer);
       timer = null;
-      set({ loading: true, loadError: null, role });
+      set({ loading: true, loadError: null, role, product: product ?? get().product });
       try {
         let approved: PlanRecord | null = null;
         try {
@@ -99,7 +103,7 @@ export const usePlanStore = create<PlanStore>((set, get) => {
         }
         if (seq !== loadSeq) return;
         const isDraft = proposal != null && proposal.status === 'draft';
-        const base = approved ? mergePlanState(approved.state) : defaultPlanState();
+        const base = approved ? mergePlanState(approved.state) : defaultPlanStateFor(get().product);
         set({
           clientId: effectiveClientId,
           approved: approved ? { ...approved, state: base } : null,
@@ -189,7 +193,7 @@ export const usePlanStore = create<PlanStore>((set, get) => {
       await proposals.update(p.id, { state: get().state, title, note });
       set({ dirty: false });
       p = await proposals.submit(p.id, {});
-      const base = get().approved?.state ?? defaultPlanState();
+      const base = get().approved?.state ?? defaultPlanStateFor(get().product);
       set({ proposal: null, mode: get().role === 'client' ? 'view' : 'direct', state: base, dirty: false });
       return p;
     },
@@ -205,7 +209,7 @@ export const usePlanStore = create<PlanStore>((set, get) => {
           set({ saveError: errorMessage(e) });
         }
       }
-      const base = get().approved?.state ?? defaultPlanState();
+      const base = get().approved?.state ?? defaultPlanStateFor(get().product);
       set({ proposal: null, mode: get().role === 'client' ? 'view' : 'direct', state: base, dirty: false, savedAt: null });
     },
 

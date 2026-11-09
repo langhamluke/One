@@ -9,10 +9,13 @@ base-case/
     components/             Design-system primitives and signature components (readout strip, cone, ladder, playbook)
     screens/                One file per route (planning phases, proposals, assistant, admin, account, legal)
   shared/                   Pure TypeScript shared by client and server (NO React, NO Node APIs)
+    product.ts              The two products (base-case, flight-plan): names, phase labels, defaults; PRODUCT env picks one
     lib/                    The planning engine: types, inputs (PlanState), derived (outputs), scoring, tax, limits,
-                            career, loans, glidepath, plan (ledger), montecarlo, ss, alerts, actions, dataQuality, engine
-    data/                   Sourced datasets: irs2026, tax2026, states, loans, ss, cma, models, questionnaire,
-                            careers (BLS OEWS), personas, playbook, sources.md
+                            career (dispatch: ladder | airline), airline (seat/longevity/flow/furlough, FedEx pension),
+                            loans, glidepath, plan (ledger), montecarlo, ss, alerts, actions, dataQuality, engine
+    data/                   Sourced datasets: irs2026, tax2026, states, loans, ss, cma, models, questionnaire (+ pilot
+                            wording and Pilot Supplement), careers (BLS OEWS), airlines (pay scales, retirement plans,
+                            paths), personas + personasPilot, playbook (+ pilot topics), sources.md
     api.ts                  API contract (routes and payload types)
   server/                   Hono API on Node 22
     index.ts                Boot: env, DB connect, migrate, bootstrap/seed, static serving in production
@@ -38,6 +41,12 @@ base-case/
 4. **Same engine in the browser and on the server**, so what-if sliders are instant (no round trips) and the
    assistant sees exactly the numbers the client sees.
 
+5. **One platform, two products.** `PRODUCT` (server env) selects Base Case or Flight Plan for an instance; the client
+   reads it from `GET /api/product` (public) and `firm.product` on `/api/me`. Each plan carries `PlanState.product` and
+   each career path a `kind` ('ladder' | 'airline'), so a plan renders correctly on either instance and paths can mix.
+   Product-specific behaviour lives behind small switches (`productConfig`, `questionsFor`, `supplementFor`,
+   `personasFor`, `playbookFor`, `isPilotPlan`), never in forks of screens or engine modules.
+
 ## Data flow
 ```
 PlanState (client edits) --debounced--> computeDerived() --> Derived --> screens
@@ -47,9 +56,11 @@ Assistant: POST /api/chat/threads/:id/messages -> authorize -> load plan -> comp
 ```
 
 ## Engine pipeline (computeDerived)
-risk profile → model equity + allocation + glide path → per path: career simulation (ladder, promotions, what-ifs)
-→ yearly ledger (payroll, limits, taxes, loans, order of operations, balances) → Social Security estimate →
-Monte Carlo (seeded, correlated lognormal, annual rebalance) → alerts → actions → data-quality ledger → headline.
+risk profile → model equity + allocation + glide path → per path: career simulation (ladder: levels, promotions,
+what-ifs; airline: seat, longevity, contract raises, flow, upgrades, widebody, furlough, FAA 65) → yearly ledger
+(payroll incl. carrier non-elective % and §415(c) excess handling, limits, taxes, loans, order of operations, balances)
+→ Social Security estimate → Monte Carlo (seeded, correlated lognormal, annual rebalance) → alerts → actions →
+data-quality ledger → headline.
 
 ## Scaling path
 - Stateless API process; sessions and rate limits can move to Redis; PostgreSQL scales independently.

@@ -33,6 +33,11 @@ const LEAF: Record<string, string> = {
   retirementSpendingOverride: 'Retirement spending override', ssClaimAge: 'SS claim age', ssOverrideAnnual: 'SS override (annual)',
   ssHaircut: 'SS haircut', taxGrossUp: 'Tax gross-up', lifeExpectancy: 'Life expectancy', emergencyMonthsDefault: 'Emergency months default',
   cashYield: 'Cash yield', lifestyleCreep: 'Lifestyle creep', indexing: 'Indexing', notes: 'Notes', version: 'Version',
+  product: 'Product', lossOfLicense: 'Loss-of-license coverage',
+  stage: 'Position', employer: 'Employer', hours: 'Flight hours', yearsAtEmployer: 'Years at employer', creditHours: 'Credit hours / month', domicile: 'Domicile',
+  pathId: 'Airline path', profitSharingPct: 'Profit sharing', payGrowthAfterContract: 'Pay growth after contract', envoyCaRateRule: 'Envoy CA-rate rule',
+  fedexOption: 'FedEx retirement election', excessHandlingOverride: '§415(c) excess handling', toRegional: 'Years to regional', regionalCaUpgrade: 'Regional CA upgrade',
+  toMajor: 'Years to major', majorCaUpgrade: 'Major CA upgrade', widebody: 'Widebody after CA', upgradeDelayYears: 'Upgrade delay (years)', furloughYears: 'Furlough (years)',
 };
 
 const SECTION: Record<string, string> = {
@@ -40,6 +45,7 @@ const SECTION: Record<string, string> = {
   equityComp: 'Equity comp', savings: 'Savings', goals: 'Goal', home: 'Home', insurance: 'Insurance', answers: 'Questionnaire',
   supplement: 'Supplement', careerPaths: 'Career path', customLevels: 'Level', yearsOverrides: 'Years in level', whatIf: 'What-if',
   gradSchool: 'Grad school', assumptions: 'Assumptions', cma: 'CMA', band: 'Band', value: 'Value',
+  pilot: 'Pilot', airline: 'Airline path', milestones: 'Milestones',
   uslc: 'US Large Cap', ussmid: 'US Small/Mid', intl: 'Intl Developed', em: 'Emerging', bonds: 'Bonds', tips: 'TIPS',
 };
 

@@ -157,6 +157,23 @@ NYC software developers $166,830 and RNs $119,720 (single aggregator / MSA scope
 - 2026 bend points: SSA OACT — https://www.ssa.gov/oact/cola/piaformula.html ; Federal Register 2025-19763 — https://www.govinfo.gov/content/pkg/FR-2025-11-03/pdf/2025-19763.pdf
 - 2027 bend points: SSA OACT — https://www.ssa.gov/oact/cola/bendpoints.html ; Federal Register 2026-21796 (Oct 26, 2026) — https://www.govinfo.gov/content/pkg/FR-2026-10-26/pdf/2026-21796.pdf
 
+## airlines.ts — airline pay scales, retirement plans and paths (Flight Plan; compiled 2026-10, ported 2026-11-08)
+Secondary sources only (pay-tracking sites, union/press releases, recruiting pages); the CBAs themselves were not read.
+Anchor steps carry these sources; every interpolated step is `verified:false` with an "Interpolated" source.
+- American 737 12-yr FO $266.58 / CA $402.01 (2026), 18% company contribution (17% May 2024 → 18% May 2026): aviationa2z.com — https://www.aviationa2z.com/index.php/2026/08/american-airlines-pilot-salary/
+- American widebody 12-yr CA $483.74 → $498.25 (1/1/2027, derived +3%), WB FO $330.44; FedEx top WB FO $332.49 / CA $469; "Top 5 Airlines 2026": boltflight.com — https://boltflight.com/
+- American 2024 year-1 FO ≈ $113/hr (unverified for 2026): thrustflight.com — https://thrustflight.com/american-airlines-pilot-salary/
+- American amendable 2027-08-01 (4-year APA pact, Aug 2023): FlightGlobal — https://www.flightglobal.com/strategy/american-airlines-pilots-accept-new-deal-that-will-boost-pay-up-to-46/154644.article
+- American Market Based Cash Balance Plan for excess 401(k) contributions (unverified mechanics): Airways Magazine — https://airwaysmag.com/summary-apa-american-agreement/
+- Southwest 1st-yr FO $125.90 per TFP; 18% company at the majors: aerocorner.com — https://aerocorner.com/blog/southwest-airlines-pilot-salary/
+- Southwest 12-yr FO $240.20 / CA $343.14 per TFP, 18% non-elective + 2% MBCB, amendable 2029-01: aviationa2z.com — https://www.aviationa2z.com/
+- Southwest raises +4% (2027), +3.25% (2028): AP / AJOT SWAPA ratification — https://www.ajot.com/news/southwest-airlines-pilots-ratify-new-contract
+- FedEx CBA (Jun 2026): ~40% raise, +3%/yr 2028–2030, legacy pension +30%, amendable 2030-12: ALPA — https://www.alpa.org/press-room/2026/06/fedex-pilots-ratify-new-collective-bargaining-agreement ; Supply Chain Dive / FreightWaves coverage (no URL captured)
+- FedEx pension cap (derived $130k × 1.30 = $169k), FAE cap $340k, MBCB ≈9% → 10%, election Apr–May 30 2027 effective 1/1/2028 (all unverified; verify CBA Section 28): leadingedgeplanning.com — https://leadingedgeplanning.com/fedex-pilots-open-enrollment/
+- Envoy new-hire FO > $90/hr, 50% pilot-supply premium through 12/31/2026, FOs paid at the CA rate after 750 hrs, guaranteed flow to American: envoyair.com — https://www.envoyair.com/pilots/
+- Envoy CA steps $165 → $176.25 → $225 (yrs 1–6; search summary of the Envoy Pilot Portfolio 6/10/2026, not read first-hand): https://www.envoyair.com/wp-content/uploads/2026/06/Envoy-Pilot-Portfolio-6.10.2026.pdf
+- Estimates (no published scale; `verified:false`): CFI $45k, generic regional FO $100 → $130 / CA $155 → $225, Envoy FO yr-2 $105 / yr-12 $130, Envoy CA yr-12 $245, regional 401(k) 6–7%, FedEx yr-1 FO $125, year-2 FO ≈ 72% of the 12-yr FO rate, year-1 CA ≈ 93% of the 12-yr CA rate, United/Delta = American proxy.
+
 ## playbook.ts
 - HYSA rate context: Fortune — https://fortune.com/article/best-savings-account-rates-11-21-2025 ; Motley Fool Nov 2025 roundups (no November 2026 rate survey was found — flagged)
 - Social Security Fairness Act: Colorado PERA — https://copera.org/pera-on-the-issues/president-biden-signs-wep-gpo-repeal-bill-into-law/ ; Washington LEOFF — https://leoff.wa.gov/news/2025/windfall-elimination-provision-wep-and-government-pension-offset-gpo-repealed-social ; Chase — https://www.chase.com/personal/investments/learning-and-insights/article/what-is-the-social-security-fairness-act-and-how-will-it-impact-social-security-benefits
@@ -174,3 +191,7 @@ NYC software developers $166,830 and RNs $119,720 (single aggregator / MSA scope
 7. **States**: MA 5% (only calculator sites surfaced), UT 4.45% vs 4.50% (SB 60 single source), NY 2026 intermediate rates (inferred from the "0.1-point cut"), NJ joint schedule, SC 5.21% top rate, MO 2026 thresholds, and the CA/OR/MN/WI/MD/CT effective curves (computed from best-known tables). Flat-state standard-deduction/exemption amounts are from memory where noted.
 8. **irs2026.ts**: nothing left unverified in `LIMITS_2026`; `LIMITS_2027_PUBLISHED.projectedElectiveDeferral` remains a projection by design.
 9. **playbook**: items listed above as recalled statutory figures; the November 2026 HYSA APY range.
+10. **airlines.ts** (Flight Plan): every interpolated longevity step; American 2024 year-1 FO rate; Envoy year-1 premium
+    treatment, FO/CA top steps and 401(k) %; generic regional scale and 401(k) %; American MBCB mechanics and default
+    excess handling at other carriers; FedEx year-1 FO, pension cap, FAE cap, MBCB % and election window; United and
+    Delta proxy scales. Confirm against the CBAs before client use.

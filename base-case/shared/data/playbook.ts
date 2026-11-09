@@ -7,6 +7,10 @@
  * Figures that live in other data files (irs2026.ts, tax2026.ts, loans.ts, ss.ts) are quoted here with the same
  * source and verification status as those files.
  */
+import type { ProductKey } from '../product';
+import { AIRLINES, AIRLINES_AS_OF, AIRLINE_SOURCES } from './airlines';
+import { LIMITS_2026 } from './irs2026';
+
 export type LifeStage = 'student' | 'first-job' | 'early-career' | 'growing' | 'all';
 
 export interface PlaybookItem {
@@ -21,11 +25,13 @@ export interface PlaybookTopic {
   key: string;
   title: string;
   stage: LifeStage;
-  area: 'banking' | 'credit' | 'tax' | 'insurance' | 'investing' | 'education' | 'housing' | 'estate' | 'tools' | 'retirement';
+  area: 'banking' | 'credit' | 'tax' | 'insurance' | 'investing' | 'education' | 'housing' | 'estate' | 'tools' | 'retirement' | 'career';
   summary: string;
   items: PlaybookItem[];
   /** Rule the engine uses to surface this topic (documented, implemented in alerts/actions) */
   trigger?: string;
+  /** Products the topic is shown in (absent = every product) */
+  products?: ProductKey[];
 }
 
 const N67 = 'IRS Notice 2025-67 / IR-2025-111 (Nov 13, 2025)';
@@ -322,5 +328,125 @@ export function playbookByArea(area: PlaybookTopic['area']): PlaybookTopic[] {
 }
 
 export function playbookByKey(key: string): PlaybookTopic | undefined {
-  return PLAYBOOK.find((t) => t.key === key);
+  return PLAYBOOK.find((t) => t.key === key) ?? PILOT_PLAYBOOK.find((t) => t.key === key);
+}
+
+// ---------------------------------------------------------------------------------------------
+// Flight Plan topics (airline pilots). Figures quote shared/data/airlines.ts with the same verification status.
+// ---------------------------------------------------------------------------------------------
+
+const A2Z_AA = AIRLINE_SOURCES.aaSalary;
+const ENVOY = AIRLINE_SOURCES.envoy;
+const FDX = AIRLINE_SOURCES.fdxCommentary;
+const AA_MBCB = AIRLINE_SOURCES.aaMbcb;
+
+export const PILOT_PLAYBOOK: PlaybookTopic[] = [
+  {
+    key: 'pilot-pay',
+    title: 'How airline pay works: rate × credit hours',
+    stage: 'first-job',
+    area: 'career',
+    products: ['flight-plan'],
+    summary: 'Airline pilots are paid an hourly rate for credited flight time, not a salary. Annual pay in this plan is the contract rate for your seat and longevity year, times credit hours per month, times twelve, plus any profit sharing.',
+    trigger: 'Always shown on Flight Plan; the Career screen shows the rate in use for every year.',
+    items: [
+      { text: 'Longevity steps: most scales step up each year to year 12, then stop. Switching airlines resets longevity to year 1 (seniority is per carrier), which is why a flow or early move is worth more than a late one.', source: 'Industry convention; scales in airlines.ts', asOf: AIRLINES_AS_OF, verified: true },
+      { text: 'Credit hours: contractual minimum guarantees are typically 70–75 hours a month; 80 is a common planning figure for a line holder. Reserve, premium trips and overtime move actual pay above or below that.', source: 'Planning assumption (editable: credit hours per month)', asOf: AIRLINES_AS_OF, verified: false },
+      { text: 'Southwest pays per Trip for Pay (TFP), not per hour; the credit-hours input is treated as TFP per month on Southwest paths.', source: 'Southwest pay structure (TFP)', asOf: '2026-08', verified: true },
+      { text: `American's 2026 737 scale tops out at $${AIRLINES.american.narrowbody.fo[11].value}/hr for a 12-year FO and $${AIRLINES.american.narrowbody.ca[11].value}/hr for a 12-year captain; widebody captains top out higher.`, source: A2Z_AA.name, url: A2Z_AA.url, asOf: '2026-08', verified: true },
+      { text: 'Per diem (tax-free expense allowance on trips) and premium pay are not modelled; they are upside to the projection, not part of it.', source: 'Model scope', asOf: AIRLINES_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'loss-of-license',
+    title: 'Loss-of-license coverage',
+    stage: 'first-job',
+    area: 'insurance',
+    products: ['flight-plan'],
+    summary: 'A pilot who loses the FAA medical certificate loses pilot income even when a general disability policy would not pay. Loss-of-license insurance (and own-occupation long-term disability) protects the asset the whole plan rests on: future flying pay.',
+    trigger: 'insurance.lossOfLicense false -> loss-of-license alert (caution) and an insurance action item',
+    items: [
+      { text: 'Loss-of-license pays a lump sum or monthly benefit when a medical denial grounds you; union-negotiated group plans often provide a modest base benefit that can be topped up with an individual policy.', source: 'Product category description (no carrier endorsed)', asOf: AIRLINES_AS_OF, verified: false },
+      { text: 'Own-occupation LTD pays when you cannot work as a pilot, even if you could do another job; "any-occupation" policies may not. Check the definition and the benefit cap against the pay projection.', source: 'Insurance convention', asOf: AIRLINES_AS_OF, verified: false },
+      { text: 'Group plans usually end when you leave the carrier; individual coverage is portable across a flow or a job change.', source: 'Insurance convention', asOf: AIRLINES_AS_OF, verified: false },
+    ],
+  },
+  {
+    key: 's415c-spillover',
+    title: '§415(c) spillover: when company contributions hit the cap',
+    stage: 'growing',
+    area: 'retirement',
+    products: ['flight-plan'],
+    summary: `Majors contribute 15–18% of pay to the 401(k) with no match required. Total annual additions (your deferrals plus company money) are capped at $${LIMITS_2026.annualAdditions415c.value.toLocaleString('en-US')} in 2026, so an 18% contribution plus a maximum deferral binds near $${Math.round((LIMITS_2026.annualAdditions415c.value - LIMITS_2026.electiveDeferral.value) / 0.18 / 1000)}k of pay. What happens to the excess depends on the contract.`,
+    trigger: 'ledger usage.s415cSpill > 0 -> s415c-spill alert (caution) and a planning action',
+    items: [
+      { text: `2026 limits: $${LIMITS_2026.electiveDeferral.value.toLocaleString('en-US')} elective deferral; $${LIMITS_2026.annualAdditions415c.value.toLocaleString('en-US')} total annual additions; compensation counted up to $${LIMITS_2026.compensationCap401a17.value.toLocaleString('en-US')} (§401(a)(17)). Age-50 catch-ups sit outside the §415(c) cap.`, source: LIMITS_2026.annualAdditions415c.source, url: LIMITS_2026.annualAdditions415c.url, asOf: LIMITS_2026.annualAdditions415c.asOf, verified: LIMITS_2026.annualAdditions415c.verified },
+      { text: 'Cash in lieu: some contracts pay the excess as taxable wages. The plan assumes you invest the after-tax amount in a taxable account rather than spend it.', source: 'Contract practice; airlines.ts excessHandling', asOf: AIRLINES_AS_OF, verified: false },
+      { text: "Market-based cash balance plan (MBCB): American's 2023 agreement routes excess company contributions to a cash balance plan; Southwest adds a 2% MBCB credit on top of its 18%. These are employer-funded, pre-tax balances that the plan keeps with pre-tax savings.", source: AA_MBCB.name, url: AA_MBCB.url, asOf: '2023-08', verified: false },
+      { text: 'Lowering your own deferral does not help: company money is non-elective and counts first in most plan designs, and the cap applies to the total. Use the excess-handling setting on the career path if your plan document differs.', source: 'Model rule (employer trimmed first in applySection415c)', asOf: AIRLINES_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'fedex-election',
+    title: 'FedEx retirement election: legacy pension vs MBCB',
+    stage: 'growing',
+    area: 'retirement',
+    products: ['flight-plan'],
+    summary: 'The 2026 FedEx CBA keeps the legacy defined-benefit pension for pilots hired before June 29, 2026 and opens a one-time, irrevocable election to switch to a market-based cash balance plan. Pilots hired later get the MBCB only.',
+    trigger: 'profile.pilot.employer fedex and a cargo stage -> fedex-election alert (caution) and an action item',
+    items: [
+      { text: `Election window: ${AIRLINES.fedex.retirement.pension?.electionWindow.value}. Pension is the default.`, source: FDX.name, url: FDX.url, asOf: '2026-01', verified: false },
+      { text: `Legacy pension modelled as ${AIRLINES.fedex.retirement.pension?.maxAnnualBenefit.value.toLocaleString('en-US')} maximum annual benefit × min(1, service years ÷ ${AIRLINES.fedex.retirement.pension?.fullServiceYears.value}) × min(1, final average earnings ÷ cap), nominal, no COLA.`, source: AIRLINES.fedex.retirement.pension?.maxAnnualBenefit.source ?? '', url: AIRLINES.fedex.retirement.pension?.maxAnnualBenefit.url, asOf: '2026-06', verified: false },
+      { text: `MBCB alternative modelled as about ${AIRLINES.fedex.retirement.pension?.mbcbAltPct.value}% of pay through 2028 and 10% after, credited to a pre-tax cash balance; varies by fleet and seat.`, source: FDX.name, url: FDX.url, asOf: '2026-01', verified: false },
+      { text: 'Compare the two with two "stay" paths on the Career screen (one per FedEx option). The pension favours long service and late retirement; the MBCB favours portability, early retirement and survivors.', source: 'Planning guidance', asOf: AIRLINES_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'flow-and-premium',
+    title: 'Flow-through agreements and premium pay',
+    stage: 'student',
+    area: 'career',
+    products: ['flight-plan'],
+    summary: 'A flow-through agreement guarantees a regional pilot a seat at the parent major after a set period, which removes the biggest uncertainty in the pay projection. Temporary premiums raise early pay but should not be projected past their end date.',
+    trigger: 'Envoy on any path -> envoy-premium advisory',
+    items: [
+      { text: 'Envoy pilots have a guaranteed flow to American; the plan models the flow after the "years to major" milestone and keeps Envoy longevity separate from American longevity (year 1 at the major).', source: ENVOY.name, url: ENVOY.url, asOf: AIRLINES_AS_OF, verified: true },
+      { text: `Envoy's 50% pilot-supply premium runs through ${AIRLINES.envoy.premium?.ends}; the plan uses base rates after that.`, source: ENVOY.name, url: ENVOY.url, asOf: AIRLINES_AS_OF, verified: true },
+      { text: 'Envoy pays first officers at the captain rate after 750 hours (year 2 and later); switch the rule off on the career path if it no longer applies to your hire date.', source: ENVOY.name, url: ENVOY.url, asOf: AIRLINES_AS_OF, verified: true },
+      { text: 'Without a flow, the "years to major" milestone is a guess about hiring cycles. Compare a slow and a fast version of the same path rather than trusting one date.', source: 'Planning guidance', asOf: AIRLINES_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'furlough',
+    title: 'Furlough planning',
+    stage: 'early-career',
+    area: 'banking',
+    products: ['flight-plan'],
+    summary: 'Junior pilots at a new carrier are the first out in a downturn. A furlough stops pay but keeps your seniority number; the plan models it as zero-pay years right after joining the major with longevity frozen, and sets a larger emergency fund when exposure is high.',
+    trigger: 'whatIf.furloughYears > 0; supplement s1 = high exposure -> 9- or 12-month emergency fund',
+    items: [
+      { text: 'Emergency fund rule: 6 months by default; 9 months with a single income or high exposure; 12 months when single income, early career (student, CFI or regional) and high exposure all apply.', source: 'Flight Plan supplement rule (scoring.ts)', asOf: AIRLINES_AS_OF, verified: true },
+      { text: 'Recall rights and furlough pay vary by contract; the model assumes no furlough pay and a recall to the same seat at the same longevity.', source: 'Model assumption', asOf: AIRLINES_AS_OF, verified: false },
+      { text: 'Use the furlough what-if on the Career screen to see the hit to net worth at retirement; a one-year furlough early is usually recoverable, a two-year gap plus a lost upgrade is not.', source: 'Planning guidance', asOf: AIRLINES_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'contract-cycles',
+    title: 'Contract amendable dates and pay growth',
+    stage: 'all',
+    area: 'career',
+    products: ['flight-plan'],
+    summary: 'Airline contracts have an amendable date rather than an expiry. Pay beyond the dated raises in the current agreement is unknown, so the plan uses a pay-growth assumption (default 3%/yr) after the last listed raise.',
+    trigger: 'Major or cargo carrier on a path with a dated amendable value -> amendable advisory',
+    items: [
+      { text: `American: amendable ${AIRLINES.american.amendable.value}; Southwest: ${AIRLINES.southwest.amendable.value}; FedEx: ${AIRLINES.fedex.amendable.value}.`, source: 'airlines.ts amendable dates (see sources.md)', asOf: AIRLINES_AS_OF, verified: true },
+      { text: 'Negotiations often run years past the amendable date; retroactive pay is common but not guaranteed. Treat the pay-growth assumption as a planning placeholder, not a forecast.', source: 'Planning guidance', asOf: AIRLINES_AS_OF, verified: true },
+    ],
+  },
+];
+
+/** Playbook topics for a product: shared topics plus the product's own. */
+export function playbookFor(product: ProductKey | string | undefined | null): PlaybookTopic[] {
+  const all = [...PLAYBOOK, ...PILOT_PLAYBOOK];
+  return all.filter((t) => !t.products || t.products.includes(product as ProductKey));
 }

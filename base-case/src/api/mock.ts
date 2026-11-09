@@ -194,9 +194,12 @@ export async function mockRequest(method: Method, rawPath: string, body?: unknow
     mfaPending = false;
     return { ok: true };
   }
+  if (method === 'GET' && path === '/api/product') {
+    return { key: 'base-case', name: 'Base Case', tagline: 'Financial planning for new graduates', firmName: settings.firmName };
+  }
   if (method === 'GET' && path === '/api/me') {
     const u = me();
-    const res: MeResponse = { user: clone(u), firm: { name: settings.firmName, assistantMode: settings.assistantEnabled ? 'offline' : 'offline', dataAsOf: '2026-11' }, mfaPending };
+    const res: MeResponse = { user: clone(u), firm: { name: settings.firmName, assistantMode: settings.assistantEnabled ? 'offline' : 'offline', dataAsOf: '2026-11', product: 'base-case' }, mfaPending };
     return res;
   }
   if (method === 'GET' && seg[2] === 'invite' && seg[1] === 'auth') {

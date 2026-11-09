@@ -3,7 +3,7 @@ import { api, unwrapList } from './client';
 import type {
   AcceptInviteRequest, AuditEntry, ChangePasswordRequest, ChatSendRequest, ChatSendResponse, ChatThread, ChatThreadSummary,
   ClientDetail, ClientListItem, DataStatus, InviteRequest, InviteResponse, LoginRequest, LoginResponse, MeResponse,
-  MfaSetupResponse, PlanRecord, PlanVersionSummary, Proposal, ProposalStatus, ProposalSummary, SessionInfo, SettingsRecord, UserSummary,
+  MfaSetupResponse, PlanRecord, PlanVersionSummary, ProductInfo, Proposal, ProposalStatus, ProposalSummary, SessionInfo, SettingsRecord, UserSummary,
 } from '@shared/api';
 import type { PlanState } from '@shared/lib/inputs';
 import type { Role } from '@shared/lib/types';
@@ -20,6 +20,7 @@ export const auth = {
   mfaVerify: (code: string) => api<{ ok: true }>('POST', '/api/auth/mfa/verify', { code }),
   logout: () => api<{ ok: true }>('POST', '/api/auth/logout', {}, { noRedirect: true }),
   me: (opts: { noRedirect?: boolean } = {}) => api<MeResponse>('GET', '/api/me', undefined, opts),
+  product: () => api<ProductInfo>('GET', '/api/product', undefined, { noRedirect: true }),
   inviteInfo: (token: string) => api<{ email: string; displayName?: string; role: Role; expiresAt?: string }>('GET', `/api/auth/invite/${encodeURIComponent(token)}`, undefined, { noRedirect: true }),
   acceptInvite: (body: AcceptInviteRequest) => api<{ ok: true }>('POST', '/api/auth/accept-invite', body, { noRedirect: true }),
   changePassword: (body: ChangePasswordRequest) => api<{ ok: true }>('POST', '/api/auth/change-password', body),

@@ -24,7 +24,8 @@ import type { DebtSummary, EmergencyFund, GlidePoint, PathResult, SocialSecurity
 import type { CareerSim } from './career';
 import { LoanSimulator, effectivePlan, type LoanInput } from './loans';
 import { federalIncomeTax, fica, marginalFederalRate, roundTo, standardDeduction, stateTax } from './tax';
-import { applySection415c, deferralLimit, employerContributions, hsaLimit, iraLimit, rothIraAllowed, tradIraDeductible } from './limits';
+import { applySection415c, compensationCap, deferralLimit, employerContributions, hsaLimit, iraLimit, rothIraAllowed, tradIraDeductible, type EmployerContribResult } from './limits';
+import type { ExcessHandling } from '../data/airlines';
 import { allocationFromEquity } from '../data/models';
 import { expectedReturn, glideEquity, glideParams } from './glidepath';
 import { emergencyMonths } from './scoring';
@@ -49,6 +50,12 @@ export interface LedgerUsage {
   negativeCashFlowYears: number[];
   retirementShortfall: boolean;
   ibrNotLegacy: boolean;
+  /** Company contributions above §415(c) across the projection (nominal $) and how they were handled (airline paths) */
+  s415cSpill: number;
+  s415cSpillFirstAge: number | null;
+  s415cHandling: ExcessHandling | null;
+  /** Employer cash-balance credits received (airline MBCB plans) */
+  cashBalanceCredits: number;
 }
 
 export interface LedgerOutput {
@@ -124,6 +131,10 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     negativeCashFlowYears: [],
     retirementShortfall: false,
     ibrNotLegacy: false,
+    s415cSpill: 0,
+    s415cSpillFirstAge: null,
+    s415cHandling: null,
+    cashBalanceCredits: 0,
   };
 
   let cash = Math.max(0, bs.cash);
@@ -179,7 +190,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     const spouseWages = !retired ? Math.max(0, p.spouseIncome) * inflIdx : 0;
     const pensionIncome = r.pensionIncome;
     const socialSecurity = age >= ssClaim ? ctx.ss.annualAtClaim * inflIdx : 0;
-    const grossIncome = wages + bonus + equityComp + spouseWages + pensionIncome + socialSecurity;
+    let grossIncome = wages + bonus + equityComp + spouseWages + pensionIncome + socialSecurity;
     const pay = wages + bonus;
     const earned = wages + bonus;
     lifetimeEarnings += wages + bonus + equityComp;
@@ -232,9 +243,20 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     if (firstYearMonthlyDebt === 0 && dr.scheduled > 0) firstYearMonthlyDebt = dr.scheduled / 12;
 
     // ---- Employer 401(k) and §415(c)
+    // Airline paths carry the carrier's non-elective % on the row (employerPctOverride) in place of the generic match;
+    // company money above §415(c) follows the carrier's rule: taxable cash in lieu, a cash balance credit, or forfeit.
+    let cashInLieu = 0;
+    let cashBalance = Math.max(0, r.mbcbCredit ?? 0);
     if (working && pay > 0) {
       const employee = employeePretax + employeeRoth;
-      const ec = employerContributions({ pay, deferralPct: employee / pay, benefits: b, year, studentLoanPayments: dr.studentLoanPayments, indexing: idx });
+      let ec: EmployerContribResult;
+      if (r.employerPctOverride !== undefined) {
+        const eligible = Math.min(pay, compensationCap(year, idx));
+        const ne = Math.max(0, r.employerPctOverride) * eligible;
+        ec = { match: 0, loanMatch: 0, nonElective: ne, total: ne, eligiblePay: eligible, matchedPct: 0 };
+      } else {
+        ec = employerContributions({ pay, deferralPct: employee / pay, benefits: b, year, studentLoanPayments: dr.studentLoanPayments, indexing: idx });
+      }
       const catchUpUsed = Math.max(0, employee - dl.base);
       const s = applySection415c(employee, ec.total, pay, year, { indexing: idx, catchUpExcluded: catchUpUsed });
       s415cCapped = s.capped;
@@ -246,10 +268,23 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
           employeePretax *= scale;
           employeeRoth *= scale;
         }
+        const employerExcess = Math.max(0, ec.total - s.employer);
+        if (employerExcess > 0.5 && r.employerPctOverride !== undefined) {
+          const handling: ExcessHandling = r.excessHandling ?? 'cash';
+          if (handling === 'cash') cashInLieu = employerExcess;
+          else if (handling === 'mbcb') cashBalance += employerExcess;
+          usage.s415cSpill += employerExcess;
+          usage.s415cHandling = handling;
+          if (usage.s415cSpillFirstAge === null) usage.s415cSpillFirstAge = age;
+          flags.push(`s415c-spill:${handling}`);
+        }
       }
       loanMatch = ec.total > 0 ? ec.loanMatch * (s.employer / ec.total) : 0;
       employer401k = s.employer - loanMatch;
     }
+    if (!working) cashBalance = 0;
+    if (cashInLieu > 0) grossIncome += cashInLieu;
+    usage.cashBalanceCredits += cashBalance;
     if (deferralCapped) usage.deferralCapped = true;
 
     // ---- IRA plan and deductibility
@@ -299,7 +334,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       taxableIncome = Math.max(0, agiLike - sd);
       federalTax = federalIncomeTax(taxableIncome, status, year, idx);
       stTax = stateTax(agiLike, p.stateCode, status, { customRate: p.customStateRate });
-      const ficaWages = Math.max(0, wages + bonus + r.rsu + s127Excess - hsaEmployee);
+      const ficaWages = Math.max(0, wages + bonus + r.rsu + s127Excess + cashInLieu - hsaEmployee);
       ficaTotal = fica(ficaWages, status, year, { inflation: infl, oasdiExempt: !r.coveredBySS }).total;
       if (spouseWages > 0) ficaTotal += fica(spouseWages, status, year, { inflation: infl }).total;
       takeHome = grossIncome - employeePretax - employeeRoth - hsaEmployee - pensionContrib - r.esppContribution - federalTax - stTax - ficaTotal;
@@ -394,7 +429,9 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
         goalFunding += fund;
         rem -= fund;
       }
-      const taxWant = Math.max(0, sv.taxableContribution) * inflIdx + Math.max(0, wi.extraSavingsRatePct) * pay + rothRouted;
+      // Cash in lieu of capped company contributions is assumed invested after tax (taxable account), not spent.
+      const cashInLieuNet = cashInLieu > 0 ? cashInLieu * Math.max(0, 1 - marginalFederalRate(taxableIncome, status, year, idx) - 0.0235) : 0;
+      const taxWant = Math.max(0, sv.taxableContribution) * inflIdx + Math.max(0, wi.extraSavingsRatePct) * pay + rothRouted + cashInLieuNet;
       taxableContrib = Math.min(rem, taxWant);
       rem -= taxableContrib;
       unallocated = rem;
@@ -418,7 +455,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
 
     // ---- Balances (end of year)
     cash = cash + emergencyTopUp - drawCash + goalLeftover + (retired ? unallocated : 0);
-    preTax = preTax + employeePretax + employer401k + loanMatch + tradIraContrib - drawPre;
+    preTax = preTax + employeePretax + employer401k + loanMatch + cashBalance + tradIraContrib - drawPre;
     roth = roth + employeeRoth + rothIraContrib - drawRoth;
     hsa = hsa + hsaEmployee + hsaEmployer - drawHsa;
     taxable = taxable + taxableContrib + r.esppContribution + r.esppGain - drawTaxable;
@@ -435,11 +472,11 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     const netWorth = investable + cash + goalsBal + other - debtBalance;
 
     const employeeSavings = employeePretax + employeeRoth + hsaEmployee + iraActual + taxableContrib + emergencyTopUp + dr.extraPrincipal;
-    const employerSavings = employer401k + loanMatch + hsaEmployer;
+    const employerSavings = employer401k + loanMatch + hsaEmployer + cashBalance;
     const savingsRate = grossIncome > 0 ? employeeSavings / grossIncome : 0;
     const savingsRateWithEmployer = grossIncome + employerSavings > 0 ? (employeeSavings + employerSavings) / (grossIncome + employerSavings) : 0;
 
-    contributions.push(employeePretax + employeeRoth + employer401k + loanMatch + hsaEmployee + hsaEmployer + iraActual + taxableContrib + r.esppContribution + r.esppGain);
+    contributions.push(employeePretax + employeeRoth + employer401k + loanMatch + cashBalance + hsaEmployee + hsaEmployer + iraActual + taxableContrib + r.esppContribution + r.esppGain);
     withdrawals.push(retired ? withdrawalDemand : drawTaxable);
 
     if (i === firstIncome) {
@@ -477,6 +514,8 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       employeeRoth401k: employeeRoth,
       employer401k,
       employerLoanMatch401k: loanMatch,
+      employerCashBalance: cashBalance,
+      cashInLieu,
       hsaEmployee,
       hsaEmployer,
       esppContribution: r.esppContribution,
@@ -505,6 +544,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       savingsRateWithEmployer,
       limits: { deferralCapped, s415cCapped, rothIra: ra.status, rothIraAllowed: rothAllowedEarned },
       flags,
+      airline: r.airline ? { id: r.airline, seat: r.seat, fleet: r.fleet, longevity: r.longevity, rate: r.hourlyRate, caRateAsFo: r.caRateAsFo } : undefined,
     });
   }
 

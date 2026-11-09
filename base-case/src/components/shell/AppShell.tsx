@@ -1,6 +1,6 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { BookOpen, Briefcase, Database, FileCheck, Home, LogOut, MessageSquare, Settings, Shield, UserCircle, Users } from 'lucide-react';
-import { useSession } from '@/state/session';
+import { useProduct, useSession } from '@/state/session';
 import { cx } from '@/components/ui';
 import { MOCK_MODE } from '@/api/client';
 import type { Role } from '@shared/lib/types';
@@ -21,13 +21,33 @@ const NAV: NavItem[] = [
   { to: '/account', label: 'Account', icon: UserCircle, roles: ['client', 'advisor', 'admin'] },
 ];
 
-function Logo() {
+/** Product mark: the Base Case line chart, or a climbing track for Flight Plan. Same palette, same geometry. */
+export function ProductLogo({ size = 22 }: { size?: number }) {
+  const product = useProduct();
+  const flight = product.key === 'flight-plan';
   return (
     <div className="flex items-center gap-2">
-      <svg width="22" height="22" viewBox="0 0 32 32" aria-hidden><rect width="32" height="32" rx="7" fill="#1A1A1A" /><path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" /><circle cx="24" cy="9" r="2.5" fill="#F2F2F2" /></svg>
-      <span className="font-semibold tracking-tight">Base Case</span>
+      <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
+        <rect width="32" height="32" rx="7" fill="#1A1A1A" />
+        {flight ? (
+          <>
+            <path d="M7 23 C 12 22, 17 18, 25 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" />
+            <path d="M19 9 L25 9 L25 15" fill="none" stroke="#F2F2F2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </>
+        ) : (
+          <>
+            <path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+            <circle cx="24" cy="9" r="2.5" fill="#F2F2F2" />
+          </>
+        )}
+      </svg>
+      <span className="font-semibold tracking-tight">{product.name}</span>
     </div>
   );
+}
+
+function Logo() {
+  return <ProductLogo />;
 }
 
 export function AppShell() {

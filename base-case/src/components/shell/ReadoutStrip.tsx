@@ -8,7 +8,8 @@ import { useUser, isStaff } from '@/state/session';
 import { Button, Dialog, Readout, Select, cx, useToast } from '@/components/ui';
 import { fmtCompact, fmtMonths, fmtPct } from '@/lib/format';
 import { exportPlan, importPlan } from '@shared/lib/inputs';
-import { PERSONAS } from '@shared/data/personas';
+import { personasFor } from '@shared/data/personas';
+import { productConfig } from '@shared/product';
 import type { Headline } from '@shared/lib/derived';
 
 function Seg<T extends string>({ value, options, onChange, label }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string }) {
@@ -40,6 +41,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
   const toast = useToast();
   const navigate = useNavigate();
   const fileRef = useRef<HTMLInputElement>(null);
+  const PERSONAS = personasFor(state.product);
   const [personaOpen, setPersonaOpen] = useState(false);
   const [persona, setPersona] = useState(PERSONAS[0]?.key ?? '');
 
@@ -75,7 +77,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
     const url = URL.createObjectURL(blob);
     const el = document.createElement('a');
     el.href = url;
-    el.download = `base-case-plan-${state.profile.nickname || 'plan'}.json`;
+    el.download = `${productConfig(state.product).exportTag}-plan-${state.profile.nickname || 'plan'}.json`;
     el.click();
     URL.revokeObjectURL(url);
   };
@@ -89,7 +91,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
     }
   };
   const loadPersona = () => {
-    const p = PERSONAS.find((x) => x.key === persona);
+    const p = PERSONAS.find((x) => x.key === persona) ?? PERSONAS[0];
     if (p) {
       replace(structuredClone(p.state));
       toast(`Loaded persona: ${p.name}`, 'ok');
@@ -120,7 +122,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
       <Dialog open={personaOpen} onClose={() => setPersonaOpen(false)} title="Load demo persona" footer={<><Button onClick={() => setPersonaOpen(false)}>Cancel</Button><Button variant="primary" onClick={loadPersona}>Load into draft</Button></>}>
         <p className="text-sm text-ink-2 mb-3">Replaces every input in the current draft with the persona's inputs. Personas are fictional.</p>
         <label htmlFor="persona-select" className="text-xs font-medium text-ink-2">Persona</label>
-        <Select id="persona-select" value={persona} onChange={(e) => setPersona(e.target.value)} options={PERSONAS.map((p) => ({ value: p.key, label: `${p.name} — ${p.tagline}` }))} />
+        <Select id="persona-select" value={PERSONAS.some((p) => p.key === persona) ? persona : PERSONAS[0]?.key ?? ''} onChange={(e) => setPersona(e.target.value)} options={PERSONAS.map((p) => ({ value: p.key, label: `${p.name} — ${p.tagline}` }))} />
       </Dialog>
     </div>
   );

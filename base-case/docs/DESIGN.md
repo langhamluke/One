@@ -39,7 +39,7 @@ The *active* path is always drawn in `rec`; other paths take their ordinal color
 
 ## Signature components
 1. **Readout strip** (sticky top of planning screens): Net worth · Savings rate · P(success) · Retirement income (P50, today's $) · Emergency fund months · Debt-free age. Values mono; deltas vs approved plan shown in ok/danger when viewing a draft.
-2. **Phase stepper**: PROFILE → RISK → CAREER → PLAN → FUTURE → SUMMARY. Current phase underlined in `rec`; completed phases get a small check; keyboard arrows move between phases.
+2. **Phase stepper**: PROFILE → RISK → CAREER → PLAN → FUTURE → SUMMARY (Flight Plan: PREFLIGHT → CHECKLIST → FLIGHT PLAN → CRUISE → LANDING → BRIEFING; same routes, same component). Current phase underlined in `rec`; completed phases get a small check; keyboard arrows move between phases. Flight Plan keeps this design system in full (no cockpit theme); only the product mark in the rail differs (a climbing track instead of the line chart).
 3. **Scenario cone** (FUTURE): area between P10 and P90 in rec at 12% opacity, P25–P75 not shown, P50 as 2px rec line, deterministic as dashed ink-4, retirement age vertical rule with boxed readout. Y axis in today's $ by default.
 4. **Career ladder comparison** (CAREER): horizontal timeline per path, rungs as small squares at promotions with labels using greedy lane assignment to avoid overlap; salary curve beneath; selectable 2–4 paths.
 5. **Playbook** (PLAN): numbered order of operations list — each step shows status chip (Done / Next / Later) and dollar amount.

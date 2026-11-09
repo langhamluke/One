@@ -6,8 +6,9 @@
  */
 import { HORIZON_BANDS, QUESTIONS, RISK_BANDS } from '../data/questionnaire';
 import type { HorizonCategory, RiskCategory } from './types';
-import type { PlanState } from './inputs';
+import { isPilotPlan, type PlanState } from './inputs';
 import type { RiskProfile } from './derived';
+import { isEarlyCareerStage } from '../data/airlines';
 
 export const RISK_IDS = QUESTIONS.filter((q) => q.section === 'risk').map((q) => q.id);
 export const HORIZON_IDS = QUESTIONS.filter((q) => q.section === 'horizon').map((q) => q.id);
@@ -89,10 +90,14 @@ export interface EmergencyMonthsResult {
 /**
  * Emergency-fund months target.
  *  - savings.emergencyFundMonthsOverride wins when set
- *  - 12 when single income (s4 = No) AND early career (age < 30) AND high exposure
+ *  - 12 when single income (s4 = No) AND early career AND high exposure
  *  - 9 when single income OR high exposure (s1 volatile, or s2 = 20%+ variable pay)
  *  - otherwise assumptions.emergencyMonthsDefault (6)
  * Unanswered supplement questions do not trigger a rule.
+ *
+ * Both supplements store option VALUES with the same meaning: s1 = 2 high exposure, s2 = 2 heavy variable pay /
+ * employer-stock reliance, s4 = 0 no second income. "Early career" is age < 30 for graduates; for pilots it is the
+ * stage (student, CFI or regional).
  */
 export function emergencyMonths(state: PlanState): EmergencyMonthsResult {
   const override = state.savings?.emergencyFundMonthsOverride;
@@ -100,21 +105,25 @@ export function emergencyMonths(state: PlanState): EmergencyMonthsResult {
     return { months: Math.max(0, override), reason: 'Advisor override', rule: 'override' };
   }
   const s = state.supplement ?? {};
+  const pilot = isPilotPlan(state);
   const singleIncome = s.s4 === 0;
   const volatile = s.s1 === 2;
   const variablePay = s.s2 === 2;
   const highExposure = volatile || variablePay;
-  const earlyCareer = state.profile.age < 30;
+  const stage = state.profile.pilot?.stage;
+  const earlyCareer = pilot && stage ? isEarlyCareerStage(stage) : state.profile.age < 30;
   const base = Math.max(0, state.assumptions?.emergencyMonthsDefault ?? 6);
+  const volatileWhy = pilot ? 'high airline exposure (junior seniority, furlough or base-closure history)' : 'a volatile industry';
+  const variableWhy = pilot ? 'reliance on employer stock or profit sharing' : 'variable pay';
   if (singleIncome && earlyCareer && highExposure) {
     return {
       months: 12,
-      reason: `Single income, early career and ${volatile ? 'a volatile industry' : 'variable pay'}: 12 months`,
+      reason: `Single income, early career and ${volatile ? volatileWhy : variableWhy}: 12 months`,
       rule: 'single-early-exposed',
     };
   }
   if (singleIncome || highExposure) {
-    const why = [singleIncome ? 'single income' : '', volatile ? 'volatile industry' : '', variablePay ? '20%+ variable pay' : '']
+    const why = [singleIncome ? 'single income' : '', volatile ? (pilot ? 'high airline exposure' : 'volatile industry') : '', variablePay ? (pilot ? 'employer stock / profit-sharing reliance' : '20%+ variable pay') : '']
       .filter(Boolean)
       .join(', ');
     return { months: 9, reason: `${why.charAt(0).toUpperCase()}${why.slice(1)}: 9 months`, rule: 'single-or-exposed' };

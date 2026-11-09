@@ -243,7 +243,7 @@ describe('data quality', () => {
     expect(dq.items.some((i) => i.key === 'tax:brackets:single')).toBe(true);
     expect(dq.items.some((i) => i.key === 'fica:wageBase:2026')).toBe(true);
     expect(dq.items.filter((i) => i.origin === 'assumption').length).toBe(8);
-    const direct = collectDataQuality(s, { sims: [sim], usage: { rap: true, tiered: true, ibr: true, hsa: true, s127: true, rothPhaseOut: false, backdoorRoth: false, tradIraPhaseOut: true, catchUp: true, superCatchUp: true, s415c: false, deferralCapped: false, gradLoanCap: false, goalUnderfunded: [], forgiveness: [], negativeCashFlowYears: [], retirementShortfall: false, ibrNotLegacy: false } });
+    const direct = collectDataQuality(s, { sims: [sim], usage: { rap: true, tiered: true, ibr: true, hsa: true, s127: true, rothPhaseOut: false, backdoorRoth: false, tradIraPhaseOut: true, catchUp: true, superCatchUp: true, s415c: false, deferralCapped: false, gradLoanCap: false, goalUnderfunded: [], forgiveness: [], negativeCashFlowYears: [], retirementShortfall: false, ibrNotLegacy: false, s415cSpill: 0, s415cSpillFirstAge: null, s415cHandling: null, cashBalanceCredits: 0 } });
     for (const k of ['loans:rap', 'loans:tiered', 'loans:ibr:poverty', 'irs:catchUp50', 'irs:catchUp60to63', 'irs:hsa:self', 'irs:127', 'irs:tradIraPhaseOut:single']) expect(direct.items.some((i) => i.key === k), k).toBe(true);
   });
 });

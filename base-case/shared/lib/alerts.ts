@@ -3,13 +3,23 @@
  * (insertion order inside a severity). Advisor-only rows carry advisorOnly: true.
  */
 import type { Alert, Severity } from './types';
-import type { PlanState } from './inputs';
+import { isPilotPlan, type PlanState } from './inputs';
 import type { EmergencyFund, MonteCarloResult, PathResult, RiskProfile, SocialSecurityEstimate } from './derived';
 import type { LedgerOutput } from './plan';
 import { STATES } from '../data/states';
 import { TEXT_VERIFIED } from '../data/questionnaire';
+import { AIRLINES, bindingPay415c, type AirlineId } from '../data/airlines';
+import { LIMITS_2026 } from '../data/irs2026';
+import { FAA_RETIREMENT_AGE } from './airline';
 import { compensationCap, deferralLimit } from './limits';
 import { fmtMoney, fmtPct } from './format';
+
+function fmtMonth(iso: string): string {
+  const [y, m] = iso.split('-');
+  if (!y || !m) return iso;
+  const names = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  return `${names[Number(m) - 1] ?? m} ${y}`;
+}
 
 export interface AlertContext {
   state: PlanState;
@@ -73,11 +83,63 @@ export function buildAlerts(ctx: AlertContext): Alert[] {
   }
 
   // Insurance
+  const pilot = isPilotPlan(state);
+  const airlinePath = rows.some((r) => r.airline);
   if (!state.benefits.disabilityCoverage && !state.insurance.disability) {
-    push('disability', 'caution', 'No long-term disability coverage', 'Your ability to earn is your largest asset at this stage; check whether work offers group LTD, or price an individual policy.');
+    push('disability', 'caution', pilot ? 'No long-term disability coverage' : 'No long-term disability coverage', pilot ? 'Own-occupation LTD protects the largest asset in the plan: future pilot earnings. Union group plans are a start; check the benefit cap against the pay projection.' : 'Your ability to earn is your largest asset at this stage; check whether work offers group LTD, or price an individual policy.');
+  }
+  if (pilot && !state.insurance.lossOfLicense) {
+    push('loss-of-license', 'caution', 'No loss-of-license coverage', 'A medical certificate denial ends pilot income even when a general disability policy would not pay. Loss-of-license coverage bridges that gap.');
+  }
+  const dependents = state.profile.dependents > 0 || state.profile.filingStatus === 'mfj';
+  if (dependents && first && first.wages > 0 && !state.insurance.life && state.benefits.lifeCoverageMultiple < 5) {
+    push('life-insurance', 'caution', 'Life insurance looks thin with dependents', `No individual term policy is recorded and employer coverage is ${state.benefits.lifeCoverageMultiple > 0 ? `${state.benefits.lifeCoverageMultiple}× salary` : 'none'}; a common rule of thumb with dependents is around 10× income (${fmtMoney(10 * (first.wages + first.bonus))}).`);
   }
   if (!state.insurance.renters) {
     push('renters', 'advisory', 'No renters insurance', 'Renters insurance is inexpensive and covers belongings and liability; most landlords require it.');
+  }
+
+  // Airline-specific (Flight Plan)
+  if (pilot) {
+    if (state.supplement?.s2 === 2) {
+      push('employer-stock', 'caution', 'Employer stock / profit-sharing reliance', 'Income and investments tied to one airline compound career risk. Keep employer stock small and budget without profit sharing.');
+    }
+    const carriers = new Set<AirlineId>();
+    for (const r of rows) if (r.airline && AIRLINES[r.airline.id as AirlineId]) carriers.add(r.airline.id as AirlineId);
+    if (carriers.has('envoy')) {
+      push('envoy-premium', 'advisory', `Envoy premium pay ends ${fmtMonth(AIRLINES.envoy.premium?.ends.slice(0, 7) ?? '2026-12')}`, 'The 50% pilot-supply premium is not projected after 2026; the plan uses base rates.');
+    }
+    const pp = state.profile.pilot;
+    if (pp?.employer === 'fedex' && (pp.stage === 'cargo_fo' || pp.stage === 'cargo_ca')) {
+      const w = AIRLINES.fedex.retirement.pension?.electionWindow;
+      push('fedex-election', 'caution', 'FedEx pension election: Apr–May 2027', `${w?.value ?? 'Election window per the 2026 CBA'}. One-time and irrevocable: legacy pension vs. market-based cash balance plan. Compare both with the FedEx option on the career path before the deadline.`);
+    }
+    for (const id of carriers) {
+      const al = AIRLINES[id];
+      if ((al.kind === 'major' || al.kind === 'cargo') && /^\d{4}-\d{2}/.test(al.amendable.value)) {
+        push(`amendable-${id}`, 'advisory', `${al.code} contract amendable ${fmtMonth(al.amendable.value.slice(0, 7))}`, `Pay beyond the contract term uses the pay-growth assumption (${fmtPct(state.careerPaths.find((p) => p.id === active.pathId)?.airline?.payGrowthAfterContract ?? 0.03, 1)}/yr).`);
+      }
+    }
+    if (u.s415cSpill > 0.5 && u.s415cHandling) {
+      const h = u.s415cHandling;
+      const major = [...carriers].map((c) => AIRLINES[c]).filter((al) => al.kind === 'major' || al.kind === 'cargo');
+      const pct = Math.max(0, ...major.map((al) => al.retirement.companyPct.value)) / 100;
+      const bind = bindingPay415c(pct, LIMITS_2026.electiveDeferral.value, LIMITS_2026.annualAdditions415c.value);
+      push(
+        's415c-spill',
+        'caution',
+        h === 'cash' ? '§415(c) limit: company money spills to taxable cash' : h === 'mbcb' ? '§415(c) limit: excess company money goes to the cash balance plan' : '§415(c) limit: excess company money is forfeited',
+        `Binds from age ${u.s415cSpillFirstAge ?? '—'}; with ${fmtPct(pct, 0)} company contributions plus a maximum deferral the cap binds near ${Number.isFinite(bind) ? fmtMoney(bind) : '—'} of pay (2026 dollars). ${fmtMoney(u.s415cSpill)} of company money is affected over the projection.`,
+        { value: u.s415cSpill },
+      );
+    }
+    if (airlinePath && state.profile.retirementAge > FAA_RETIREMENT_AGE) {
+      push('faa-65', 'advisory', `Airline flying ends at ${FAA_RETIREMENT_AGE}`, `The plan's retirement age is ${state.profile.retirementAge}; airline pay stops at the FAA age limit, so the projection retires the pilot at ${FAA_RETIREMENT_AGE}.`);
+    }
+    const retireAt = state.whatIf.retireAtOverride ?? state.profile.retirementAge;
+    if (retireAt < FAA_RETIREMENT_AGE) {
+      push('early-retirement', 'advisory', `Early retirement at ${retireAt}`, 'Social Security and pension timing matter more with an earlier landing; Social Security cannot start before 62 and Medicare before 65.');
+    }
   }
 
   // High-interest debt
@@ -119,7 +181,7 @@ export function buildAlerts(ctx: AlertContext): Alert[] {
       push('unsaved-cash-flow', 'advisory', `${fmtMoney(first.unallocated)}/yr of cash flow is not assigned to a goal`, 'Surplus beyond the planned savings is assumed spent. Direct it to the next step in the order of operations.', { value: first.unallocated });
     }
   }
-  if (u.s415c || u.deferralCapped) {
+  if ((u.s415c && !(u.s415cSpill > 0.5)) || u.deferralCapped) {
     push('limits-binding', 'advisory', u.s415c ? 'Section 415(c) annual additions limit binds in some years' : 'The 401(k) deferral limit binds in some years', 'Contributions above the IRS limit are redirected; consider after-tax or taxable investing for the excess.');
   }
   if (u.backdoorRoth || u.rothPhaseOut) {
