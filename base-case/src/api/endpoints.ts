@@ -35,7 +35,7 @@ export const admin = {
   users: async () => unwrapList<UserSummary>(await api<unknown>('GET', '/api/admin/users'), 'users'),
   invite: (body: InviteRequest) => api<InviteResponse>('POST', '/api/admin/invites', body),
   /** Body: any of { role, status, displayName } */
-  updateUser: (id: string, body: Partial<Pick<UserSummary, 'role' | 'status' | 'displayName'>>) => api<UserSummary>('PATCH', `/api/admin/users/${encodeURIComponent(id)}`, body),
+  updateUser: (id: string, body: Partial<Pick<UserSummary, 'role' | 'status' | 'displayName' | 'email'>>) => api<UserSummary>('PATCH', `/api/admin/users/${encodeURIComponent(id)}`, body),
   resetPassword: (id: string) => api<{ inviteUrl?: string; ok?: boolean }>('POST', `/api/admin/users/${encodeURIComponent(id)}/reset-password`, {}),
   /** Body: { clientId, advisorId } */
   assign: (clientId: string, advisorId: string) => api<{ ok: true }>('POST', '/api/admin/assignments', { clientId, advisorId }),

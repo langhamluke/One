@@ -8,7 +8,8 @@ import { emergencyMonths } from '../../shared/lib/scoring';
 import { defaultAirlinePath, defaultPlanStateFor, type PlanState } from '../../shared/lib/inputs';
 import { AIRLINES, AIRLINE_PATHS, bindingPay415c, contractMultiplier, milestonesFor, rateFor, resolveAirlines, scale } from '../../shared/data/airlines';
 import { LIMITS_2026 } from '../../shared/data/irs2026';
-import { PILOT_PERSONAS } from '../../shared/data/personasPilot';
+import { PILOT_PERSONAS, PILOT_REFERENCE_PERSONAS, PILOT_SEED_CLIENTS } from '../../shared/data/personasPilot';
+const ALL_PILOTS = [...PILOT_PERSONAS, ...PILOT_REFERENCE_PERSONAS, ...PILOT_SEED_CLIENTS];
 import { sourced } from '../../shared/lib/types';
 import { nonFinitePaths } from './fixtures';
 
@@ -303,7 +304,7 @@ describe('airline ledger and engine', () => {
   });
 
   it('every pilot persona computes with finite outputs and a pilot profile', () => {
-    for (const p of PILOT_PERSONAS) {
+    for (const p of ALL_PILOTS) {
       const d = computeDerived(p.state, { sims: 150 });
       expect(nonFinitePaths(d), p.key).toEqual([]);
       expect(d.alerts.find((a) => a.id === 'engine-error'), p.key).toBeUndefined();
@@ -314,11 +315,11 @@ describe('airline ledger and engine', () => {
       expect(d.active.firstIncomeYearIndex, p.key).toBeGreaterThanOrEqual(0);
       expect(d.headline.year1TakeHome, p.key).toBeGreaterThanOrEqual(0);
     }
-    const dale = PILOT_PERSONAS.find((p) => p.key === 'senior-captain')!;
+    const dale = ALL_PILOTS.find((p) => p.key === 'senior-captain')!;
     const d = computeDerived(dale.state, { sims: 150 });
     expect(d.mc.retirementAge).toBe(60);
     expect(d.alerts.some((a) => a.id === 'early-retirement')).toBe(true);
-    const morgan = PILOT_PERSONAS.find((p) => p.key === 'cargo-fo')!;
+    const morgan = ALL_PILOTS.find((p) => p.key === 'cargo-fo')!;
     const dm = computeDerived(morgan.state, { sims: 150 });
     expect(dm.alerts.some((a) => a.id === 'fedex-election')).toBe(true);
     expect(dm.paths).toHaveLength(2);

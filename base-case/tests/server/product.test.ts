@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { json, login, makeApp, req, type TestApp } from './helpers';
 import { DEMO, demoAccounts, runDemoSeed } from '../../server/seed';
-import { PILOT_PERSONAS } from '../../shared/data/personasPilot';
+import { PILOT_PERSONAS, PILOT_SEED_CLIENTS } from '../../shared/data/personasPilot';
 import { PERSONAS } from '../../shared/data/personas';
 import { configFromEnv } from '../../server/config';
 import { buildPlanContext } from '../../server/services/planContext';
@@ -56,7 +56,11 @@ describe('product configuration', () => {
     expect(r.credentials.filter((c) => c.role === 'client').map((c) => c.email).sort()).toEqual(PILOT_PERSONAS.map((p) => p.email).sort());
     const advisor = await login(fp, demoAccounts('flight-plan').advisor.email, DEMO.advisor.password, '42.1.0.2');
     const clients = await json(await req(fp, 'GET', '/api/clients', { cookie: advisor }));
-    expect(clients.length).toBe(PILOT_PERSONAS.length);
+    expect(clients.length).toBe(PILOT_PERSONAS.length + PILOT_SEED_CLIENTS.length);
+    const steve = clients.find((c: { email: string }) => c.email === PILOT_SEED_CLIENTS[0].email);
+    expect(steve).toBeDefined();
+    const stevePlan = await json(await req(fp, 'GET', `/api/plans/${steve.id}`, { cookie: advisor }));
+    expect(stevePlan.state.profile.nickname).toBe('Steve Jobs');
     const jordan = clients.find((c: { email: string }) => c.email === PILOT_PERSONAS[0].email);
     const plan = await json(await req(fp, 'GET', `/api/plans/${jordan.id}`, { cookie: advisor }));
     expect(plan.state.product).toBe('flight-plan');

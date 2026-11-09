@@ -34,8 +34,9 @@ export function Button({ variant = 'secondary', size = 'md', loading, icon, clas
     <button
       type={type}
       disabled={disabled || loading}
+      data-variant={variant}
       className={cx(
-        'inline-flex items-center justify-center gap-1.5 rounded-md border font-medium whitespace-nowrap',
+        'ui-btn inline-flex items-center justify-center gap-1.5 rounded-md border font-medium whitespace-nowrap',
         'focus-visible:ring-2 focus-visible:ring-edit focus-visible:ring-offset-2 focus-visible:outline-none',
         'disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
         size === 'sm' ? 'h-7 px-2.5 text-xs' : 'h-[34px] px-3 text-sm',
@@ -98,7 +99,7 @@ export function Field({ label, htmlFor, hint, help, tag, children, className, in
   return (
     <div className={cx(inline ? 'flex items-center justify-between gap-3' : 'flex flex-col gap-1', 'min-w-0', className)}>
       <div className="flex items-center gap-1.5 min-w-0">
-        <label htmlFor={htmlFor} className="text-xs font-medium text-ink-2 truncate">{label}</label>
+        <label htmlFor={htmlFor} className="ui-label text-xs font-medium text-ink-2 truncate">{label}</label>
         {help && <HelpTip text={help} />}
         {tag}
       </div>
@@ -262,13 +263,14 @@ export function Toggle({ id, checked, onChange, label, description, disabled }: 
         className={cx(
           'relative mt-0.5 h-[20px] w-[36px] shrink-0 rounded-pill border p-0 transition-colors focus-visible:ring-2 focus-visible:ring-edit focus-visible:ring-offset-2 focus-visible:outline-none',
           checked ? 'bg-edit border-edit' : 'bg-paper-3 border-line',
+          'toggle-track',
           disabled && 'opacity-50',
         )}
       >
         <span className={cx('absolute left-[2px] top-[2px] h-[14px] w-[14px] rounded-full bg-white shadow transition-transform', checked ? 'translate-x-[16px]' : 'translate-x-0')} aria-hidden />
       </button>
       <label htmlFor={id} className="text-sm cursor-pointer min-w-0">
-        <span className="font-medium text-ink-2">{label}</span>
+        <span className="ui-label font-medium text-ink-2">{label}</span>
         {description && <span className="block text-xxs text-ink-3 leading-tight">{description}</span>}
       </label>
     </div>
@@ -284,7 +286,7 @@ export function Slider({ id, label, value, min, max, step = 1, onChange, format,
     <div className="min-w-0">
       <div className="flex items-center justify-between gap-2 mb-0.5">
         <div className="flex items-center gap-1.5 min-w-0">
-          <label htmlFor={id} className="text-xs font-medium text-ink-2 truncate">{label}</label>
+          <label htmlFor={id} className="ui-label text-xs font-medium text-ink-2 truncate">{label}</label>
           {help && <HelpTip text={help} />}
         </div>
         <output htmlFor={id} className="num text-sm text-ink shrink-0">{fmt(value)}</output>
@@ -320,8 +322,9 @@ export function RadioCards<T extends string | number>({ name, value, options, on
           <label
             key={String(o.value)}
             htmlFor={id}
+            data-checked={checked ? 'true' : 'false'}
             className={cx(
-              'flex items-start gap-3 rounded-md border px-3 py-2 cursor-pointer transition-colors',
+              'radio-card flex items-start gap-3 rounded-md border px-3 py-2 cursor-pointer transition-colors',
               checked ? 'border-rec bg-rec-soft' : 'border-line bg-paper-2 hover:bg-paper-3',
             )}
           >
@@ -333,8 +336,8 @@ export function RadioCards<T extends string | number>({ name, value, options, on
               onChange={() => onChange(o.value)}
               className="mt-1 h-3.5 w-3.5 accent-rec focus-visible:ring-2 focus-visible:ring-edit"
             />
-            <span className="text-sm min-w-0">
-              <span className={cx(checked ? 'text-ink font-medium' : 'text-ink-2')}>{o.label}</span>
+            <span className="text-sm min-w-0 flex-1">
+              <span className={cx('radio-card-label block', checked ? 'text-ink font-medium' : 'text-ink-2')}>{o.label}</span>
               {o.description && <span className="block text-xxs text-ink-3">{o.description}</span>}
             </span>
           </label>

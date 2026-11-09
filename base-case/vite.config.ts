@@ -3,8 +3,19 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
 
+/** Stamp the product on <html> so the first paint already carries the right theme (no light flash on Flight Plan). */
+function productAttr() {
+  const product = (process.env.PRODUCT ?? '').toLowerCase() === 'flight-plan' ? 'flight-plan' : 'base-case';
+  return {
+    name: 'product-attr',
+    transformIndexHtml(html: string) {
+      return html.replace(/data-product="[a-z-]+"/, `data-product="${product}"`);
+    },
+  };
+}
+
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), productAttr()],
   resolve: {
     alias: {
       '@shared': path.resolve(__dirname, 'shared'),

@@ -21,25 +21,31 @@ const NAV: NavItem[] = [
   { to: '/account', label: 'Account', icon: UserCircle, roles: ['client', 'advisor', 'admin'] },
 ];
 
-/** Product mark: the Base Case line chart, or a climbing track for Flight Plan. Same palette, same geometry. */
-export function ProductLogo({ size = 22 }: { size?: number }) {
+/** Product mark. Base Case: the line chart on ink. Flight Plan: the original cockpit mark (magenta track on a panel tile). */
+export function ProductLogo({ size = 22, tagline = false }: { size?: number; tagline?: boolean }) {
   const product = useProduct();
   const flight = product.key === 'flight-plan';
+  if (flight) {
+    return (
+      <div className="flex items-center gap-3">
+        <svg width={size + 4} height={size + 4} viewBox="0 0 32 32" aria-hidden>
+          <rect width="32" height="32" rx="6" fill="#121821" stroke="#243042" />
+          <path d="M5 21 L12 14 L19 17 L27 9" stroke="#FF4FD8" strokeWidth="2.2" fill="none" />
+          <circle cx="27" cy="9" r="2.2" fill="#FF4FD8" />
+        </svg>
+        <div className="leading-tight">
+          <div className="text-[15px] font-bold tracking-[0.22em] uppercase">{product.name}</div>
+          {tagline && <div className="text-[10px] tracking-[0.12em] uppercase text-ink-3">{product.tagline}</div>}
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-2">
       <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
-        <rect width="32" height="32" rx="7" fill="#1A1A1A" />
-        {flight ? (
-          <>
-            <path d="M7 23 C 12 22, 17 18, 25 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" />
-            <path d="M19 9 L25 9 L25 15" fill="none" stroke="#F2F2F2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </>
-        ) : (
-          <>
-            <path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="#174D38" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
-            <circle cx="24" cy="9" r="2.5" fill="#F2F2F2" />
-          </>
-        )}
+        <rect width="32" height="32" rx="7" fill="rgb(var(--c-ink))" />
+        <path d="M8 22 L13 14 L18 18 L24 9" fill="none" stroke="rgb(var(--c-rec))" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="24" cy="9" r="2.5" fill="rgb(var(--c-paper))" />
       </svg>
       <span className="font-semibold tracking-tight">{product.name}</span>
     </div>
@@ -52,9 +58,17 @@ function Logo() {
 
 export function AppShell() {
   const { me, logout } = useSession();
+  const product = useProduct();
   const navigate = useNavigate();
   const role = me?.user.role ?? 'client';
   const items = NAV.filter((n) => n.roles.includes(role));
+  const doLogout = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  if (product.key === 'flight-plan') return <CockpitShell items={items} onLogout={doLogout} />;
+
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     cx(
       'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm whitespace-nowrap focus-visible:ring-2 focus-visible:ring-edit focus-visible:outline-none',
@@ -71,10 +85,6 @@ export function AppShell() {
       </div>
     </div>
   );
-  const doLogout = async () => {
-    await logout();
-    navigate('/login');
-  };
 
   return (
     <div className="min-h-screen lg:flex">
@@ -121,7 +131,43 @@ export function AppShell() {
   );
 }
 
-/** Standard content container: max 1280, 24px gutters. */
+/** Flight Plan shell: the original's top header (mark, name, tagline) with the platform's navigation as cockpit tabs. */
+function CockpitShell({ items, onLogout }: { items: NavItem[]; onLogout: () => void }) {
+  const { me } = useSession();
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    cx(
+      'rounded-sm px-2 py-1 text-[11px] uppercase tracking-[0.12em] whitespace-nowrap transition-colors focus-visible:ring-2 focus-visible:ring-edit focus-visible:outline-none',
+      isActive ? 'bg-edit/15 text-edit' : 'text-ink-3 hover:text-ink',
+    );
+  return (
+    <div className="min-h-screen flex flex-col">
+      <a href="#main" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:bg-paper-2 focus:px-3 focus:py-2">Skip to content</a>
+      <header data-shell className="no-print sticky top-0 z-40 flex items-center gap-4 border-b border-line bg-[#090D12] px-4 py-2.5 lg:px-6">
+        <ProductLogo size={22} tagline />
+        <nav aria-label="Main" className="flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto rounded border border-line bg-[#0B1118] p-0.5">
+          {items.map((n) => (
+            <NavLink key={n.to} to={n.to} end={n.end} className={linkClass}>{n.label}</NavLink>
+          ))}
+        </nav>
+        <div className="ml-auto flex shrink-0 items-center gap-3 min-w-0">
+          <div className="min-w-0 leading-tight text-right">
+            <div className="text-[12px] truncate">{me?.user.displayName}</div>
+            <div className="text-[10px] uppercase tracking-[0.12em] text-ink-3 truncate">{me?.user.role}{me?.firm.name && me.firm.name !== 'Flight Plan' ? ` · ${me.firm.name}` : ''}</div>
+          </div>
+          <button type="button" onClick={onLogout} className="ui-btn inline-flex items-center gap-1.5 rounded border px-2.5 py-1.5" aria-label="Sign out"><LogOut className="h-3.5 w-3.5" aria-hidden />Sign out</button>
+        </div>
+        {MOCK_MODE && <div className="text-[10px] uppercase tracking-wider text-warn">Mock API (dev)</div>}
+      </header>
+      <main id="main" data-shell-main className="flex-1 min-w-0">
+        <Outlet />
+      </main>
+    </div>
+  );
+}
+
+/** Standard content container. Base Case: max 1280, 24px gutters. Flight Plan: full width like the original. */
 export function Page({ children, className, wide }: { children: React.ReactNode; className?: string; wide?: boolean }) {
-  return <div className={cx('mx-auto w-full px-4 sm:px-6 py-5', wide ? 'max-w-[1400px]' : 'max-w-[1280px]', className)}>{children}</div>;
+  const product = useProduct();
+  const cockpit = product.key === 'flight-plan';
+  return <div className={cx('mx-auto w-full px-4 sm:px-6 py-5', cockpit ? 'max-w-none py-4' : wide ? 'max-w-[1400px]' : 'max-w-[1280px]', className)}>{children}</div>;
 }

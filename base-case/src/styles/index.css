@@ -2,22 +2,108 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ------------------------------------------------------------------------------------------------
+   Theme tokens. Base Case = the light "model desk". Flight Plan = the original cockpit (dark panels,
+   B612 type, cyan = editable, magenta = the flight plan, amber = caution, red = warning).
+   Tailwind reads these as R G B triples (see tailwind.config.js). The product attribute is set on
+   <html data-product="…"> by the server/Vite at load and by the session once /api/product answers.
+   ------------------------------------------------------------------------------------------------ */
 @layer base {
+  :root {
+    --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    --c-paper: 226 227 229;      /* #E2E3E5 */
+    --c-paper-2: 255 255 255;
+    --c-paper-3: 211 213 216;    /* #D3D5D8 */
+    --c-ink: 26 26 26;
+    --c-ink-2: 61 61 61;
+    --c-ink-3: 107 107 107;
+    --c-ink-4: 156 156 156;
+    --c-line: 180 183 187;       /* #B4B7BB */
+    --c-line-2: 200 203 207;     /* #C8CBCF */
+    --c-edit: 46 94 134;         /* #2E5E86 */
+    --c-edit-soft: 228 236 243;
+    --c-rec: 23 77 56;           /* #174D38 */
+    --c-rec-soft: 227 237 231;
+    --c-ok: 43 122 75;           /* #2B7A4B */
+    --c-ok-soft: 227 240 232;
+    --c-warn: 181 116 10;        /* #B5740A */
+    --c-warn-soft: 247 235 214;
+    --c-danger: 77 23 23;        /* #4D1717 */
+    --c-danger-soft: 240 227 227;
+    --c-a-uslc: 47 95 74; --c-a-ussmid: 79 128 104; --c-a-intl: 127 165 146; --c-a-em: 175 200 186;
+    --c-a-bonds: 139 111 71; --c-a-tips: 181 155 115; --c-a-cash: 217 201 173;
+    /* Comparison paths (ordinal, distinct from semantics) */
+    --c-path-1: #1A1A1A; --c-path-2: #174D38; --c-path-3: #0F6E6E; --c-path-4: #8A5A2B;
+    --radius-card: 10px;
+    --shadow-card: 0 1px 2px rgba(20, 22, 26, 0.04), 0 1px 1px rgba(20, 22, 26, 0.03);
+    --shadow-pop: 0 8px 24px rgba(20, 22, 26, 0.12);
+    --chart-grid: #C8CBCF;
+    --chart-axis: #B4B7BB;
+    --chart-text: #6B6B6B;
+    --tooltip-bg: #FFFFFF;
+    color-scheme: light;
+  }
+  :root[data-product='flight-plan'] {
+    --font-sans: 'B612', system-ui, sans-serif;
+    --font-mono: 'B612 Mono', ui-monospace, monospace;
+    --c-paper: 11 15 20;         /* #0B0F14 bg */
+    --c-paper-2: 18 24 33;       /* #121821 panel */
+    --c-paper-3: 14 20 28;       /* #0E141C panel header / inset */
+    --c-ink: 255 255 255;
+    --c-ink-2: 201 211 223;      /* #C9D3DF */
+    --c-ink-3: 138 153 173;      /* #8A99AD dim */
+    --c-ink-4: 91 107 127;       /* #5B6B7F */
+    --c-line: 36 48 66;          /* #243042 edge */
+    --c-line-2: 28 38 51;        /* #1C2633 */
+    --c-edit: 79 209 255;        /* #4FD1FF sel */
+    --c-edit-soft: 21 48 61;
+    --c-rec: 255 79 216;         /* #FF4FD8 plan */
+    --c-rec-soft: 58 26 51;
+    --c-ok: 61 220 132;          /* #3DDC84 */
+    --c-ok-soft: 21 50 31;
+    --c-warn: 255 176 32;        /* #FFB020 caution */
+    --c-warn-soft: 58 42 14;
+    --c-danger: 255 77 77;       /* #FF4D4D warn */
+    --c-danger-soft: 58 21 21;
+    --c-a-uslc: 79 111 174; --c-a-ussmid: 123 152 207; --c-a-intl: 169 191 227; --c-a-em: 47 74 128;
+    --c-a-bonds: 142 123 92; --c-a-tips: 185 169 138; --c-a-cash: 214 205 184;
+    --c-path-1: #FFFFFF; --c-path-2: #FF4FD8; --c-path-3: #9DB4D6; --c-path-4: #6F93C7;
+    --radius-card: 6px;
+    --shadow-card: inset 0 1px 0 rgba(255, 255, 255, 0.03), inset 0 0 0 1px rgba(0, 0, 0, 0.35), inset 0 8px 24px rgba(0, 0, 0, 0.25);
+    --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+    --chart-grid: #1C2633;
+    --chart-axis: #243042;
+    --chart-text: #8A99AD;
+    --tooltip-bg: #0B1118;
+    color-scheme: dark;
+  }
+
+  /* B612: the cockpit typeface (Airbus / Intactile, SIL OFL). Served from /fonts; only the cockpit theme uses it. */
+  @font-face { font-family: 'B612'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/B612-400.woff2') format('woff2'); }
+  @font-face { font-family: 'B612'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/B612-700.woff2') format('woff2'); }
+  @font-face { font-family: 'B612 Mono'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/B612Mono-400.woff2') format('woff2'); }
+  @font-face { font-family: 'B612 Mono'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/B612Mono-700.woff2') format('woff2'); }
+
   html {
-    font-family: 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+    font-family: var(--font-sans);
     font-size: 14px;
     line-height: 20px;
-    color: #1a1a1a;
-    background-color: #e2e3e5;
+    color: rgb(var(--c-ink));
+    background-color: rgb(var(--c-paper));
     -webkit-font-smoothing: antialiased;
   }
   body {
-    background-color: #e2e3e5;
+    background-color: rgb(var(--c-paper));
     background-image: linear-gradient(rgba(20, 22, 26, 0.045) 1px, transparent 1px),
       linear-gradient(90deg, rgba(20, 22, 26, 0.045) 1px, transparent 1px);
     background-size: 24px 24px;
     min-height: 100vh;
     overflow-x: hidden;
+  }
+  :root[data-product='flight-plan'] body {
+    background-image: none;
+    letter-spacing: 0.01em;
   }
   * {
     box-sizing: border-box;
@@ -33,15 +119,20 @@
     font-variant-numeric: tabular-nums;
   }
   :focus-visible {
-    outline: 2px solid #2e5e86;
+    outline: 2px solid rgb(var(--c-edit));
     outline-offset: 2px;
   }
   button, input, select, textarea {
     font: inherit;
     color: inherit;
   }
-  a { color: #2e5e86; }
+  a { color: rgb(var(--c-edit)); }
   a:hover { text-decoration: underline; }
+  input[type='checkbox'], input[type='radio'] { accent-color: rgb(var(--c-edit)); }
+  :root[data-product='flight-plan'] ::-webkit-scrollbar { width: 10px; height: 10px; }
+  :root[data-product='flight-plan'] ::-webkit-scrollbar-track { background: rgb(var(--c-paper)); }
+  :root[data-product='flight-plan'] ::-webkit-scrollbar-thumb { background: rgb(var(--c-line)); border-radius: 6px; border: 2px solid rgb(var(--c-paper)); }
+  :root[data-product='flight-plan'] select option { background: #0B1118; color: #fff; }
   @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after {
       animation-duration: 0.01ms !important;
@@ -58,30 +149,30 @@
     line-height: 14px;
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    color: #6b6b6b;
+    color: rgb(var(--c-ink-3));
     font-weight: 500;
   }
   .num {
-    font-family: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
   .card {
-    background: #ffffff;
-    border: 1px solid #b4b7bb;
-    border-radius: 10px;
-    box-shadow: 0 1px 2px rgba(20, 22, 26, 0.04), 0 1px 1px rgba(20, 22, 26, 0.03);
+    background: rgb(var(--c-paper-2));
+    border: 1px solid rgb(var(--c-line));
+    border-radius: var(--radius-card);
+    box-shadow: var(--shadow-card);
   }
   .input-base {
-    background: #ffffff;
-    border: 1px solid #b4b7bb;
+    background: rgb(var(--c-paper-2));
+    border: 1px solid rgb(var(--c-line));
     border-radius: 6px;
     min-height: 34px;
     padding: 6px 10px;
     width: 100%;
   }
   .input-base:focus-within {
-    border-color: #2e5e86;
-    box-shadow: 0 0 0 2px #e4ecf3;
+    border-color: rgb(var(--c-edit));
+    box-shadow: 0 0 0 2px rgb(var(--c-edit-soft));
   }
   input[type='range'] {
     -webkit-appearance: none;
@@ -93,12 +184,12 @@
   }
   input[type='range']::-webkit-slider-runnable-track {
     height: 4px;
-    background: #b4b7bb;
+    background: rgb(var(--c-line));
     border-radius: 2px;
   }
   input[type='range']::-moz-range-track {
     height: 4px;
-    background: #b4b7bb;
+    background: rgb(var(--c-line));
     border-radius: 2px;
   }
   input[type='range']::-webkit-slider-thumb {
@@ -108,34 +199,121 @@
     height: 16px;
     margin-top: -6px;
     border-radius: 50%;
-    background: #2e5e86;
-    border: 2px solid #ffffff;
-    box-shadow: 0 0 0 1px #2e5e86;
+    background: rgb(var(--c-edit));
+    border: 2px solid rgb(var(--c-paper-2));
+    box-shadow: 0 0 0 1px rgb(var(--c-edit));
     cursor: pointer;
   }
   input[type='range']::-moz-range-thumb {
     width: 14px;
     height: 14px;
     border-radius: 50%;
-    background: #2e5e86;
-    border: 2px solid #ffffff;
-    box-shadow: 0 0 0 1px #2e5e86;
+    background: rgb(var(--c-edit));
+    border: 2px solid rgb(var(--c-paper-2));
+    box-shadow: 0 0 0 1px rgb(var(--c-edit));
     cursor: pointer;
   }
   input[type='range']:focus-visible {
     outline: none;
   }
   input[type='range']:focus-visible::-webkit-slider-thumb {
-    box-shadow: 0 0 0 3px #e4ecf3, 0 0 0 4px #2e5e86;
+    box-shadow: 0 0 0 3px rgb(var(--c-edit-soft)), 0 0 0 4px rgb(var(--c-edit));
   }
   input[type='range']:focus-visible::-moz-range-thumb {
-    box-shadow: 0 0 0 3px #e4ecf3, 0 0 0 4px #2e5e86;
+    box-shadow: 0 0 0 3px rgb(var(--c-edit-soft)), 0 0 0 4px rgb(var(--c-edit));
   }
   .recharts-wrapper, .recharts-surface { outline: none; }
   .recharts-cartesian-axis-tick-value, .recharts-legend-item-text {
-    font-family: 'IBM Plex Mono', ui-monospace, monospace;
+    font-family: var(--font-mono);
     font-size: 11px;
-    fill: #6b6b6b;
+    fill: var(--chart-text);
   }
+  .recharts-legend-item-text { color: rgb(var(--c-ink-2)) !important; }
   .recharts-tooltip-wrapper { outline: none; }
+
+  /* ---- Cockpit components (Flight Plan only). Same markup as Base Case, the original's styling. ---- */
+  :root[data-product='flight-plan'] .label-caps,
+  :root[data-product='flight-plan'] .ui-label {
+    font-size: 10px;
+    line-height: 14px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgb(var(--c-ink-3));
+    font-weight: 400;
+  }
+  :root[data-product='flight-plan'] .card > header {
+    background: rgb(var(--c-paper-3));
+    border-top-left-radius: var(--radius-card);
+    border-top-right-radius: var(--radius-card);
+  }
+  :root[data-product='flight-plan'] .card > header h2,
+  :root[data-product='flight-plan'] .panel-title {
+    font-size: 11px;
+    line-height: 16px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.14em;
+    color: rgb(var(--c-ink-3));
+  }
+  :root[data-product='flight-plan'] h1 { font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; font-size: 15px; line-height: 20px; }
+  :root[data-product='flight-plan'] .input-base {
+    background: #0B1118;
+    border-radius: 4px;
+    min-height: 34px;
+    transition: border-color 0.15s, color 0.15s;
+  }
+  :root[data-product='flight-plan'] .input-base:hover { border-color: #33506B; }
+  :root[data-product='flight-plan'] .input-base:focus-within { border-color: rgb(var(--c-edit)); box-shadow: 0 0 0 1px rgb(var(--c-edit)); }
+  :root[data-product='flight-plan'] .input-base input,
+  :root[data-product='flight-plan'] input.input-base,
+  :root[data-product='flight-plan'] textarea.input-base {
+    color: rgb(var(--c-edit));
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0;
+  }
+  :root[data-product='flight-plan'] select.input-base { color: rgb(var(--c-edit)); }
+  :root[data-product='flight-plan'] .input-base input::placeholder,
+  :root[data-product='flight-plan'] input.input-base::placeholder { color: rgb(var(--c-ink-4)); }
+  :root[data-product='flight-plan'] .ui-btn {
+    border-radius: 4px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-size: 12px;
+    font-weight: 400;
+    background: #16202B;
+    border-color: rgb(var(--c-line));
+    color: rgb(var(--c-ink));
+  }
+  :root[data-product='flight-plan'] .ui-btn:hover:not(:disabled) { border-color: rgb(var(--c-edit)); color: rgb(var(--c-edit)); background: #16202B; }
+  :root[data-product='flight-plan'] .ui-btn[data-variant='primary'] { border-color: rgb(var(--c-edit)); color: rgb(var(--c-edit)); }
+  :root[data-product='flight-plan'] .ui-btn[data-variant='rec'] { border-color: rgb(var(--c-rec)); color: rgb(var(--c-rec)); }
+  :root[data-product='flight-plan'] .ui-btn[data-variant='rec']:hover:not(:disabled) { border-color: rgb(var(--c-rec)); color: rgb(var(--c-rec)); }
+  :root[data-product='flight-plan'] .ui-btn[data-variant='danger'] { border-color: rgb(var(--c-danger) / 0.5); color: rgb(var(--c-danger)); }
+  :root[data-product='flight-plan'] .ui-btn[data-variant='ghost'] { background: transparent; border-color: transparent; color: rgb(var(--c-ink-2)); }
+  :root[data-product='flight-plan'] .ui-btn[data-variant='ghost']:hover:not(:disabled) { background: transparent; }
+  :root[data-product='flight-plan'] .radio-card { background: #0B1118; border-color: rgb(var(--c-line)); border-radius: 4px; }
+  :root[data-product='flight-plan'] .radio-card:hover { border-color: #33506B; background: #0B1118; }
+  :root[data-product='flight-plan'] .radio-card[data-checked='true'] { border-color: rgb(var(--c-edit)); background: rgb(var(--c-edit) / 0.08); box-shadow: 0 0 0 1px rgb(var(--c-edit)); }
+  :root[data-product='flight-plan'] .radio-card[data-checked='true'] .radio-card-label { color: rgb(var(--c-edit)); font-weight: 400; }
+  :root[data-product='flight-plan'] .radio-card input[type='radio'] { accent-color: rgb(var(--c-edit)); }
+  :root[data-product='flight-plan'] .readout-value { color: rgb(var(--c-ink)); }
+  :root[data-product='flight-plan'] label.ui-label { white-space: normal; overflow: visible; text-overflow: clip; line-height: 13px; }
+  :root[data-product='flight-plan'] .print-page { max-width: 816px; margin-left: auto; margin-right: auto; }
+  :root[data-product='flight-plan'] table th { color: rgb(var(--c-ink-3)); }
+  :root[data-product='flight-plan'] .print-page,
+  :root[data-product='flight-plan'] .print-page .card {
+    color: #111;
+    --c-ink: 17 17 17; --c-ink-2: 51 51 51; --c-ink-3: 102 102 102; --c-ink-4: 153 153 153;
+    --c-paper-2: 255 255 255; --c-paper-3: 245 245 245; --c-line: 203 203 203; --c-line-2: 229 229 229;
+    --c-rec: 160 32 128; --c-edit: 30 90 140; --c-ok: 23 109 60; --c-warn: 161 98 7; --c-danger: 160 30 30;
+    --c-rec-soft: 247 230 243; --c-ok-soft: 227 240 232; --c-warn-soft: 247 235 214; --c-danger-soft: 240 227 227; --c-edit-soft: 228 236 243;
+    --shadow-card: none;
+    --chart-grid: #E5E7EB; --chart-axis: #CBCBCB; --chart-text: #666;
+    --c-a-uslc: 47 95 74; --c-a-ussmid: 79 128 104; --c-a-intl: 127 165 146; --c-a-em: 175 200 186; --c-a-bonds: 139 111 71; --c-a-tips: 181 155 115; --c-a-cash: 217 201 173;
+  }
+  :root[data-product='flight-plan'] .print-page { background: #fff; padding: 28px 32px; border-radius: 2px; box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6); }
+  :root[data-product='flight-plan'] .print-page h1 { text-transform: uppercase; letter-spacing: 0.12em; font-size: 18px; }
+  :root[data-product='flight-plan'] .print-page .card > header { background: transparent; }
+  :root[data-product='flight-plan'] .print-page h2 { font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; font-weight: 700; color: #666; }
 }

@@ -85,7 +85,7 @@ describe('products', () => {
 
     expect(personasFor('flight-plan').every((p) => p.state.product === 'flight-plan')).toBe(true);
     expect(personasFor('base-case')).toBe(PERSONAS);
-    expect(personasFor('flight-plan')).toHaveLength(5);
+    expect(personasFor('flight-plan')).toHaveLength(1);
     expect(new Set(ALL_PERSONAS.map((p) => p.email)).size).toBe(ALL_PERSONAS.length);
     expect(new Set(ALL_PERSONAS.map((p) => p.key)).size).toBe(ALL_PERSONAS.length);
 

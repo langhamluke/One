@@ -28,7 +28,8 @@ if (config.env === 'production') {
     app.use('*', serveStatic({ root: rel }));
     app.get('*', (c) => {
       if (c.req.path.startsWith('/api')) return c.json({ error: 'Not found', code: 'not_found' }, 404);
-      return c.html(fs.readFileSync(indexFile, 'utf8'));
+      // The build may have been made for either product; stamp this instance's product on <html> for the first paint.
+      return c.html(fs.readFileSync(indexFile, 'utf8').replace(/data-product="[a-z-]+"/, `data-product="${config.product}"`));
     });
     logger.info('serving static frontend', { dir: distDir });
   } else {

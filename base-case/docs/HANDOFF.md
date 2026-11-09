@@ -3,7 +3,8 @@
 ## 2026-11-08: Flight Plan rebuilt on the platform
 Flight Plan (the pilot planner that existed only as a built `flight-plan.html`) is now a **product of this codebase**:
 `PRODUCT=flight-plan` gives an instance the Flight Plan name, the PREFLIGHT → CHECKLIST → FLIGHT PLAN → CRUISE →
-LANDING → BRIEFING phases, the pilot questionnaire wording and Pilot Supplement, five pilot personas, and airline career
+LANDING → BRIEFING phases, the pilot questionnaire wording and Pilot Supplement, one demo pilot (Jordan) plus three reference pilots for tests
+and one seeded real client (Steve, invited, no password), and airline career
 paths, with every Base Case feature (roles, drafts and approval, assistant, playbook, data ledger, admin, print) and the
 Base Case design. New: `shared/product.ts`, `shared/data/airlines.ts` (pay scales, retirement plans, paths; every rate
 Sourced, interpolations flagged), `shared/lib/airline.ts` (seat/longevity/flow/furlough simulation, FedEx pension and
@@ -13,8 +14,13 @@ MBCB, FAA 65), `shared/data/personasPilot.ts`, pilot playbook topics, pilot aler
 `YearRow.employerCashBalance/cashInLieu`. Ledger: airline non-elective % replaces the match; §415(c) excess → cash in
 lieu (taxed, invested in taxable) / cash balance / forfeit. Tests: 230 (airline sim, ledger spillover, personas,
 product config, server product route and seed). Docs: `docs/FLIGHT_PLAN.md`; deploy scripts take `PRODUCT`.
+2026-11-09: Flight Plan now wears the **original cockpit theme** (B612, dark panels, cyan/magenta/amber/red) via CSS
+variables switched by `<html data-product>`; the planning screens follow the original layouts (three-column
+Preflight, one-item-at-a-time Checklist with attitude indicator, navigation display + pay/earnings charts on Flight
+Plan, Cruise grid, altitude tape with what-ifs and retirement income on Landing). Admins can edit a user's e-mail.
 Open for Flight Plan: verify the airline figures against the CBAs (listed in `docs/FLIGHT_PLAN.md`); the screenshot
-review loop has not been run for the pilot screens; e-mail delivery for invites is still manual (copy the link).
+review loop passes at 1280 for all roles (1440/1024/768 not yet run on the cockpit theme); e-mail delivery for
+invites is still manual (copy the link).
 
 ## What exists
 A working, tested, role-based planning platform in `base-case/`:

@@ -45,9 +45,16 @@ pilot-aware system prompt.
 cd base-case && npm install && cp .env.example .env
 PRODUCT=flight-plan npm run dev
 ```
-Demo accounts print on first start: `admin@demo.flightplan.local` / `advisor@demo.flightplan.local` and five pilot
-clients (`jordan@`, `taylor@`, `morgan@`, `dale@`, `steve@demo.flightplan.local`) with the passwords in the console.
-A Base Case instance and a Flight Plan instance need separate databases (`BASE_CASE_DATA_DIR` or `DATABASE_URL`).
+Demo accounts print on first start: `admin@demo.flightplan.local` / `advisor@demo.flightplan.local` and one demo pilot
+(`jordan@demo.flightplan.local`, the fresh CFI) with the passwords in the console. Set `BOOTSTRAP_ADMIN_EMAIL` /
+`BOOTSTRAP_ADMIN_PASSWORD` in `.env` to create your own admin login on the first start (the database must be empty:
+delete `data/pg` to start over). A Base Case instance and a Flight Plan instance need separate databases
+(`BASE_CASE_DATA_DIR` or `DATABASE_URL`). `.env` is read on start, so restart `npm run dev` after editing it; the
+Tailwind theme is also only rebuilt on a restart.
+
+**Steve's plan** (a real friend, under a pseudonym) is seeded as an *invited* client with no password. To hand it to
+him: Users → Edit → set his real e-mail address → Save → Reset password → copy the link and send it; he picks a
+password and lands on his Preflight with everything filled in. Nothing about him is printed in the console.
 
 ## Send it to friends and advisors
 1. **Deploy an instance** (one droplet, one domain): `docs/DEPLOY_DIGITALOCEAN.md`, answering `flight-plan` to the
@@ -63,8 +70,11 @@ A Base Case instance and a Flight Plan instance need separate databases (`BASE_C
 ## What the original Flight Plan had that is intentionally different here
 - **Offline single file** → hosted, multi-user, encrypted at rest. Export/Import JSON still works (`app: "flight-plan"`
   files; Base Case files import too).
-- **Cockpit look** (B612, near-black, cyan/magenta) → the Base Case "model desk" design (IBM Plex, paper, deep green),
-  as requested: same look as Base Case, pilot content.
+- **Cockpit look** is kept: B612 and B612 Mono (served from `public/fonts`), the near-black panels, cyan for anything
+  editable, magenta for the flight plan, amber for caution, red for warnings, the six-readout strip, numbered phase
+  tabs, EICAS alert stack and the attitude indicator. It is a theme of the shared design system (`data-product` on
+  `<html>` switches the CSS variables in `src/styles/index.css`), so every Base Case screen (proposals, assistant,
+  users, audit) wears it too. Base Case itself is unchanged.
 - **Retirement age capped at 65 in the store** → any age can be entered; the engine ends airline pay at 65 and warns.
 - **Pre-tax IRA pro-rata alert** → not carried (the Base Case balance sheet lumps pre-tax 401(k) and IRA together).
 - **Social Security as a flat $42k assumption** → estimated from the pay history (SSA formula) unless overridden.

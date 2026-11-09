@@ -2,7 +2,7 @@ import { Area, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, Respon
 import type { MonteCarloResult } from '@shared/lib/derived';
 import type { DollarBasis } from '@shared/lib/types';
 import { fmtCompact, fmtMoney, toBasis } from '@/lib/format';
-import { ChartFrame, INK4, REC, tooltipStyle, useAnim } from './common';
+import { ChartFrame, theme, tooltipStyle, useAnim } from './common';
 
 function RetireLabel({ viewBox, text }: { viewBox?: { x?: number; y?: number }; text: string }) {
   const x = (viewBox?.x ?? 0) + 6;
@@ -10,8 +10,8 @@ function RetireLabel({ viewBox, text }: { viewBox?: { x?: number; y?: number }; 
   const w = text.length * 7 + 12;
   return (
     <g>
-      <rect x={x} y={y} width={w} height={20} rx={4} fill="#FFFFFF" stroke={REC} />
-      <text x={x + 6} y={y + 14} fontSize="11" fontFamily="IBM Plex Mono" fill={REC}>{text}</text>
+      <rect x={x} y={y} width={w} height={20} rx={4} fill={theme.paper2} stroke={theme.rec} />
+      <text x={x + 6} y={y + 14} fontSize="11" fontFamily={theme.mono} fill={theme.rec}>{text}</text>
     </g>
   );
 }
@@ -32,15 +32,15 @@ export function ScenarioCone({ mc, basis, inflation, height = 300, compact = fal
     <div style={{ height }} className="w-full">
       <ResponsiveContainer width="100%" height="100%">
         <ComposedChart data={data} margin={{ top: 12, right: 12, left: 4, bottom: 0 }}>
-          <CartesianGrid stroke="#C8CBCF" vertical={false} />
-          <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#B4B7BB' }} />
+          <CartesianGrid stroke={theme.grid} vertical={false} />
+          <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: theme.axis }} />
           <YAxis tickFormatter={(v: number) => fmtCompact(v)} tickLine={false} axisLine={false} width={56} />
-          <Tooltip {...tooltipStyle} formatter={(v: number | number[], name: string) => (Array.isArray(v) ? [`${fmtMoney(v[0])} – ${fmtMoney(v[1])}`, name] : [fmtMoney(v), name])} labelFormatter={(l) => `Age ${l}`} />
+          <Tooltip {...tooltipStyle()} formatter={(v: number | number[], name: string) => (Array.isArray(v) ? [`${fmtMoney(v[0])} – ${fmtMoney(v[1])}`, name] : [fmtMoney(v), name])} labelFormatter={(l) => `Age ${l}`} />
           {!compact && <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />}
-          <Area type="monotone" dataKey="band" name="P10–P90" stroke="none" fill={REC} fillOpacity={0.12} isAnimationActive={anim} animationDuration={600} />
-          <Line type="monotone" dataKey="p50" name="P50 (median)" stroke={REC} strokeWidth={2} dot={false} isAnimationActive={anim} animationDuration={600} />
-          <Line type="monotone" dataKey="det" name="Deterministic" stroke={INK4} strokeWidth={1.5} strokeDasharray="4 3" dot={false} isAnimationActive={anim} animationDuration={600} />
-          <ReferenceLine x={mc.retirementAge} stroke={REC} strokeDasharray="3 3" label={atRet ? <RetireLabel text={`P50 at ${mc.retirementAge}: ${fmtCompact(atRet.p50)}`} /> : undefined} />
+          <Area type="monotone" dataKey="band" name="P10–P90" stroke="none" fill={theme.rec} fillOpacity={0.12} isAnimationActive={anim} animationDuration={600} />
+          <Line type="monotone" dataKey="p50" name="P50 (median)" stroke={theme.rec} strokeWidth={2} dot={false} isAnimationActive={anim} animationDuration={600} />
+          <Line type="monotone" dataKey="det" name="Deterministic" stroke={theme.ink4} strokeWidth={1.5} strokeDasharray="4 3" dot={false} isAnimationActive={anim} animationDuration={600} />
+          <ReferenceLine x={mc.retirementAge} stroke={theme.rec} strokeDasharray="3 3" label={atRet ? <RetireLabel text={`P50 at ${mc.retirementAge}: ${fmtCompact(atRet.p50)}`} /> : undefined} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

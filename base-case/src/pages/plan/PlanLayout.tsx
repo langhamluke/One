@@ -6,7 +6,7 @@ import { useSession, isStaff } from '@/state/session';
 import { usePrefs } from '@/state/prefs';
 import { ReadoutStrip } from '@/components/shell/ReadoutStrip';
 import { DraftBanner } from '@/components/shell/DraftBanner';
-import { PhaseStepper } from '@/components/shell/PhaseStepper';
+import { PhaseNav, PhaseStepper } from '@/components/shell/PhaseStepper';
 import { ErrorNote, Loading } from '@/components/ui';
 import { Page } from '@/components/shell/AppShell';
 
@@ -26,6 +26,13 @@ export function useAdvisorView(): boolean {
   return isStaff(me?.user.role) && viewMode === 'advisor';
 }
 
+/** True when the plan being edited is a Flight Plan (cockpit layouts and labels). */
+export function useCockpit(): boolean {
+  const planProduct = usePlanStore((s) => s.state.product);
+  const { product } = useSession();
+  return (planProduct ?? product.key) === 'flight-plan';
+}
+
 export function PlanLayout() {
   const { clientId } = useParams();
   const [sp] = useSearchParams();
@@ -34,6 +41,7 @@ export function PlanLayout() {
   const role = me?.user.role ?? 'client';
   const staff = isStaff(role);
   const { load, loaded, loading, loadError, reset } = usePlanStore();
+  const cockpit = product.key === 'flight-plan';
 
   useEffect(() => {
     if (staff && !clientId) return;
@@ -56,6 +64,7 @@ export function PlanLayout() {
           <div className="mb-4"><PhaseStepper basePath={basePath} /></div>
           {loadError && <div className="mb-4"><ErrorNote>Could not load the plan: {loadError}</ErrorNote></div>}
           {loading && !loaded ? <Loading label="Loading plan" /> : <Outlet />}
+          {cockpit && loaded && <PhaseNav basePath={basePath} />}
         </Page>
       </DerivedProvider>
     </Ctx.Provider>

@@ -1,7 +1,7 @@
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from 'recharts';
 import { ASSET_CLASSES, ASSET_CLASS_LABELS, type Allocation } from '@shared/lib/types';
 import { fmtPct } from '@/lib/format';
-import { ASSET_COLORS, ChartFrame, tooltipStyle, useAnim } from './common';
+import { ChartFrame, theme, tooltipStyle, useAnim } from './common';
 
 export function AllocationDonut({ allocation, size = 180, legend = true, equity, frame = true }: { allocation: Allocation; size?: number; legend?: boolean; equity?: number; frame?: boolean }) {
   const anim = useAnim();
@@ -11,10 +11,10 @@ export function AllocationDonut({ allocation, size = 180, legend = true, equity,
       <div style={{ width: size, height: size }} className="relative shrink-0">
         <ResponsiveContainer width="100%" height="100%">
           <PieChart>
-            <Pie data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="92%" paddingAngle={1.5} stroke="#FFFFFF" strokeWidth={2} isAnimationActive={anim} animationDuration={600}>
-              {data.map((d) => <Cell key={d.key} fill={ASSET_COLORS[d.key]} />)}
+            <Pie data={data} dataKey="value" nameKey="name" innerRadius="62%" outerRadius="92%" paddingAngle={1.5} stroke={theme.paper2} strokeWidth={2} isAnimationActive={anim} animationDuration={600}>
+              {data.map((d) => <Cell key={d.key} fill={theme.asset(d.key)} />)}
             </Pie>
-            <Tooltip {...tooltipStyle} formatter={(v: number) => fmtPct(v, 1)} />
+            <Tooltip {...tooltipStyle()} formatter={(v: number) => fmtPct(v, 1)} />
           </PieChart>
         </ResponsiveContainer>
         {equity != null && (
@@ -28,7 +28,7 @@ export function AllocationDonut({ allocation, size = 180, legend = true, equity,
         <ul className="flex flex-col gap-1 text-xs min-w-0">
           {data.map((d) => (
             <li key={d.key} className="flex items-center gap-2">
-              <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: ASSET_COLORS[d.key] }} aria-hidden />
+              <span className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ background: theme.asset(d.key) }} aria-hidden />
               <span className="text-ink-2 flex-1 truncate">{d.name}</span>
               <span className="num text-ink">{fmtPct(d.value, 0)}</span>
             </li>

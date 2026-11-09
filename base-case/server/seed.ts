@@ -5,7 +5,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
-import { personasFor } from '../shared/data/personas';
+import { personasFor, seedClientsFor } from '../shared/data/personas';
 import { productConfig } from '../shared/product';
 import { mergePlanState, type PlanState } from '../shared/lib/inputs';
 import type { Role } from '../shared/lib/types';
@@ -34,7 +34,8 @@ export function demoAccounts(product: string) {
 
 export interface EnsureUserInput {
   email: string;
-  password: string;
+  /** Omit to create an invited account with no password (the admin sends an invite link). */
+  password?: string;
   role: Role;
   displayName: string;
 }
@@ -48,12 +49,12 @@ export async function ensureUser(deps: AppDeps, input: EnsureUserInput): Promise
   await deps.db.insert(users).values({
     id,
     email: normalizeEmail(input.email),
-    passwordHash: await hashPassword(input.password),
+    passwordHash: input.password ? await hashPassword(input.password) : null,
     role: input.role,
     displayName: input.displayName,
-    status: 'active',
+    status: input.password ? 'active' : 'invited',
     createdAt: now,
-    passwordChangedAt: now,
+    passwordChangedAt: input.password ? now : null,
   });
   const [user] = await deps.db.select().from(users).where(eq(users.id, id)).limit(1);
   return { user, created: true };
@@ -93,6 +94,20 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
       await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId: admin.user.id, reason: 'seed' }, tx));
     }
     first ??= { user: res.user, state };
+  }
+
+  // Real clients (e.g. Flight Plan's Steve): account + starting plan, no password. The admin opens Users, sets the
+  // real e-mail address, and sends the invite link; nothing is printed for them.
+  for (const client of seedClientsFor(deps.config.product)) {
+    const res = await ensureUser(deps, { email: client.email, role: 'client', displayName: client.name });
+    if (res.created) created.push(res.user.email);
+    if (res.user.role !== 'client') continue;
+    await assignAdvisor(deps, advisor.user.id, res.user.id);
+    const state = mergePlanState(client.state);
+    const [existingPlan] = await deps.db.select({ version: plans.version }).from(plans).where(eq(plans.clientId, res.user.id)).limit(1);
+    if (!existingPlan) {
+      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId: admin.user.id, reason: 'seed' }, tx));
+    }
   }
 
   if (first) {

@@ -6,8 +6,9 @@ import { useAdvisorView } from './PlanLayout';
 import { Button, Chip, Field, Note, NumberInput, Panel, Select, Slider, SourceLine, Table, TextInput, Toggle, VerifyTag, cx, td, tdNum, th, thNum } from '@/components/ui';
 import { LadderChart } from '@/components/charts/LadderChart';
 import { SalaryChart } from '@/components/charts/SalaryChart';
+import { EarningsBars } from '@/components/charts/EarningsBars';
 import { EngineUnavailable } from '@/components/EngineUnavailable';
-import { PATH_COLORS, REC } from '@/components/charts/common';
+import { theme } from '@/components/charts/common';
 import { OCCUPATIONS, WAGES_AS_OF, WAGES_SOURCE, listMetros, listOccupations } from '@shared/data/careers';
 import { AIRLINES, AIRLINES_AS_OF, STAY_DEFAULTS, airlinePathName, listAirlinePaths, milestonesFor, resolveAirlines, type AirlinePathChoice, type ExcessHandling, type Milestones } from '@shared/data/airlines';
 import { defaultAirlineConfig, defaultAirlinePath, defaultCareerPath, defaultPilotProfile, isPilotPlan, type CareerKind, type CareerPath, type LadderLevel, type Track } from '@shared/lib/inputs';
@@ -68,18 +69,17 @@ export function CareerPage() {
       }
     });
 
-  return (
-    <div className="grid gap-4 lg:grid-cols-12">
-      <div className="lg:col-span-5 flex flex-col gap-4 min-w-0">
-        <Panel title="Career paths" subtitle={`${state.careerPaths.length} of 4`} actions={<Button size="sm" icon={<Plus className="h-3.5 w-3.5" aria-hidden />} disabled={state.careerPaths.length >= 4} onClick={addPath}>Add path</Button>}>
-          <div className="flex flex-col gap-3">
+  const pathsPanel = (
+        <Panel title={pilot ? "Target paths · compare up to 4" : "Career paths"} subtitle={`${state.careerPaths.length} of 4`} actions={<Button size="sm" icon={<Plus className="h-3.5 w-3.5" aria-hidden />} disabled={state.careerPaths.length >= 4} onClick={addPath}>Add path</Button>}>
+          <div className={cx(pilot ? "grid gap-3 md:grid-cols-2" : "flex flex-col gap-3")}>
             {state.careerPaths.map((p, i) => (
               <PathEditor key={p.id} p={p} i={i} active={p.id === state.activePathId} occOptions={occOptions} metros={metros.map((m) => ({ value: m.key, label: m.name }))} canRemove={state.careerPaths.length > 1} pilotStage={pp.stage} pilotEmployer={pp.employer} />
             ))}
           </div>
           {pilot && !state.profile.pilot && <Note tone="warn" className="mt-3">Set your current position on the {productConfig(state.product).phases[0].label} screen; airline paths start from it.</Note>}
         </Panel>
-
+  );
+  const whatIfPanel = (
         <Panel title="What if" collapseKey="career.whatif">
           <div className="flex flex-col gap-4">
             {anyAirline && (
@@ -126,9 +126,9 @@ export function CareerPage() {
             )}
           </div>
         </Panel>
-      </div>
-
-      <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
+  );
+  const headerBlock = (
+    <>
         {activePath && activePath.kind === 'airline' ? (
           <AirlineHeader path={activePath} state={state} advisor={advisor} rateNow={derived?.active.rows[Math.max(0, derived.active.firstIncomeYearIndex)]?.airline} />
         ) : activePath && (
@@ -148,17 +148,31 @@ export function CareerPage() {
             <Note tone="warn"><span className="inline-flex items-center gap-2"><VerifyTag label="Self-reported" source="Custom ladder entered by the client" asOf="2026-11" /> Custom ladder in use for the active path.</span></Note>
           )
         )}
+    </>
+  );
+  const results = (
+    <>
         {error ? <EngineUnavailable error={advisor ? error : undefined} /> : derived ? (
           <>
-            <Panel title={anyAirline ? 'Career route comparison' : 'Career ladder comparison'}>
+            <Panel title={pilot ? 'Navigation display · career route' : anyAirline ? 'Career route comparison' : 'Career ladder comparison'} subtitle={pilot ? <span className="ml-auto">Click a route to make it the active flight plan · pay in {basis === 'today' ? "today's $" : 'nominal $'}</span> : undefined}>
               <LadderChart paths={derived.paths} activeId={state.activePathId} startAge={state.profile.age} retirementAge={retirementAge} />
-              <div className="mt-2">
+              {!pilot && <div className="mt-2">
                 <SalaryChart paths={derived.paths} activeId={state.activePathId} basis={basis} inflation={state.assumptions.inflation} retirementAge={retirementAge} />
-              </div>
+              </div>}
               <ul className="mt-2 flex flex-wrap gap-3 text-xxs text-ink-3">
-                {derived.paths.map((p, i) => <li key={p.pathId} className="inline-flex items-center gap-1"><span className="h-2 w-3 rounded-sm" style={{ background: p.pathId === state.activePathId ? REC : PATH_COLORS[i % 4] }} aria-hidden />{p.name}{p.pathId === state.activePathId ? ' (active)' : ''}</li>)}
+                {derived.paths.map((p, i) => <li key={p.pathId} className="inline-flex items-center gap-1"><span className="h-2 w-3 rounded-sm" style={{ background: p.pathId === state.activePathId ? theme.rec : theme.paths[i % 4] }} aria-hidden />{p.name}{p.pathId === state.activePathId ? ' (active)' : ''}</li>)}
               </ul>
             </Panel>
+            {pilot && (
+              <div className="grid gap-4 lg:grid-cols-12">
+                <Panel className="lg:col-span-7" title={`Annual gross pay by age · ${basis === 'today' ? "today's $" : 'nominal $'}`}>
+                  <SalaryChart paths={derived.paths} activeId={state.activePathId} basis={basis} inflation={state.assumptions.inflation} retirementAge={retirementAge} />
+                </Panel>
+                <Panel className="lg:col-span-5" title={`Career earnings vs. retirement (P50) · ${basis === 'today' ? "today's $" : 'nominal $'}`}>
+                  <EarningsBars paths={derived.paths} activeId={state.activePathId} basis={basis} inflation={state.assumptions.inflation} retirementAge={retirementAge} startAge={state.profile.age} />
+                </Panel>
+              </div>
+            )}
             <Panel title="Comparison">
               <Table caption="Career path comparison">
                 <thead>
@@ -188,6 +202,34 @@ export function CareerPage() {
             </Panel>
           </>
         ) : <Panel title="Career comparison"><p className="text-sm text-ink-3">Computing…</p></Panel>}
+    </>
+  );
+
+  if (pilot) {
+    // The original Flight Plan screen: navigation display across the top, pay and earnings charts, the comparison
+    // table, then the route editors and what-ifs.
+    return (
+      <div className="flex flex-col gap-4">
+        {headerBlock}
+        {results}
+        <div className="grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-8 min-w-0">{pathsPanel}</div>
+          <div className="lg:col-span-4 min-w-0">{whatIfPanel}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-12">
+      <div className="lg:col-span-5 flex flex-col gap-4 min-w-0">
+        {pathsPanel}
+        {whatIfPanel}
+      </div>
+
+      <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
+        {headerBlock}
+        {results}
       </div>
     </div>
   );
@@ -231,7 +273,7 @@ function PathEditor({ p, i, active, occOptions, metros, canRemove, pilotStage, p
   const set = <K extends keyof CareerPath>(k: K, v: CareerPath[K]) => update((s) => { (s.careerPaths[i] as CareerPath)[k] = v; });
   const occ = OCCUPATIONS[p.occupationCode];
   const levels: LadderLevel[] = p.occupationCode === 'custom' ? p.customLevels ?? [] : occ?.levels ?? [];
-  const color = active ? REC : PATH_COLORS[i % 4];
+  const color = active ? theme.rec : theme.paths[i % 4];
   const airline = p.kind === 'airline';
   const cfg = p.airline ?? defaultAirlineConfig();
   const setAir = <K extends keyof NonNullable<CareerPath['airline']>>(k: K, v: NonNullable<CareerPath['airline']>[K]) => update((s) => { const cp = s.careerPaths[i]; cp.airline = { ...(cp.airline ?? defaultAirlineConfig()), [k]: v }; });

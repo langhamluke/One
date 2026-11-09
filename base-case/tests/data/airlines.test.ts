@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AIRLINES, AIRLINE_IDS, AIRLINE_PATHS, AIRLINE_PATH_IDS, PILOT_STAGES, resolveAirlines } from '../../shared/data/airlines';
-import { PILOT_PERSONAS } from '../../shared/data/personasPilot';
+import { PILOT_PERSONAS, PILOT_REFERENCE_PERSONAS, PILOT_SEED_CLIENTS } from '../../shared/data/personasPilot';
 import { PILOT_PLAYBOOK } from '../../shared/data/playbook';
 import { mergePlanState } from '../../shared/lib/inputs';
 import { PILOT_SUPPLEMENT, QUESTIONS } from '../../shared/data/questionnaire';
@@ -64,9 +64,12 @@ describe('airline dataset', () => {
     }
   });
 
-  it('ships five pilot personas with complete questionnaires and valid supplements', () => {
-    expect(PILOT_PERSONAS).toHaveLength(5);
-    for (const p of PILOT_PERSONAS) {
+  it('ships one demo pilot, four reference pilots and one seeded client, all with complete questionnaires and valid supplements', () => {
+    expect(PILOT_PERSONAS).toHaveLength(1);
+    expect(PILOT_PERSONAS[0].key).toBe('cfi');
+    expect(PILOT_REFERENCE_PERSONAS).toHaveLength(3);
+    expect(PILOT_SEED_CLIENTS.map((p) => p.key)).toEqual(['student']);
+    for (const p of [...PILOT_PERSONAS, ...PILOT_REFERENCE_PERSONAS, ...PILOT_SEED_CLIENTS]) {
       const s = mergePlanState(p.state);
       expect(p.email, p.key).toMatch(/@demo\.flightplan\.local$/);
       expect(s.product, p.key).toBe('flight-plan');

@@ -1,12 +1,12 @@
 import { usePlanStore } from '@/state/plan';
 import { useDerived } from '@/state/derived';
-import { useAdvisorView } from './PlanLayout';
+import { useAdvisorView, useCockpit } from './PlanLayout';
 import { Chip, Field, NumberInput, Panel, Slider, SourceLine, Stat, Table, VerifyTag, cx, td, tdNum, th, thNum } from '@/components/ui';
 import { AllocationDonut } from '@/components/charts/AllocationDonut';
 import { GlideChart } from '@/components/charts/GlideChart';
 import { EngineUnavailable } from '@/components/EngineUnavailable';
 import { PlaybookList } from '@/components/PlaybookList';
-import { AlertLedger } from '@/components/AlertLedger';
+import { AlertLedger, EicasCounts } from '@/components/AlertLedger';
 import { MODEL_EQUITY } from '@shared/data/models';
 import { LIMITS_2026, IRS_YEAR, LIMITS_2027_PUBLISHED } from '@shared/data/irs2026';
 import { ASSET_CLASSES, ASSET_CLASS_LABELS, type HorizonCategory, type RiskCategory } from '@shared/lib/types';
@@ -20,6 +20,7 @@ export function PlanPage() {
   const update = usePlanStore((s) => s.update);
   const { derived, error } = useDerived();
   const advisor = useAdvisorView();
+  const cockpit = useCockpit();
   const a = state.assumptions;
   const retirementAge = state.whatIf.retireAtOverride ?? state.profile.retirementAge;
 
@@ -37,10 +38,8 @@ export function PlanPage() {
     { label: 'HSA (family)', s: LIMITS_2026.hsa.family },
   ];
 
-  return (
-    <div className="grid gap-4 lg:grid-cols-12">
-      <div className="lg:col-span-5 flex flex-col gap-4 min-w-0">
-        <Panel title="Model allocation" subtitle={`${derived.profile.risk} · ${derived.profile.horizon}`}>
+  const allocPanel = (
+        <Panel title={cockpit ? "Recommended allocation · today" : "Model allocation"} subtitle={<span className={cockpit ? "ml-auto text-rec" : undefined}>{derived.profile.risk} · {derived.profile.horizon}</span>}>
           <AllocationDonut allocation={derived.allocation} equity={derived.modelEquity} />
           <div className="mt-4">
             <div className="label-caps mb-1">Model matrix (equity %)</div>
@@ -52,7 +51,7 @@ export function PlanPage() {
                   <div className="bg-paper-2 p-1 text-ink-3 truncate">{r}</div>
                   {HORIZONS.map((h) => {
                     const hit = r === derived.profile.risk && h === derived.profile.horizon;
-                    return <div key={h} className={cx('p-1 text-center num', hit ? 'bg-rec text-white font-medium' : 'bg-paper-2')} aria-current={hit ? 'true' : undefined}>{Math.round(MODEL_EQUITY[r][h] * 100)}</div>;
+                    return <div key={h} className={cx('p-1 text-center num', hit ? (cockpit ? 'bg-paper-2 text-rec ring-1 ring-inset ring-rec' : 'bg-rec text-white font-medium') : 'bg-paper-2')} aria-current={hit ? 'true' : undefined}>{Math.round(MODEL_EQUITY[r][h] * 100)}</div>;
                   })}
                 </div>
               ))}
@@ -60,14 +59,16 @@ export function PlanPage() {
             {a.equityOverride != null && <p className="text-xxs text-warn mt-1">Equity override in effect: {fmtPct(a.equityOverride, 0)}.</p>}
           </div>
         </Panel>
-
-        <Panel title="Glide path">
-          <GlideChart glidePath={derived.glidePath} retirementAge={retirementAge} />
+  );
+  const glidePanel = (
+        <Panel title={cockpit ? "Glide path · equity by age" : "Glide path"} subtitle={cockpit ? <span className="ml-auto"><span className="num text-ink">{fmtPct(derived.modelEquity, 0)}</span> now → <span className="num text-rec">{fmtPct(a.landingEquity, 0)}</span> at {retirementAge}</span> : undefined}>
+          <GlideChart glidePath={derived.glidePath} retirementAge={retirementAge} height={cockpit ? 240 : 160} />
           <div className="mt-3">
             <Slider id="gl-landing" label="Landing equity at retirement" value={a.landingEquity} min={0.1} max={0.9} step={0.05} format={(v) => fmtPct(v, 0)} onChange={(v) => update((s) => { s.assumptions.landingEquity = v; })} help="Equity share the portfolio glides to by retirement." />
           </div>
         </Panel>
-
+  );
+  const emergencyPanel = (
         <Panel title="Emergency fund">
           <div className="grid grid-cols-3 gap-3">
             <Stat label="Target" value={fmtMoney(derived.emergency.target)} sub={`${derived.emergency.monthsTarget} months`} />
@@ -77,7 +78,8 @@ export function PlanPage() {
           <div className="mt-2 h-1.5 rounded-pill bg-line-2 overflow-hidden" aria-hidden><div className="h-full bg-rec" style={{ width: `${Math.min(100, (derived.emergency.current / Math.max(1, derived.emergency.target)) * 100)}%` }} /></div>
           <p className="text-xs text-ink-3 mt-2">{derived.emergency.reason}</p>
         </Panel>
-
+  );
+  const debtPanel = (
         <Panel title="Debt">
           {derived.debt.totalBalance <= 0 && state.debts.length === 0 ? <p className="text-sm text-ink-3">No debts entered.</p> : (
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -90,7 +92,9 @@ export function PlanPage() {
             </div>
           )}
         </Panel>
-
+  );
+  const assumptionsPanel = (
+    <>
         {advisor && (
           <Panel title="Assumptions" subtitle="advisor" collapseKey="plan.assumptions">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -130,14 +134,15 @@ export function PlanPage() {
             </div>
           </Panel>
         )}
-      </div>
-
-      <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
-        <Panel title="Playbook · order of operations">
+    </>
+  );
+  const playbookPanel = (
+        <Panel title={cockpit ? "Fuel planning · order of operations" : "Playbook · order of operations"}>
           <PlaybookList actions={derived.actions} />
         </Panel>
-
-        <div className="grid gap-4 md:grid-cols-2">
+  );
+  const taxAndLimits = (
+        <div className={cx("grid gap-4", cockpit ? "md:grid-cols-2" : "md:grid-cols-2")}>
           <Panel title={`Taxes · ${derived.tax.year}`} subtitle="first income year">
             <dl className="grid grid-cols-[1fr_auto] gap-x-3 gap-y-1 text-sm">
               {([
@@ -171,10 +176,50 @@ export function PlanPage() {
             )}
           </Panel>
         </div>
+  );
+  const alertsPanel = (
+    <Panel title={cockpit ? 'EICAS · alerts' : 'Alerts'} actions={cockpit ? <EicasCounts alerts={derived.alerts} advisor={advisor} /> : undefined}>
+      <AlertLedger alerts={derived.alerts} advisor={advisor} variant={cockpit ? 'eicas' : 'ledger'} />
+    </Panel>
+  );
 
-        <Panel title="Alerts">
-          <AlertLedger alerts={derived.alerts} advisor={advisor} />
-        </Panel>
+  if (cockpit) {
+    // The original Cruise screen: allocation beside the glide path, fuel planning beside limits and taxes, then
+    // emergency fund and debt, the alert stack and (advisor) the assumptions and capital-market table.
+    return (
+      <div className="flex flex-col gap-4">
+        <div className="grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-4 min-w-0">{allocPanel}</div>
+          <div className="lg:col-span-8 min-w-0">{glidePanel}</div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-5 min-w-0">{playbookPanel}</div>
+          <div className="lg:col-span-7 min-w-0">{taxAndLimits}</div>
+        </div>
+        <div className="grid gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-4 min-w-0">{emergencyPanel}</div>
+          <div className="lg:col-span-4 min-w-0">{debtPanel}</div>
+          <div className="lg:col-span-4 min-w-0">{alertsPanel}</div>
+        </div>
+        {assumptionsPanel}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-4 lg:grid-cols-12">
+      <div className="lg:col-span-5 flex flex-col gap-4 min-w-0">
+        {allocPanel}
+        {glidePanel}
+        {emergencyPanel}
+        {debtPanel}
+        {assumptionsPanel}
+      </div>
+
+      <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
+        {playbookPanel}
+        {taxAndLimits}
+        {alertsPanel}
       </div>
     </div>
   );

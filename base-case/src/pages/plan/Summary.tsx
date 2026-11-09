@@ -13,7 +13,7 @@ import { DEFAULT_DISCLAIMER } from '@/content/legal';
 import { QUESTIONNAIRE_SOURCE } from '@shared/data/questionnaire';
 import { productConfig } from '@shared/product';
 import { fmtAge, fmtCompact, fmtMoney, fmtPct, toBasis } from '@/lib/format';
-import { PATH_COLORS, REC } from '@/components/charts/common';
+import { theme } from '@/components/charts/common';
 
 export function SummaryPage() {
   const state = usePlanStore((s) => s.state);
@@ -74,7 +74,7 @@ export function SummaryPage() {
             {derived.paths.slice(0, 4).map((p, i) => {
               const y = 14 + i * 14;
               const x = (age: number) => 8 + ((age - startAge) / Math.max(1, retAge - startAge)) * 284;
-              const color = p.pathId === state.activePathId ? REC : PATH_COLORS[i % 4];
+              const color = p.pathId === state.activePathId ? theme.rec : theme.paths[i % 4];
               return (
                 <g key={p.pathId}>
                   <line x1={x(startAge)} x2={x(retAge)} y1={y} y2={y} stroke={color} strokeWidth={p.pathId === state.activePathId ? 2.5 : 1.5} opacity={0.8} />
@@ -83,8 +83,8 @@ export function SummaryPage() {
                 </g>
               );
             })}
-            <text x={8} y={68} fontSize="7" fill="#6B6B6B" fontFamily="IBM Plex Mono">{startAge}</text>
-            <text x={292} y={68} fontSize="7" fill="#6B6B6B" fontFamily="IBM Plex Mono" textAnchor="end">{retAge}</text>
+            <text x={8} y={68} fontSize="7" fill={theme.text} fontFamily={theme.mono}>{startAge}</text>
+            <text x={292} y={68} fontSize="7" fill={theme.text} fontFamily={theme.mono} textAnchor="end">{retAge}</text>
           </svg>
           <div className="num text-xxs text-ink-3">Start {fmtMoney(toBasis(derived.active.startingSalary, Math.max(0, derived.active.firstIncomeYearIndex), state.assumptions.inflation, 'today'))} · peak {fmtMoney(derived.active.rows.reduce((m, r) => Math.max(m, toBasis(r.wages, r.yearIndex, state.assumptions.inflation, 'today')), 0))} (today's $) · debt-free {fmtAge(derived.active.debtFreeAge)}</div>
         </div>

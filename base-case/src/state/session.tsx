@@ -67,7 +67,8 @@ export function SessionProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     document.title = product.name;
-  }, [product.name]);
+    document.documentElement.dataset.product = product.key;
+  }, [product.name, product.key]);
 
   // Another tab may sign in as a different user (one cookie jar per browser). When this tab regains focus, re-check
   // who the session belongs to and reload if it changed, so a stale tab never acts as the wrong user.

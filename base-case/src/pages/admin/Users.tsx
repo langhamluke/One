@@ -18,7 +18,7 @@ export function UsersPage() {
   const [invRes, setInvRes] = useState<InviteResponse | null>(null);
   const [busy, setBusy] = useState(false);
   const [editing, setEditing] = useState<UserSummary | null>(null);
-  const [edit, setEdit] = useState({ role: 'client' as Role, status: 'active' as UserSummary['status'], displayName: '' });
+  const [edit, setEdit] = useState({ role: 'client' as Role, status: 'active' as UserSummary['status'], displayName: '', email: '' });
   const [assignId, setAssignId] = useState('');
 
   const load = useCallback(async () => {
@@ -39,12 +39,12 @@ export function UsersPage() {
   const copy = async (text: string) => {
     try { await navigator.clipboard.writeText(text); toast('Copied', 'ok'); } catch { toast('Copy failed; select the link and copy it manually', 'danger'); }
   };
-  const openEdit = (u: UserSummary) => { setEditing(u); setEdit({ role: u.role, status: u.status === 'disabled' ? 'disabled' : 'active', displayName: u.displayName }); setAssignId(''); };
+  const openEdit = (u: UserSummary) => { setEditing(u); setEdit({ role: u.role, status: u.status === 'disabled' ? 'disabled' : 'active', displayName: u.displayName, email: u.email }); setAssignId(''); };
   const saveEdit = async () => {
     if (!editing) return;
     setBusy(true);
     try {
-      await adminApi.updateUser(editing.id, { role: edit.role, status: edit.status, displayName: edit.displayName.trim() || editing.displayName });
+      await adminApi.updateUser(editing.id, { role: edit.role, status: edit.status, displayName: edit.displayName.trim() || editing.displayName, ...(edit.email.trim() && edit.email.trim().toLowerCase() !== editing.email ? { email: edit.email.trim() } : {}) });
       if (editing.role === 'client' && assignId) await adminApi.assign(editing.id, assignId);
       toast('User updated', 'ok');
       setEditing(null);
@@ -108,6 +108,7 @@ export function UsersPage() {
         {editing && (
           <div className="flex flex-col gap-3">
             <Field label="Display name" htmlFor="ed-name"><TextInput id="ed-name" value={edit.displayName} onChange={(e) => setEdit({ ...edit, displayName: e.target.value })} /></Field>
+            <Field label="Email" htmlFor="ed-email" hint={editing.status === 'invited' ? 'Set the real address before sending the invite link.' : undefined}><TextInput id="ed-email" type="email" value={edit.email} onChange={(e) => setEdit({ ...edit, email: e.target.value })} /></Field>
             <Field label="Role" htmlFor="ed-role"><Select id="ed-role" value={edit.role} onChange={(e) => setEdit({ ...edit, role: e.target.value as Role })} options={[{ value: 'client', label: 'Client' }, { value: 'advisor', label: 'Advisor' }, { value: 'admin', label: 'Admin' }]} /></Field>
             <Field label="Status" htmlFor="ed-status"><Select id="ed-status" value={edit.status} onChange={(e) => setEdit({ ...edit, status: e.target.value as UserSummary['status'] })} options={[{ value: 'active', label: 'Active' }, { value: 'disabled', label: 'Disabled' }]} /></Field>
             {editing.role === 'client' && (

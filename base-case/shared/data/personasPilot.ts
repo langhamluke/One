@@ -238,10 +238,22 @@ function student(): PlanState {
   return s;
 }
 
+/** The one demo pilot shown in "Load demo pilot" and seeded as a demo client. */
 export const PILOT_PERSONAS: Persona[] = [
   { key: 'cfi', name: 'Jordan', tagline: 'Fresh CFI, 23: $95k flight-school loan at 9%, Envoy flow vs three other majors', email: `jordan@${DOMAIN}`, state: jordan() },
+];
+
+/** Reference pilots kept for tests and the engine fixtures; not seeded and not offered in the UI. */
+export const PILOT_REFERENCE_PERSONAS: Persona[] = [
   { key: 'regional-fo', name: 'Taylor', tagline: 'Regional FO, 27: Southwest vs FedEx vs American vs Delta, LTD and loss-of-license in place', email: `taylor@${DOMAIN}`, state: taylor() },
   { key: 'cargo-fo', name: 'Morgan', tagline: 'FedEx FO, 34, married with two kids: the 2027 pension election and the §415(c) cap', email: `morgan@${DOMAIN}`, state: morgan() },
   { key: 'senior-captain', name: 'Dale', tagline: 'American widebody captain, 59, retiring at 60 on actual spending', email: `dale@${DOMAIN}`, state: dale() },
+];
+
+/**
+ * Real people's starting plans, seeded as client accounts (no password: the admin sends them an invite link from
+ * the Users screen, and can set their real e-mail address there first). Nickname only; no account numbers.
+ */
+export const PILOT_SEED_CLIENTS: Persona[] = [
   { key: 'student', name: 'Steve Jobs', tagline: 'Denver flight student (pseudonym), 21: three years to a regional, no deferrals yet', email: `steve@${DOMAIN}`, state: student() },
 ];

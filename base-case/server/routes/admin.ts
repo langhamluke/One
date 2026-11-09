@@ -72,12 +72,17 @@ export function adminRoutes(deps: AppDeps) {
     const actor = actorOf(c);
     const target = await findUserById(deps.db, c.req.param('id'));
     if (!target) throw notFound('User not found');
-    const body = await parseBody(c, z.object({ role: roleSchema.optional(), status: z.enum(['active', 'disabled']).optional(), displayName: z.string().trim().min(1).max(120).optional() }).strict());
+    const body = await parseBody(c, z.object({ role: roleSchema.optional(), status: z.enum(['active', 'disabled']).optional(), displayName: z.string().trim().min(1).max(120).optional(), email: z.string().trim().email().max(254).optional() }).strict());
     const check = canChangeUser(actor, { id: target.id, role: target.role, status: target.status }, { role: body.role, status: body.status }, await countActiveAdmins(deps.db));
     if (!check.ok) throw forbidden(check.reason, 'admin_protection');
     if (body.status === 'active' && !target.passwordHash) throw badRequest('User has not accepted their invite yet; send a new invite instead', 'not_accepted');
     const patch: Partial<typeof users.$inferInsert> = {};
     if (body.displayName !== undefined) patch.displayName = body.displayName;
+    if (body.email !== undefined && normalizeEmail(body.email) !== target.email) {
+      const taken = await findUserByEmail(deps.db, body.email);
+      if (taken && taken.id !== target.id) throw badRequest('Another account already uses that e-mail address', 'email_taken');
+      patch.email = normalizeEmail(body.email);
+    }
     if (body.role !== undefined && body.role !== target.role) patch.role = body.role;
     if (body.status !== undefined && body.status !== target.status) patch.status = body.status;
     if (Object.keys(patch).length > 0) await deps.db.update(users).set(patch).where(eq(users.id, target.id));
@@ -89,7 +94,7 @@ export function adminRoutes(deps: AppDeps) {
       await audit(deps, { actorId: actor.id, action: 'user.role_changed', targetType: 'user', targetId: target.id, ip: c.get('ip'), metadata: { from: target.role, to: patch.role } });
     }
     if (patch.status) await audit(deps, { actorId: actor.id, action: 'user.status_changed', targetType: 'user', targetId: target.id, ip: c.get('ip'), metadata: { from: target.status, to: patch.status } });
-    if (patch.displayName !== undefined) await audit(deps, { actorId: actor.id, action: 'user.updated', targetType: 'user', targetId: target.id, ip: c.get('ip'), metadata: { fields: ['displayName'] } });
+    if (patch.displayName !== undefined || patch.email !== undefined) await audit(deps, { actorId: actor.id, action: 'user.updated', targetType: 'user', targetId: target.id, ip: c.get('ip'), metadata: { fields: [patch.displayName !== undefined && 'displayName', patch.email !== undefined && 'email'].filter(Boolean) } });
     const fresh = await findUserById(deps.db, target.id);
     return c.json(await userSummary(deps.db, fresh!));
   });

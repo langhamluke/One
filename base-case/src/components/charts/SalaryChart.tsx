@@ -2,7 +2,7 @@ import { CartesianGrid, Legend, Line, LineChart, ResponsiveContainer, Tooltip, X
 import type { PathResult } from '@shared/lib/derived';
 import type { DollarBasis } from '@shared/lib/types';
 import { fmtCompact, fmtMoney, toBasis } from '@/lib/format';
-import { ChartFrame, pathColor, tooltipStyle, useAnim } from './common';
+import { ChartFrame, pathColor, theme, tooltipStyle, useAnim } from './common';
 
 export function SalaryChart({ paths, activeId, basis, inflation, retirementAge }: { paths: PathResult[]; activeId: string; basis: DollarBasis; inflation: number; retirementAge: number }) {
   const anim = useAnim();
@@ -23,10 +23,10 @@ export function SalaryChart({ paths, activeId, basis, inflation, retirementAge }
       <div className="h-56 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={data} margin={{ top: 8, right: 12, left: 4, bottom: 0 }}>
-            <CartesianGrid stroke="#C8CBCF" vertical={false} />
-            <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: '#B4B7BB' }} />
+            <CartesianGrid stroke={theme.grid} vertical={false} />
+            <XAxis dataKey="age" tickLine={false} axisLine={{ stroke: theme.axis }} />
             <YAxis tickFormatter={(v: number) => fmtCompact(v)} tickLine={false} axisLine={false} width={52} />
-            <Tooltip {...tooltipStyle} formatter={(v: number) => fmtMoney(v)} labelFormatter={(l) => `Age ${l}`} />
+            <Tooltip {...tooltipStyle()} formatter={(v: number) => fmtMoney(v)} labelFormatter={(l) => `Age ${l}`} />
             {paths.length > 1 && <Legend iconType="plainline" wrapperStyle={{ fontSize: 11 }} />}
             {paths.map((p, i) => (
               <Line key={p.pathId} type="monotone" dataKey={p.pathId} name={p.name} stroke={pathColor(i, p.pathId === activeId)} strokeWidth={p.pathId === activeId ? 2.5 : 1.5} dot={false} isAnimationActive={anim} animationDuration={500} />
