@@ -52,9 +52,10 @@ delete `data/pg` to start over). A Base Case instance and a Flight Plan instance
 (`BASE_CASE_DATA_DIR` or `DATABASE_URL`). `.env` is read on start, so restart `npm run dev` after editing it; the
 Tailwind theme is also only rebuilt on a restart.
 
-**Nick Horvath's plan** (a real client) is seeded as an *invited* client with no password. To hand it to
-him: Users → Edit → set his real e-mail address → Save → Reset password → copy the link and send it; he picks a
-password and lands on his Preflight with everything filled in. Nothing about him is printed in the console.
+**Nick Horvath's plan** (a real client) is seeded as an *invited* client with no password. Put his real address in
+`.env` as `SEED_CLIENT_EMAILS=student=<his e-mail>` so a fresh database seeds it directly (otherwise set it on Users →
+Edit). Then Users → Reset password → copy the link and send it; he picks a password and lands on his Preflight with
+everything filled in. Nothing about him is printed in the console.
 
 ## Send it to friends and advisors
 1. **Deploy an instance** (one droplet, one domain): `docs/DEPLOY_DIGITALOCEAN.md`, answering `flight-plan` to the

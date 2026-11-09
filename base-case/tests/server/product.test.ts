@@ -62,6 +62,7 @@ describe('product configuration', () => {
     expect(nick).toBeDefined();
     const nickPlan = await json(await req(fp, 'GET', `/api/plans/${nick.id}`, { cookie: advisor }));
     expect(nickPlan.state.profile.nickname).toBe('Nick');
+    expect(nick.status).toBe('invited');
     const jordan = clients.find((c: { email: string }) => c.email === PILOT_PERSONAS[0].email);
     const plan = await json(await req(fp, 'GET', `/api/plans/${jordan.id}`, { cookie: advisor }));
     expect(plan.state.product).toBe('flight-plan');

@@ -100,10 +100,12 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
     first ??= { user: res.user, state };
   }
 
-  // Real clients (e.g. Flight Plan's Nick): account + starting plan, no password. The admin opens Users, sets the
-  // real e-mail address, and sends the invite link; nothing is printed for them.
+  // Real clients (e.g. Flight Plan's Nick): account + starting plan, no password. SEED_CLIENT_EMAILS in .env supplies
+  // the real address per persona key (else the demo placeholder); the admin sends the invite link from Users. Nothing
+  // is printed for them.
   for (const client of seedClientsFor(deps.config.product)) {
-    const res = await ensureUser(deps, { email: client.email, role: 'client', displayName: client.name });
+    const email = deps.config.seedClientEmails[client.key] ?? client.email;
+    const res = await ensureUser(deps, { email, role: 'client', displayName: client.name });
     if (res.created) created.push(res.user.email);
     if (res.user.role !== 'client') continue;
     await assignAdvisor(deps, advisor.user.id, res.user.id);

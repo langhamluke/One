@@ -22,6 +22,8 @@ export interface Config {
   firmName: string;
   bootstrapAdminEmail: string | null;
   bootstrapAdminPassword: string | null;
+  /** Real e-mail per seed-client key (SEED_CLIENT_EMAILS="student=nick@example.com,..."), kept out of the repo. */
+  seedClientEmails: Record<string, string>;
   demoSeed: boolean;
   /** Trust X-Forwarded-For / X-Forwarded-Proto (only behind a reverse proxy you control) */
   trustProxy: boolean;
@@ -50,10 +52,21 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): Config {
     firmName: str(env.FIRM_NAME) ?? productConfig(product).name,
     bootstrapAdminEmail: str(env.BOOTSTRAP_ADMIN_EMAIL),
     bootstrapAdminPassword: str(env.BOOTSTRAP_ADMIN_PASSWORD),
+    seedClientEmails: parseSeedClientEmails(str(env.SEED_CLIENT_EMAILS)),
     demoSeed: demoSeedRaw === null ? nodeEnv !== 'production' : demoSeedRaw === '1' || demoSeedRaw.toLowerCase() === 'true',
     trustProxy: (str(env.TRUST_PROXY) ?? '0') === '1',
     logLevel: (str(env.LOG_LEVEL) as Config['logLevel'] | null) ?? (nodeEnv === 'test' ? 'silent' : 'info'),
   };
+}
+
+/** "key=email,key2=email2" -> { key: email }. Blank or malformed entries are ignored. */
+export function parseSeedClientEmails(raw: string | null): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const part of (raw ?? '').split(',')) {
+    const [key, email] = part.split('=').map((x) => x.trim());
+    if (key && email && email.includes('@')) out[key] = email.toLowerCase();
+  }
+  return out;
 }
 
 /** Config used by tests and scripts: in-memory DB, fixed key, no network. */
@@ -71,6 +84,7 @@ export function testConfig(overrides: Partial<Config> = {}): Config {
     firmName: 'Test Firm',
     bootstrapAdminEmail: null,
     bootstrapAdminPassword: null,
+    seedClientEmails: {},
     demoSeed: false,
     trustProxy: true,
     logLevel: 'silent',

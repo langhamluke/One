@@ -230,3 +230,22 @@ describe('demo seed', () => {
     }
   });
 });
+
+describe('seed client e-mail override', () => {
+  it('parses SEED_CLIENT_EMAILS and the seed uses it for the matching persona key', async () => {
+    const { parseSeedClientEmails } = await import('../../server/config');
+    expect(parseSeedClientEmails('student=Nick@Example.com, bogus, x=notanemail')).toEqual({ student: 'nick@example.com' });
+    expect(parseSeedClientEmails(null)).toEqual({});
+    const { PILOT_SEED_CLIENTS } = await import('../../shared/data/personasPilot');
+    const t = await makeApp({ config: { product: 'flight-plan', seedClientEmails: { [PILOT_SEED_CLIENTS[0].key]: 'nick@example.com' } } });
+    try {
+      await runDemoSeed(t.deps, { print: false });
+      const { users } = await import('../../server/db/schema');
+      const rows = await t.deps.db.select({ email: users.email, status: users.status }).from(users);
+      expect(rows.some((r) => r.email === 'nick@example.com' && r.status === 'invited')).toBe(true);
+      expect(rows.some((r) => r.email === PILOT_SEED_CLIENTS[0].email)).toBe(false);
+    } finally {
+      await t.close();
+    }
+  });
+});
