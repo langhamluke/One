@@ -3,7 +3,8 @@ WORKDIR /app
 COPY package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY . .
-RUN npm run build
+# Small droplets (1 GB) run out of heap in the Vite build; let Node use swap instead of aborting.
+RUN NODE_OPTIONS=--max-old-space-size=2048 npm run build
 
 FROM node:22-slim
 ENV NODE_ENV=production
