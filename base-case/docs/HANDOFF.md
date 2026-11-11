@@ -1,5 +1,14 @@
 # Base Case — Handoff (state as of 2026-11-08)
 
+## 2026-11-11: Flight Plan live on the droplet
+Flight Plan runs next to Base Case on the same droplet (178.128.155.159) as compose project `flightplan`
+(`deploy/docker-compose.flight-plan.yml`, env `deploy/.env.flight-plan`, site file `deploy/sites/flightplan.caddy`),
+served by the Base Case Caddy at https://flightplan.178-128-155-159.sslip.io. Production seed: bootstrap admin
+(langhamluke14@gmail.com) + real client Nick Horvath via `SEED_CLIENT_EMAILS`, no demo accounts. The droplet checkout
+was fast-forwarded from a git bundle over SSH (branch `claude/festive-goldberg-9jofrz` at c7ec612); GitHub still needs
+`git push` of the same branch before `deploy/update.sh` (which pulls from origin) will work again. Dockerfile build
+uses `--max-old-space-size=2048` because the 1 GB droplet ran out of heap in the Vite build.
+
 ## 2026-11-08: Flight Plan rebuilt on the platform
 Flight Plan (the pilot planner that existed only as a built `flight-plan.html`) is now a **product of this codebase**:
 `PRODUCT=flight-plan` gives an instance the Flight Plan name, the PREFLIGHT → CHECKLIST → FLIGHT PLAN → CRUISE →
