@@ -9,4 +9,6 @@ playwright-report/
 test-results/
 .DS_Store
 deploy/.env.production
+deploy/.env.flight-plan
+deploy/sites/*.caddy
 deploy/backups/

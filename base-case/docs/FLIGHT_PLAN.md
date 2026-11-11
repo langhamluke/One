@@ -58,8 +58,9 @@ Edit). Then Users → Reset password → copy the link and send it; he picks a p
 everything filled in. Nothing about him is printed in the console.
 
 ## Send it to friends and advisors
-1. **Deploy an instance** (one droplet, one domain): `docs/DEPLOY_DIGITALOCEAN.md`, answering `flight-plan` to the
-   product prompt (or `PRODUCT=flight-plan` in `deploy/.env.production`). Leave `DEMO_SEED=0` for a shared instance.
+1. **Deploy an instance**: `docs/DEPLOY_DIGITALOCEAN.md`. On the droplet that already runs Base Case, run
+   `deploy/setup-flight-plan.sh` (own database, shared proxy). On a fresh droplet, answer `flight-plan` to the product
+   prompt of `setup-droplet.sh`. Leave `DEMO_SEED=0` for a shared instance; `SEED_CLIENT_EMAILS` seeds real clients.
 2. **Sign in as the admin** you set up, open **Users**, and **invite** each friend as a *client* and each advisor as an
    *advisor*; assign clients to their advisor. The invite is a link (there is no e-mail delivery yet, so copy the link
    from the Users screen or the server log and send it yourself). Links expire after 72 hours by default.

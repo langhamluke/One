@@ -11,3 +11,10 @@ docker compose -f deploy/docker-compose.yml --env-file deploy/.env.production ex
 chmod 600 "$OUT/basecase-$STAMP.dump"
 find "$OUT" -name 'basecase-*.dump' -mtime +14 -delete
 echo "$(date -u) backup ok: $OUT/basecase-$STAMP.dump"
+if [[ -f deploy/.env.flight-plan ]]; then
+  docker compose -f deploy/docker-compose.flight-plan.yml --env-file deploy/.env.flight-plan exec -T flightplan-db \
+    pg_dump -U flightplan -d flightplan --format=custom > "$OUT/flightplan-$STAMP.dump"
+  chmod 600 "$OUT/flightplan-$STAMP.dump"
+  find "$OUT" -name 'flightplan-*.dump' -mtime +14 -delete
+  echo "$(date -u) backup ok: $OUT/flightplan-$STAMP.dump"
+fi

@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { json, login, makeApp, req, type TestApp } from './helpers';
-import { DEMO, demoAccounts, runDemoSeed } from '../../server/seed';
+import { DEMO, bootstrap, demoAccounts, runDemoSeed } from '../../server/seed';
 import { PILOT_PERSONAS, PILOT_SEED_CLIENTS } from '../../shared/data/personasPilot';
 import { PERSONAS } from '../../shared/data/personas';
 import { configFromEnv } from '../../server/config';
@@ -86,5 +86,30 @@ describe('product configuration', () => {
     const bc = buildPlanContext(PERSONAS[0].state);
     expect(bc.product).toBe('base-case');
     expect(systemPrompt(bc, 'Test Firm')).not.toContain('airline');
+  });
+});
+
+describe('production bootstrap with real clients', () => {
+  it('creates the admin and the configured real clients only, no demo accounts', async () => {
+    const t = await makeApp({ config: {
+      product: 'flight-plan', demoSeed: false,
+      bootstrapAdminEmail: 'luke@example.com', bootstrapAdminPassword: 'Correct-Horse-Battery-9',
+      seedClientEmails: { [PILOT_SEED_CLIENTS[0].key]: 'nick@example.com' },
+    } });
+    try {
+      await bootstrap(t.deps);
+      const { users } = await import('../../server/db/schema');
+      const rows = await t.deps.db.select({ email: users.email, role: users.role, status: users.status }).from(users);
+      expect(rows.map((r) => `${r.role}:${r.email}:${r.status}`).sort()).toEqual(['admin:luke@example.com:active', 'client:nick@example.com:invited']);
+      const admin = await login(t, 'luke@example.com', 'Correct-Horse-Battery-9', '42.1.0.9');
+      const nick = rows.find((r) => r.email === 'nick@example.com')!;
+      const clients = await json(await req(t, 'GET', '/api/clients', { cookie: admin }));
+      const plan = await json(await req(t, 'GET', `/api/plans/${clients.find((c: { email: string }) => c.email === nick.email).id}`, { cookie: admin }));
+      expect(plan.state.profile.nickname).toBe('Nick');
+      await bootstrap(t.deps); // second start: nothing new
+      expect((await t.deps.db.select({ email: users.email }).from(users)).length).toBe(2);
+    } finally {
+      await t.close();
+    }
   });
 });

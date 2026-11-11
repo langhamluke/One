@@ -6,8 +6,9 @@ Tested end to end on 2026-11-03 with the exact files in `deploy/` (Postgres 16, 
 The same image serves either product. The setup script asks **Product to serve** (`base-case` or `flight-plan`) and
 writes `PRODUCT=` and a matching `FIRM_NAME=` into `deploy/.env.production`; the automatic address becomes
 `flightplan.<ip>.sslip.io` for Flight Plan. In non-interactive mode pass `PRODUCT=flight-plan` on the command line.
-To run **both** products, use two droplets (or two clones in different directories with different `DOMAIN`, ports and
-Postgres volumes): each product needs its own database, because plans, users and invites are per instance.
+To run **both** products on one droplet, install Base Case first, then add Flight Plan with
+`deploy/setup-flight-plan.sh` (see below): it gets its own database and app container, and the one Caddy proxy serves
+both addresses. Each product needs its own database, because plans, users and invites are per instance.
 To switch an existing instance, change `PRODUCT=` in `deploy/.env.production` and run `deploy/update.sh`; existing
 plans keep working (each plan carries its own product tag).
 
@@ -74,6 +75,21 @@ schedules a nightly database backup at 03:17 with 14-day retention. After the br
 
 **Copy `BASE_CASE_MASTER_KEY` from that file into your password manager right away.** Losing it makes every stored plan
 unreadable. The app refuses to start with the wrong key, so it can never silently show blank plans.
+
+## Adding Flight Plan next to Base Case
+On a droplet that already runs Base Case:
+```bash
+cd /opt/base-case && git pull --ff-only
+sudo ADMIN_EMAIL=you@example.com SEED_CLIENT_EMAILS="student=client@example.com" bash base-case/deploy/setup-flight-plan.sh
+```
+It writes `deploy/.env.flight-plan` (own Postgres password, master key, session secret, generated admin password, and
+the Base Case Anthropic key reused unless `ANTHROPIC_API_KEY` is given), adds `deploy/sites/flightplan.caddy` to the
+shared proxy, builds the `flightplan` compose stack (`deploy/docker-compose.flight-plan.yml`) and reloads Caddy. The
+address defaults to `flightplan.<ip-with-dashes>.sslip.io`; pass `DOMAIN=` for your own name (add its A record first).
+`SEED_CLIENT_EMAILS` seeds the product's real clients (invited, no password, plan filled in) on the first start, with no
+demo accounts; afterwards send each one a reset link from Users. `deploy/update.sh` and the nightly backup cover both
+products once the Flight Plan env file exists. Total footprint for both: about 2.5 CPUs and 2 GB RAM at the caps, under
+200 MB RAM idle.
 
 ## First login
 1. Open `https://your-domain`. The first visit can take ~30 seconds while the certificate is issued.

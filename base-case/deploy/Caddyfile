@@ -8,3 +8,7 @@
 		format json
 	}
 }
+
+# Extra products on the same droplet (Flight Plan): one site file each, written by deploy/setup-flight-plan.sh.
+# A glob that matches nothing is fine.
+import /etc/caddy/sites/*.caddy

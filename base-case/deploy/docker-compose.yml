@@ -73,6 +73,8 @@ services:
       DOMAIN: ${DOMAIN}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Site files for other products sharing this proxy (see docker-compose.flight-plan.yml).
+      - ./sites:/etc/caddy/sites:ro
       - caddy_data:/data
       - caddy_config:/config
     networks: [web]

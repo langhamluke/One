@@ -1,0 +1,75 @@
+# Flight Plan as a second product on the droplet that already runs Base Case: its own PostgreSQL and app container,
+# no proxy of its own. The Base Case Caddy (compose project "basecase") routes the Flight Plan domain to this app over
+# the shared basecase_web network; deploy/setup-flight-plan.sh writes deploy/sites/flightplan.caddy for it.
+# Service names are prefixed so the "app" alias on the shared network never collides with Base Case's app.
+# Run from base-case/:  docker compose -f deploy/docker-compose.flight-plan.yml --env-file deploy/.env.flight-plan up -d --build
+name: flightplan
+
+services:
+  flightplan-db:
+    image: postgres:16-alpine
+    container_name: flightplan-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: flightplan
+      POSTGRES_USER: flightplan
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    mem_limit: 256m
+    cpus: 0.5
+    cpu_shares: 256
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U flightplan -d flightplan"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks: [internal]
+
+  flightplan-app:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: flightplan-app
+    container_name: flightplan-app
+    restart: unless-stopped
+    mem_limit: 512m
+    cpus: 1.0
+    cpu_shares: 256
+    depends_on:
+      flightplan-db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: "8787"
+      APP_ORIGIN: https://${DOMAIN:?set DOMAIN}
+      TRUST_PROXY: "1"
+      DATABASE_URL: postgres://flightplan:${POSTGRES_PASSWORD}@flightplan-db:5432/flightplan
+      BASE_CASE_MASTER_KEY: ${BASE_CASE_MASTER_KEY:?set BASE_CASE_MASTER_KEY}
+      SESSION_SECRET: ${SESSION_SECRET:?set SESSION_SECRET}
+      PRODUCT: flight-plan
+      FIRM_NAME: ${FIRM_NAME:-Flight Plan}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:-}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:-}
+      DEMO_SEED: ${DEMO_SEED:-0}
+      # Real clients seeded with their starting plan on first start, by persona key (student=nick@example.com).
+      SEED_CLIENT_EMAILS: ${SEED_CLIENT_EMAILS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      BASE_CASE_CHAT_MODEL: ${BASE_CASE_CHAT_MODEL:-claude-opus-5-5}
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://localhost:8787/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [internal, web]
+
+volumes:
+  pgdata:
+
+networks:
+  internal:
+    internal: true
+  web:
+    external: true
+    name: basecase_web

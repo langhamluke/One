@@ -100,21 +100,8 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
     first ??= { user: res.user, state };
   }
 
-  // Real clients (e.g. Flight Plan's Nick): account + starting plan, no password. SEED_CLIENT_EMAILS in .env supplies
-  // the real address per persona key (else the demo placeholder); the admin sends the invite link from Users. Nothing
-  // is printed for them.
-  for (const client of seedClientsFor(deps.config.product)) {
-    const email = deps.config.seedClientEmails[client.key] ?? client.email;
-    const res = await ensureUser(deps, { email, role: 'client', displayName: client.name });
-    if (res.created) created.push(res.user.email);
-    if (res.user.role !== 'client') continue;
-    await assignAdvisor(deps, advisor.user.id, res.user.id);
-    const state = mergePlanState(client.state);
-    const [existingPlan] = await deps.db.select({ version: plans.version }).from(plans).where(eq(plans.clientId, res.user.id)).limit(1);
-    if (!existingPlan) {
-      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId, reason: 'seed' }, tx));
-    }
-  }
+  // Real clients (e.g. Flight Plan's Nick): account + starting plan, no password; assigned to the demo advisor.
+  await seedRealClients(deps, { actorId, advisorId: advisor.user.id, onlyConfigured: false, created });
 
   if (first) {
     const [existing] = await deps.db
@@ -148,6 +135,30 @@ export async function runDemoSeed(deps: AppDeps, opts: { print?: boolean } = {})
   return { created, credentials };
 }
 
+/**
+ * Seed the product's real clients (invited, no password) with their starting plans. Idempotent by e-mail.
+ * `onlyConfigured`: seed only the clients whose real address is set in SEED_CLIENT_EMAILS (production); the demo
+ * seed passes false and uses the demo placeholder address for the rest. Nothing is printed for these accounts.
+ */
+export async function seedRealClients(
+  deps: AppDeps,
+  opts: { actorId: string; advisorId?: string; onlyConfigured: boolean; created?: string[] },
+): Promise<void> {
+  for (const client of seedClientsFor(deps.config.product)) {
+    const configured = deps.config.seedClientEmails[client.key];
+    if (opts.onlyConfigured && !configured) continue;
+    const res = await ensureUser(deps, { email: configured ?? client.email, role: 'client', displayName: client.name });
+    if (res.created) opts.created?.push(res.user.email);
+    if (res.user.role !== 'client') continue;
+    if (opts.advisorId) await assignAdvisor(deps, opts.advisorId, res.user.id);
+    const state = mergePlanState(client.state);
+    const [existingPlan] = await deps.db.select({ version: plans.version }).from(plans).where(eq(plans.clientId, res.user.id)).limit(1);
+    if (!existingPlan) {
+      await deps.db.transaction((tx) => writePlan(deps, { clientId: res.user.id, state, actorId: opts.actorId, reason: 'seed' }, tx));
+    }
+  }
+}
+
 export function printCredentials(credentials: SeedResult['credentials'], createdCount: number, productName = 'Base Case'): void {
   const title = ` ${productName} demo accounts `;
   const pad = Math.max(0, 85 - title.length);
@@ -172,16 +183,23 @@ export async function userCount(deps: AppDeps): Promise<number> {
 export async function bootstrap(deps: AppDeps): Promise<void> {
   if ((await userCount(deps)) > 0) return;
   const { bootstrapAdminEmail, bootstrapAdminPassword, demoSeed } = deps.config;
+  let adminId: string | null = null;
   if (bootstrapAdminEmail && bootstrapAdminPassword) {
     const policy = passwordPolicyError(bootstrapAdminPassword, bootstrapAdminEmail);
     if (policy) throw new Error(`BOOTSTRAP_ADMIN_PASSWORD rejected: ${policy}`);
     const res = await ensureUser(deps, { email: bootstrapAdminEmail, password: bootstrapAdminPassword, role: 'admin', displayName: 'Administrator' });
+    adminId = res.user.id;
     deps.logger.info('bootstrap admin created', { userId: res.user.id });
   }
   if (demoSeed) {
     deps.logger.info('running demo seed (DEMO_SEED=1)');
     await runDemoSeed(deps);
     if (!bootstrapAdminEmail) deps.logger.warn('demo seed creates no admin: set BOOTSTRAP_ADMIN_EMAIL/BOOTSTRAP_ADMIN_PASSWORD or run `npm run create-admin`');
+  } else if (adminId && Object.keys(deps.config.seedClientEmails).length > 0) {
+    // Production: no demo accounts, but real clients with a configured address get their starting plan.
+    const created: string[] = [];
+    await seedRealClients(deps, { actorId: adminId, onlyConfigured: true, created });
+    deps.logger.info('real clients seeded', { count: created.length });
   } else if (!bootstrapAdminEmail) {
     deps.logger.warn('no users exist: set BOOTSTRAP_ADMIN_EMAIL/BOOTSTRAP_ADMIN_PASSWORD or run `npm run create-admin -- --email ... --password ...`');
   }
