@@ -445,8 +445,122 @@ export const PILOT_PLAYBOOK: PlaybookTopic[] = [
   },
 ];
 
-/** Playbook topics for a product: shared topics plus the product's own. */
+const CFPB_EF = { name: 'CFPB, "An essential guide to building an emergency fund"', url: 'https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/' };
+const FICO_FACTORS = { name: 'myFICO, "What\'s in my FICO Scores?"', url: 'https://www.myfico.com/credit-education/whats-in-your-credit-score' };
+const CFPB_CARD_ACT = { name: 'CFPB, "Can I get a credit card if I am under 21?" (Credit CARD Act of 2009)', url: 'https://www.consumerfinance.gov/ask-cfpb/can-i-get-a-credit-card-if-i-am-under-21-en-1-21/' };
+const FDIC = { name: 'FDIC, "Deposit Insurance At A Glance"', url: 'https://www.fdic.gov/resources/deposit-insurance/brochures/deposit-insurance-at-a-glance/' };
+const ACR = { name: 'AnnualCreditReport.com (the official free-report site under FCRA)', url: 'https://www.annualcreditreport.com/' };
+const IRS_ROTH = { name: 'IRS, Roth IRA contribution limits and earned-income rule (IRC §219, §408A)', url: 'https://www.irs.gov/retirement-plans/plan-participant-employee/retirement-topics-ira-contribution-limits' };
+const SPROUT_AS_OF = '2026-11';
+
+/**
+ * Sprout playbook: six topics for a 16-year-old reader, adapted from the Sprout prototype lessons (src/data/lessons.ts).
+ * Plain copy, no emojis, no product or brand names, educational only.
+ */
+export const STUDENT_PLAYBOOK: PlaybookTopic[] = [
+  {
+    key: 'student-budget',
+    title: 'A budget you can actually keep: needs, wants, savings',
+    stage: 'student',
+    area: 'banking',
+    products: ['sprout'],
+    summary: 'A budget is just a list of where your money goes before it goes there. The 50/30/20 split is a starting point: about half of what comes in for needs, 30% for wants, 20% for saving and paying down debt. Adjust it to your life; tracking is what matters.',
+    trigger: 'Save & spend screen: needs, wants and the pay-yourself-first transfer; alert when nothing goes to savings',
+    items: [
+      { text: 'A need is something you would have to replace if it disappeared: food, a way to get to work or school, the phone bill in your name. Wants make life fun. Both are fine; the goal is knowing which is which.', source: 'Sprout lessons (50/30/20); Senator Elizabeth Warren and Amelia Warren Tyagi, "All Your Worth" (2005), the origin of the rule', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Living at home? You might do 20/40/40. Paying rent at college? Maybe 65/20/15. The numbers are a guide, not a grade.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Give every dollar a job. Money with no plan tends to disappear; this is called zero-based budgeting: income minus planned spending and saving equals zero.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Paying with a card makes money invisible. Once a week, look at what actually left your account and compare it to the plan. That five-minute check is the habit.', source: 'Texas personal-finance teacher interview (2026): card spending makes money invisible to students', asOf: SPROUT_AS_OF, verified: false },
+      { text: 'No job yet? Turn on the practice paycheck so the budget uses a realistic part-time wage. It is labelled as practice everywhere and never counts as real income.', source: 'Sprout practice paycheck (shared/data/studentJobs.ts)', asOf: SPROUT_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'student-pay-yourself-first',
+    title: 'Pay yourself first',
+    stage: 'student',
+    area: 'banking',
+    products: ['sprout'],
+    summary: 'Most people save whatever is left at the end of the month, which is usually nothing. Flip it: the moment money comes in, move a set amount to savings, then spend the rest without guilt.',
+    trigger: 'no-savings-yet alert; first action item when no automatic transfer is set',
+    items: [
+      { text: 'Automate it. Set a transfer for the day you get paid. Even $10 a week becomes $520 a year, and because you never see it in checking, you will not miss it.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Low-balance warning: pick an amount your account can cover on its lowest day of the month. One overdraft fee can cost more than a month of saving. Start smaller than you think and raise it later.', source: 'Sprout product rule: every suggested automatic transfer carries this warning', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Where to keep it: a high-yield savings account at an FDIC-insured bank or an NCUA-insured credit union pays far more than a typical savings account. Deposits are insured up to $250,000 per depositor, per bank, per ownership category.', source: FDIC.name, url: FDIC.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'In late 2026 the best high-yield savings accounts pay around 4% APY while the national average is under 0.5%. Rates move; compare the APY, not the name.', source: 'Sprout lessons (market rates, not re-verified in this build)', asOf: SPROUT_AS_OF, verified: false },
+      { text: 'Pre-commit a share of any raise to savings (Save More Tomorrow): when your pay goes up, move half of the increase to the transfer before you get used to spending it.', source: 'Thaler and Benartzi, "Save More Tomorrow" (Journal of Political Economy, 2004)', asOf: SPROUT_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'student-emergency-fund',
+    title: 'Your emergency fund: a $500 starter, then months of expenses',
+    stage: 'student',
+    area: 'banking',
+    products: ['sprout'],
+    summary: 'A flat tire, a broken phone screen, a surprise bill. Without savings, emergencies end up on a credit card at 20% or more. Aim for a $500 starter cushion first, then build toward months of expenses based on how much you pay for yourself.',
+    trigger: 'starter-fund alert below $500; the four supplement questions set the full target',
+    items: [
+      { text: `Start small: ${'$'}500 covers most common surprises. Then the target grows with your situation: 1 month of expenses if you pay some of your housing and food, 3 months if you pay all of it, plus a month when hours change week to week or work is seasonal, plus a month when nobody could easily help you out, plus $500 when a car, phone or other bill is in your name.`, source: 'Sprout emergency-fund rule (shared/lib/sprout.ts); CFPB guidance to start with a reachable goal', url: CFPB_EF.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Keep it separate from spending money so it does not get used for wants, and keep it in savings, not the stock market, which can be down right when you need the cash.', source: CFPB_EF.name, url: CFPB_EF.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'If you use it, that is what it is for. Refill it before you go back to other goals.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'student-credit-score',
+    title: 'How credit scores work',
+    stage: 'student',
+    area: 'credit',
+    products: ['sprout'],
+    summary: 'A credit score (usually 300 to 850) predicts how likely you are to repay what you borrow. Landlords, lenders, phone carriers and some employers check it. A higher score means lower interest rates for the rest of your life.',
+    trigger: 'card-utilization alerts (over 30% of the limit); card status on the You screen',
+    items: [
+      { text: 'The five FICO factors: payment history 35%, amounts owed (utilization) 30%, length of history 15%, new credit 10%, credit mix 10%. Paying on time and keeping balances low are about two-thirds of the score.', source: FICO_FACTORS.name, url: FICO_FACTORS.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Utilization is your balances divided by your credit limits. Using $300 of a $1,000 limit is 30%. Under 30% is the common rule of thumb; under 10% is better. Paying before the statement closes lowers the reported balance.', source: FICO_FACTORS.name, url: FICO_FACTORS.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'A payment 30 or more days late can stay on your report for seven years. Autopay for at least the minimum means you never miss a due date.', source: 'Fair Credit Reporting Act, 15 U.S.C. §1681c (seven-year reporting period)', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Your income is not part of your credit score. Scores come from your credit report, which does not include it.', source: FICO_FACTORS.name, url: FICO_FACTORS.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Check your reports free every week from all three bureaus at AnnualCreditReport.com, the official site. Many banking apps also show a free score.', source: ACR.name, url: ACR.url, asOf: SPROUT_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'student-card-no-interest',
+    title: 'Using a card without paying interest',
+    stage: 'student',
+    area: 'credit',
+    products: ['sprout'],
+    summary: 'Pay the full statement balance by the due date and a credit card charges you nothing, thanks to the grace period. Carry a balance and you pay interest, often 20% to 25% a year, on the most expensive kind of borrowing there is.',
+    trigger: 'high-interest-debt alert for card balances; card payoff action item',
+    items: [
+      { text: 'Under 21 you need your own income or a co-signer to get a card of your own (Credit CARD Act of 2009). Starting as an authorized user on a parent\'s card, or with a secured or student card at 18 or older, are the usual first steps.', source: CFPB_CARD_ACT.name, url: CFPB_CARD_ACT.url, asOf: SPROUT_AS_OF, verified: true },
+      { text: 'The minimum-payment trap: paying only the minimum on $3,000 at 22% APR can take more than a decade and cost thousands in interest. The minimum is usually the greater of $25 or 1% of the balance plus that month\'s interest.', source: 'Sprout lessons and credit.ts minimum-payment formula (typical issuer terms, not re-verified)', asOf: SPROUT_AS_OF, verified: false },
+      { text: 'A debit card spends money you already have; a credit card borrows it. Both make spending invisible, so check the balance weekly either way.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'One card, one small recurring bill on it, autopay set to the full statement balance, utilization under 30%. That is the whole routine.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Cheapest way to pay off several cards: highest interest rate first (avalanche). Smallest balance first (snowball) costs a little more but keeps you going.', source: 'Sprout lessons', asOf: SPROUT_AS_OF, verified: true },
+    ],
+  },
+  {
+    key: 'student-compound-growth',
+    title: 'Compound growth: time is the part you have most of',
+    stage: 'student',
+    area: 'investing',
+    products: ['sprout'],
+    summary: 'When savings earn a return, next year you earn a return on the original money and on last year\'s gains. Over decades this snowballs. The Meet you at 30 screen shows what your current habit grows to and what waiting five years would cost.',
+    trigger: 'Meet you at 30 screen (habits projection); every projection carries the educational disclaimer',
+    items: [
+      { text: 'The Rule of 72: divide 72 by a yearly return to estimate how long money takes to double. At 6% that is about 12 years; at 8% about 9.', source: 'Arithmetic rule of thumb', asOf: SPROUT_AS_OF, verified: true },
+      { text: '$100 a month from 18 to 65 at a hypothetical 7% average return grows to roughly $400,000; starting at 28 instead gives roughly half. Hypothetical, not a promise; real returns vary year to year and can be negative for years at a time.', source: 'Sprout lessons (future-value arithmetic at an assumed 7%)', asOf: SPROUT_AS_OF, verified: true },
+      { text: `A Roth IRA needs earned income (a job, not allowance): you can contribute up to the smaller of what you earned and the yearly limit, $${LIMITS_2026.ira.value.toLocaleString('en-US')} in 2026. Under 18 a parent or guardian opens a custodial Roth IRA with you. Contributions can be withdrawn any time without tax or penalty.`, source: IRS_ROTH.name, url: IRS_ROTH.url, asOf: LIMITS_2026.ira.asOf, verified: LIMITS_2026.ira.verified },
+      { text: 'Fees compound too: a fund charging 1% a year can eat about a quarter of the ending balance over 30 years, against a few dollars per $10,000 for a broad index fund. Sprout describes asset classes, never specific funds or products.', source: 'Sprout lessons (arithmetic); SEC Office of Investor Education, "How Fees and Expenses Affect Your Investment Portfolio"', url: 'https://www.sec.gov/investor/alerts/ib_fees_expenses.pdf', asOf: SPROUT_AS_OF, verified: true },
+      { text: 'Emergency money and next year\'s tuition do not belong in the market. Invest only money you will not need for years, and never borrow to invest.', source: 'Sprout product rule: no nudges toward risky investing', asOf: SPROUT_AS_OF, verified: true },
+    ],
+  },
+];
+
+/**
+ * Playbook topics for a product: shared topics plus the product's own. Sprout shows its six student topics plus only
+ * the shared topics written for students or for every stage (no SBLOC, HELOC or equity-comp material for a
+ * 16-year-old reader).
+ */
 export function playbookFor(product: ProductKey | string | undefined | null): PlaybookTopic[] {
-  const all = [...PLAYBOOK, ...PILOT_PLAYBOOK];
+  const all = [...PLAYBOOK, ...PILOT_PLAYBOOK, ...STUDENT_PLAYBOOK];
+  if (product === 'sprout') return all.filter((t) => t.products?.includes('sprout') || (!t.products && (t.stage === 'student' || t.stage === 'all')));
   return all.filter((t) => !t.products || t.products.includes(product as ProductKey));
 }
