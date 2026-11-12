@@ -10,6 +10,8 @@ All datasets live in `shared/data/` and every value is `Sourced`. The app shows 
 | Mid-November | IRS retirement-plan limits (Notice 20xx-xx): 402(g), catch-ups, 415(c), 401(a)(17), IRA, Roth phase-outs, Saver's Match thresholds | `irs2026.ts` |
 | January | HHS poverty guidelines (IBR) | `loans.ts` |
 | Late March / April | BLS OEWS (May of prior year) national and metro wages; BLS Employment Projections | `careers.ts` |
+| Late March / April | BLS OEWS hourly medians for the student jobs (Sprout) | `studentJobs.ts` |
+| Each January (and July for mid-year states) | State minimum wages (Sprout): DOL state table | `studentJobs.ts` |
 | Late May | IRS HSA limits for next year (Rev. Proc.) | `irs2026.ts` |
 | June | Federal student-loan interest rates for the next award year | `loans.ts` |
 | As enacted | Federal/state tax law changes; state rate cuts (Jan 1) | `states.ts`, `loans.ts` |

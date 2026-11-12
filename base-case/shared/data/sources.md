@@ -181,6 +181,19 @@ Anchor steps carry these sources; every interpolated step is `verified:false` wi
 
 ---
 
+## studentJobs.ts — student job wages and state minimum wages (Sprout; data pass 2026-11-12)
+Wages: BLS OEWS May 2025 national hourly medians. Read in this build from BLS OOH / O*NET (verified) or from aggregators citing OEWS (unverified):
+- Cashiers 41-2011 $15.81 (p10 $11.79, p90 $19.43): BLS OOH — https://www.bls.gov/ooh/sales/cashiers.htm
+- Retail salespersons 41-2031 $17.03: BLS OOH — https://www.bls.gov/ooh/sales/retail-sales-workers.htm
+- Lifeguards 33-9092 $16.14 (p10 $12.40, p90 $21.14): O*NET national wages — https://www.onetonline.org/link/localwages/33-9092.00
+- Food preparation workers 35-2021 $16.98 (WageDex, $35,320/yr; OOH still shows May 2024 $16.45) — https://www.bls.gov/ooh/food-preparation-and-serving/food-preparation-workers.htm (UNVERIFIED)
+- Tutors 25-3041 $20.84 (aggregators, $43,350/yr ÷ 2,080; last official table seen May 2023 $19.03) — https://www.bls.gov/oes/current/oes253041.htm (UNVERIFIED)
+Minimum wages: U.S. DOL Wage and Hour Division, State Minimum Wage Laws (updated Jan 1, 2026) — https://www.dol.gov/agencies/whd/minimum-wage/state.
+Corroborated by a second source in this build (verified): CA $16.90, WA $17.13, CT $16.94, CO $15.16, AZ $15.15, IL $15.00, MA $15.00, MD $15.00, MO $15.00, NE $15.00, NJ $15.92, NY $16.00 statewide ($17.00 NYC / LI / Westchester); federal-floor states $7.25.
+Secondary corroboration: CBS News / Ballotpedia "states raising minimum wage 2026" lists; workforce.com and peoplekeep 2026 tables.
+Practice paycheck pattern (cashier wage, 10 / 20 hrs a week) and the 36-week school year / 12-week summer: planning assumptions (unverified by design).
+Starter emergency cushion $500: Sprout product rule; CFPB "An essential guide to building an emergency fund" — https://www.consumerfinance.gov/an-essential-guide-to-building-an-emergency-fund/
+
 ## Could not verify (left `verified: false`)
 1. **secondary_teacher** OEWS band — single source (O\*NET state page labelled 2025); large jump from the prior row. Confirm at bls.gov/oes/current/oes252031.htm.
 2. **Employment** for 33 of 37 occupations (single aggregator, EP base count, or ESTIMATE from memory). Confirm on bls.gov/oes.
@@ -195,3 +208,7 @@ Anchor steps carry these sources; every interpolated step is `verified:false` wi
     treatment, FO/CA top steps and 401(k) %; generic regional scale and 401(k) %; American MBCB mechanics and default
     excess handling at other carriers; FedEx year-1 FO, pension cap, FAE cap, MBCB % and election window; United and
     Delta proxy scales. Confirm against the CBAs before client use.
+11. **studentJobs.ts** (Sprout): food-prep and tutor May 2025 medians (secondary sources); state minimum wages for every
+    state above the federal floor except CA, CO, CT, AZ, IL, MA, MD, MO, NE, NJ, NY, WA (and DC, where sources
+    disagree: $17.95 vs $18.40 mid-2026); the school-year / summer weeks and the practice-paycheck hours by design.
+12. **student playbook**: the November 2026 HYSA APY range and the typical minimum-payment formula.

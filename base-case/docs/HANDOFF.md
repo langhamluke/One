@@ -1,4 +1,22 @@
-# Base Case — Handoff (state as of 2026-11-08)
+# Base Case — Handoff (state as of 2026-11-12)
+
+## 2026-11-12: Sprout, the student product
+**Sprout** (free money-skills app for high school and college students) is the third product: `PRODUCT=sprout`. New:
+`shared/data/studentJobs.ts` (BLS OEWS May 2025 medians for cashier, food prep, retail, lifeguard, tutor; DOL state
+minimum wages Jan 2026; practice-paycheck pattern), `shared/lib/sprout.ts` (student stage in front of the ladder,
+practice paycheck, expected loans → federal loan at graduation, the $500-starter emergency rule, habits projection,
+card utilization), `shared/data/personasSprout.ts` (Maya, Jordan, Alex, Sam, Priya), Sprout questionnaire wording and
+supplement, six playbook topics, student alerts / actions, a student assistant prompt and glossary, `profile.student`,
+`Debt.creditLimit`, `YearRow.otherIncome` (untaxed allowance), stage `student`, `ProductConfig.minAge` (13; engine
+clamps, intake refuses), the Sprout theme (`:root[data-product='sprout']`, dark mode via `prefers-color-scheme`,
+Instrument Serif + Geist served from `public/fonts`), `favicon-sprout.svg`, the student intake on You, Pay now on
+First jobs, Your budget / goals on Save & spend, Meet you at 30 on Future, "Your next three steps" on the print page.
+Deploy: `deploy/docker-compose.sprout.yml`, `deploy/setup-sprout.sh`, update/backup cover three stacks. Tests: 258
+(+26). Docs: `docs/SPROUT.md` (product rules, not-yet-ported list, VERIFY list). Vite takes `WEB_PORT` / `API_PORT` so
+a second product can run locally next to the default pair; `npm run screenshots` takes `WIDTHS=390`. Base Case and
+Flight Plan behaviour is unchanged (every switch is `product === 'sprout'`; the Account page grid got `min-w-0`, a
+no-op at desktop widths). Open for Sprout: confirm food-prep and tutor medians and the unverified state minimum wages;
+decide whether to port Learn / Rewards / check-ins; parent or guardian consent flow before real students under 18.
 
 ## 2026-11-11: Flight Plan live on the droplet
 Flight Plan runs next to Base Case on the same droplet (178.128.155.159) as compose project `flightplan`

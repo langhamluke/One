@@ -1,4 +1,4 @@
-# Deploy Base Case or Flight Plan on your DigitalOcean droplet
+# Deploy Base Case, Flight Plan or Sprout on your DigitalOcean droplet
 
 Tested end to end on 2026-11-03 with the exact files in `deploy/` (Postgres 16, the app image, Caddy 2 with automatic HTTPS).
 
@@ -6,9 +6,10 @@ Tested end to end on 2026-11-03 with the exact files in `deploy/` (Postgres 16, 
 The same image serves either product. The setup script asks **Product to serve** (`base-case` or `flight-plan`) and
 writes `PRODUCT=` and a matching `FIRM_NAME=` into `deploy/.env.production`; the automatic address becomes
 `flightplan.<ip>.sslip.io` for Flight Plan. In non-interactive mode pass `PRODUCT=flight-plan` on the command line.
-To run **both** products on one droplet, install Base Case first, then add Flight Plan with
-`deploy/setup-flight-plan.sh` (see below): it gets its own database and app container, and the one Caddy proxy serves
-both addresses. Each product needs its own database, because plans, users and invites are per instance.
+To run **several** products on one droplet, install Base Case first, then add Flight Plan with
+`deploy/setup-flight-plan.sh` and Sprout with `deploy/setup-sprout.sh` (see below): each gets its own database and app
+container, and the one Caddy proxy serves every address. Each product needs its own database, because plans, users and
+invites are per instance.
 To switch an existing instance, change `PRODUCT=` in `deploy/.env.production` and run `deploy/update.sh`; existing
 plans keep working (each plan carries its own product tag).
 
@@ -90,6 +91,21 @@ address defaults to `flightplan.<ip-with-dashes>.sslip.io`; pass `DOMAIN=` for y
 demo accounts; afterwards send each one a reset link from Users. `deploy/update.sh` and the nightly backup cover both
 products once the Flight Plan env file exists. Total footprint for both: about 2.5 CPUs and 2 GB RAM at the caps, under
 200 MB RAM idle.
+
+## Adding Sprout next to Base Case and Flight Plan
+Same pattern, third stack:
+```bash
+cd /opt/base-case/base-case && git pull --ff-only
+sudo ADMIN_EMAIL=you@example.com DEMO_SEED=0 bash deploy/setup-sprout.sh
+```
+It writes `deploy/.env.sprout` (own Postgres password, master key, session secret, a generated admin password unless
+`ADMIN_PASSWORD` is given, `FIRM_NAME=Sprout`, the Base Case Anthropic key reused), adds `deploy/sites/sprout.caddy`,
+builds the `sprout` compose stack (`deploy/docker-compose.sprout.yml`: `sprout-db` 256 MB, `sprout-app` 512 MB, no
+ports of its own, on the shared `basecase_web` network) and reloads Caddy. The address defaults to
+`sprout.<ip-with-dashes>.sslip.io`; pass `DOMAIN=` for your own name. `deploy/update.sh` and the nightly backup
+(`sprout-<stamp>.dump`, 14-day retention) cover Sprout once `deploy/.env.sprout` exists. Three stacks fit a 1 GB + 2 GB
+swap droplet only if about 250 MB RAM is free before the build; check `free -m` and `docker stats --no-stream` first
+and build outside market hours. Sprout seeds no real clients; invite friends from Users after the first login.
 
 ## First login
 1. Open `https://your-domain`. The first visit can take ~30 seconds while the certificate is issued.
