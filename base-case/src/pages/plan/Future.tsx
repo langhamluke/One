@@ -2,7 +2,8 @@ import { Link } from 'react-router-dom';
 import { usePlanStore } from '@/state/plan';
 import { useDerived } from '@/state/derived';
 import { usePrefs } from '@/state/prefs';
-import { useAdvisorView, useCockpit } from './PlanLayout';
+import { useAdvisorView, useCockpit, useSprout } from './PlanLayout';
+import { habitsProjection } from '@shared/lib/sprout';
 import { Button, Chip, Field, NumberInput, Panel, Readout, Select, Slider, Stat, Table, Toggle, cx, td, tdNum, th, thNum } from '@/components/ui';
 import { ScenarioCone } from '@/components/charts/ScenarioCone';
 import { EngineUnavailable } from '@/components/EngineUnavailable';
@@ -17,6 +18,7 @@ export function FuturePage() {
   const { derived, error, preview } = useDerived();
   const advisor = useAdvisorView();
   const cockpit = useCockpit();
+  const sprout = useSprout();
   const { basis, tables, toggleTable } = usePrefs();
   const wi = state.whatIf;
   const showTable = !!tables['future.years'];
@@ -37,6 +39,26 @@ export function FuturePage() {
   const a = state.assumptions;
   const anyAirline = state.careerPaths.some((p) => p.kind === 'airline');
   const airlinePaths = state.careerPaths.filter((p) => p.kind === 'airline');
+
+  // Sprout "Meet you at 30": the engine's expected path at 30 (today's dollars), the simple habit arithmetic behind
+  // it, the cost of waiting five years, and the same habit in a savings account. Educational, never a promise.
+  const meetAge = state.profile.age < 30 ? 30 : state.profile.age + 10;
+  const rowAt = derived.active.rows.find((r) => r.age === meetAge) ?? derived.active.rows[derived.active.rows.length - 1];
+  const atMeet = rowAt ? toBasis(rowAt.investable + rowAt.balances.cash + rowAt.balances.goals, rowAt.yearIndex, infl, 'today') : 0;
+  const monthlySaving = (state.savings.taxableContribution + state.savings.iraContribution) / 12;
+  const habits = habitsProjection(state, monthlySaving, derived.active.rows[0]?.expectedReturn ?? 0.06, meetAge);
+  const meetPanel = sprout ? (
+    <Panel title={`Meet you at ${meetAge}`} subtitle={`today's dollars · ${basisLabel('today')}`}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Stat label={`Savings at ${meetAge}`} value={fmtCompact(atMeet)} sub="expected path" />
+        <Stat label="You put in" value={fmtCompact(habits.contributed)} sub={`${fmtMoney(habits.monthly)}/mo for ${habits.years} yrs`} />
+        <Stat label="Growth does" value={fmtCompact(Math.max(0, habits.at - habits.contributed))} sub={`at ${fmtPct(derived.active.rows[0]?.expectedReturn ?? 0, 1)}/yr`} />
+        <Stat label="Waiting 5 years costs" value={fmtCompact(habits.costOfWaiting)} sub={`${fmtCompact(habits.later)} if you start at ${state.profile.age + 5}`} />
+      </div>
+      <p className="text-xs text-ink-2 mt-3">The same {fmtMoney(habits.monthly)} a month in a savings account at {fmtPct(a.cashYield, 1)} would be about {fmtCompact(habits.atCashYield)}. The difference is what time and a diversified mix of investments can do; it is also where the ups and downs live, which is why emergency money and next year's tuition stay in savings.</p>
+      <p className="text-xxs text-ink-3 mt-2">Hypothetical and educational, not a promise. Real returns vary year to year and can be negative for years at a time; the number above uses the plan's expected-return path and the inputs you entered. Sprout never holds or moves money.</p>
+    </Panel>
+  ) : null;
 
   const yearTable = (
     <Panel title="Year by year" subtitle={cockpit ? `${derived.active.name} · ${basisLabel(basis)}` : undefined} actions={<Button size="sm" variant="ghost" aria-pressed={showTable} onClick={() => toggleTable('future.years')}>{showTable ? 'Hide table' : 'Show detail'}</Button>}>
@@ -187,7 +209,8 @@ export function FuturePage() {
   return (
     <div className="grid gap-4 lg:grid-cols-12">
       <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
-        <Panel title="Scenario cone" subtitle={`${basisLabel(basis)} · ${derived.mc.sims} sims${preview ? ' (preview)' : ''}`}>
+        {meetPanel}
+        <Panel title={sprout ? `All the way to ${derived.mc.retirementAge}` : 'Scenario cone'} subtitle={`${basisLabel(basis)} · ${derived.mc.sims} sims${preview ? ' (preview)' : ''}`}>
           <ScenarioCone mc={derived.mc} basis={basis} inflation={infl} />
           <div className="mt-2 grid grid-cols-3 gap-3">
             <Stat label="P10 at retirement" value={fmtCompact(p10)} />

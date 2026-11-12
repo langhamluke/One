@@ -166,6 +166,7 @@ function RiskPageClassic() {
   const QUESTIONS = questionsFor(state.product);
   const SUPPLEMENT = supplementFor(state.product);
   const pilot = state.product === 'flight-plan';
+  const sprout = state.product === 'sprout';
   const answered = QUESTIONS.filter((q) => state.answers[q.id] != null).length;
   const amount = state.portfolioAmount;
   const fmtAmt = fmtMoney(amount);
@@ -187,12 +188,13 @@ function RiskPageClassic() {
               {q.id === 'q5' && q.ranges && (
                 <div className="mb-3 flex flex-col gap-3">
                   <Field label="Amount to invest" htmlFor="q5-amount" inline>
-                    <NumberInput id="q5-amount" value={amount} min={1000} max={10_000_000} step={1000} prefix="$" onChange={(v) => update((s) => { s.portfolioAmount = v ?? 100000; })} />
+                    <NumberInput id="q5-amount" value={amount} min={sprout ? 100 : 1000} max={10_000_000} step={sprout ? 100 : 1000} prefix="$" onChange={(v) => update((s) => { s.portfolioAmount = v ?? (sprout ? 1000 : 100000); })} />
                   </Field>
                   <RangeChart amount={amount} ranges={q.ranges} selected={value ?? null} onSelect={(i) => update((s) => { s.answers.q5 = i; })} />
                   {q.help && <p className="text-xxs text-ink-3">{q.help.replace('{{amount}}', fmtAmt)}</p>}
                 </div>
               )}
+              {q.id !== 'q5' && q.help && <p className="text-xxs text-ink-3 mb-3">{q.help}</p>}
               <RadioCards
                 name={q.id}
                 value={value ?? null}
@@ -205,7 +207,7 @@ function RiskPageClassic() {
             </Panel>
           );
         })}
-        <Panel title={pilot ? 'Pilot supplement' : 'Supplement'} subtitle={pilot ? 'not part of the class score; sets your emergency fund and career-risk alerts' : 'not scored; sets your emergency fund'}>
+        <Panel title={pilot ? 'Pilot supplement' : sprout ? 'About your money' : 'Supplement'} subtitle={pilot ? 'not part of the class score; sets your emergency fund and career-risk alerts' : sprout ? 'not scored; sets your emergency fund on top of the $500 starter' : 'not scored; sets your emergency fund'}>
           <div className="flex flex-col gap-4">
             {SUPPLEMENT.map((sq) => (
               <div key={sq.id}>
@@ -234,7 +236,7 @@ function RiskPageClassic() {
               </Panel>
               <Panel title="Emergency fund">
                 <div className="grid grid-cols-3 gap-3">
-                  <Stat label="Target" value={`${derived.emergency.monthsTarget} mo`} sub={fmtMoney(derived.emergency.target)} />
+                  <Stat label="Target" value={sprout ? fmtMoney(derived.emergency.target) : `${derived.emergency.monthsTarget} mo`} sub={sprout ? `${derived.emergency.monthsTarget} mo of expenses` : fmtMoney(derived.emergency.target)} />
                   <Stat label="Current" value={`${derived.emergency.monthsCovered.toFixed(1)} mo`} sub={fmtMoney(derived.emergency.current)} />
                   <Stat label="Monthly essentials" value={fmtMoney(derived.emergency.monthlyEssentials)} />
                 </div>

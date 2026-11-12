@@ -33,6 +33,13 @@ export function useCockpit(): boolean {
   return (planProduct ?? product.key) === 'flight-plan';
 }
 
+/** True when the plan being edited is a Sprout plan (student intake, Save & spend, Meet you at 30). */
+export function useSprout(): boolean {
+  const planProduct = usePlanStore((s) => s.state.product);
+  const { product } = useSession();
+  return (planProduct ?? product.key) === 'sprout';
+}
+
 export function PlanLayout() {
   const { clientId } = useParams();
   const [sp] = useSearchParams();
@@ -42,6 +49,7 @@ export function PlanLayout() {
   const staff = isStaff(role);
   const { load, loaded, loading, loadError, reset } = usePlanStore();
   const cockpit = product.key === 'flight-plan';
+  const phaseNav = cockpit || product.key === 'sprout';
 
   useEffect(() => {
     if (staff && !clientId) return;
@@ -64,7 +72,7 @@ export function PlanLayout() {
           <div className="mb-4"><PhaseStepper basePath={basePath} /></div>
           {loadError && <div className="mb-4"><ErrorNote>Could not load the plan: {loadError}</ErrorNote></div>}
           {loading && !loaded ? <Loading label="Loading plan" /> : <Outlet />}
-          {cockpit && loaded && <PhaseNav basePath={basePath} />}
+          {phaseNav && loaded && <PhaseNav basePath={basePath} />}
         </Page>
       </DerivedProvider>
     </Ctx.Provider>

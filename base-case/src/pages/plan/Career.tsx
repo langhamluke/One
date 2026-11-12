@@ -3,7 +3,7 @@ import { usePlanStore } from '@/state/plan';
 import { useDerived } from '@/state/derived';
 import { usePrefs } from '@/state/prefs';
 import { useAdvisorView } from './PlanLayout';
-import { Button, Chip, Field, Note, NumberInput, Panel, Select, Slider, SourceLine, Table, TextInput, Toggle, VerifyTag, cx, td, tdNum, th, thNum } from '@/components/ui';
+import { Button, Chip, Field, Note, NumberInput, Panel, Select, Slider, SourceLine, Table, TextInput, Toggle, VerifyTag, cx, td, tdNum, th, thNum, Stat } from '@/components/ui';
 import { LadderChart } from '@/components/charts/LadderChart';
 import { SalaryChart } from '@/components/charts/SalaryChart';
 import { EarningsBars } from '@/components/charts/EarningsBars';
@@ -14,6 +14,7 @@ import { AIRLINES, AIRLINES_AS_OF, STAY_DEFAULTS, airlinePathName, listAirlinePa
 import { defaultAirlineConfig, defaultAirlinePath, defaultCareerPath, defaultPilotProfile, isPilotPlan, type CareerKind, type CareerPath, type LadderLevel, type Track } from '@shared/lib/inputs';
 import { FAA_RETIREMENT_AGE } from '@shared/lib/airline';
 import { productConfig } from '@shared/product';
+import { studentIncome, studentYears } from '@shared/lib/sprout';
 import { fmtCompact, fmtMoney, fmtNum, fmtPct, toBasis } from '@/lib/format';
 
 function uid(): string {
@@ -51,6 +52,23 @@ export function CareerPage() {
   const product = productConfig(state.product);
   const retirementAge = Math.min(wi.retireAtOverride ?? state.profile.retirementAge, anyAirline && activePath?.kind === 'airline' ? FAA_RETIREMENT_AGE : 999);
   const pp = state.profile.pilot ?? defaultPilotProfile();
+  const sprout = state.product === 'sprout';
+  const studentPanel = sprout ? (() => {
+    const inc = studentIncome(state);
+    const yrs = studentYears(state);
+    const occ = activeOcc?.title ?? activePath?.name ?? 'your career';
+    return (
+      <Panel title="Pay now" subtitle={yrs > 0 ? `${yrs} student year${yrs === 1 ? '' : 's'}, then ${occ}` : `${occ} starts this year`} actions={inc.practice ? <Chip tone="warn">Practice paycheck</Chip> : undefined}>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <Stat label="Per year" value={fmtMoney(inc.total)} sub={inc.wages > 0 && inc.allowance > 0 ? `${fmtMoney(inc.wages)} pay + ${fmtMoney(inc.allowance)} allowance` : inc.wages > 0 ? 'job pay' : inc.allowance > 0 ? 'allowance' : 'nothing yet'} />
+          <Stat label="Hourly" value={inc.hourlyWage > 0 ? fmtMoney(inc.hourlyWage) : '—'} sub={inc.floored ? `${state.profile.stateCode} minimum wage` : inc.selfReported ? 'entered by you' : inc.wageSource ? 'BLS median' : undefined} />
+          <Stat label="Hours a week" value={inc.wages > 0 ? `${inc.hoursSchoolYear} / ${inc.hoursSummer}` : '—'} sub="school year / summer" />
+          <Stat label="Career starts" value={String(state.profile.graduationYear)} sub={yrs > 0 ? `age ${state.profile.age + yrs}` : 'now'} />
+        </div>
+        <p className="text-xs text-ink-3 mt-2">{inc.practice ? 'The practice paycheck is a stand-in so the budget is real; it is not income you have. ' : ''}Change the job, hours and the career you are aiming for on the You screen. Add a second path below to compare two careers.</p>
+      </Panel>
+    );
+  })() : null;
 
   const addPath = () =>
     update((s) => {
@@ -228,6 +246,7 @@ export function CareerPage() {
       </div>
 
       <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
+        {studentPanel}
         {headerBlock}
         {results}
       </div>

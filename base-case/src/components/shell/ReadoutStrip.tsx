@@ -6,13 +6,13 @@ import { usePlanStore } from '@/state/plan';
 import { usePrefs } from '@/state/prefs';
 import { useUser, isStaff, useProduct } from '@/state/session';
 import { Button, Dialog, HelpTip, Readout, Select, cx, useToast } from '@/components/ui';
-import { fmtCompact, fmtMonths, fmtPct } from '@/lib/format';
+import { fmtCompact, fmtMoney, fmtMonths, fmtPct, toBasis } from '@/lib/format';
 import { CURRENT_YEAR, defaultPilotProfile, exportPlan, importPlan, isPilotPlan } from '@shared/lib/inputs';
 import { PILOT_STAGES } from '@shared/data/airlines';
 import { FAA_RETIREMENT_AGE } from '@shared/lib/airline';
 import { personasFor } from '@shared/data/personas';
 import { productConfig } from '@shared/product';
-import type { Headline } from '@shared/lib/derived';
+import type { Derived, Headline } from '@shared/lib/derived';
 
 function Seg<T extends string>({ value, options, onChange, label, cockpit }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; label: string; cockpit?: boolean }) {
   return (
@@ -56,6 +56,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
   const [personaOpen, setPersonaOpen] = useState(false);
   const [persona, setPersona] = useState(PERSONAS[0]?.key ?? '');
   const cockpit = (state.product ?? product.key) === 'flight-plan';
+  const sprout = (state.product ?? product.key) === 'sprout';
 
   const h: Headline | null = derived?.headline ?? null;
   const a: Headline | null = mode === 'draft' ? approvedDerived?.headline ?? null : null;
@@ -81,6 +82,26 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
         { label: 'Retirement P50', value: fmtCompact(h.medianAtRetirementReal), d: delta(h.medianAtRetirementReal, a?.medianAtRetirementReal, fmtCompact), hint: "Median simulated portfolio at retirement, in today's dollars." },
         { label: 'Emergency fund', value: fmtMonths(h.emergencyMonthsCovered), d: delta(h.emergencyMonthsCovered, a?.emergencyMonthsCovered, (x, o) => `${o.sign && x > 0 ? '+' : ''}${x.toFixed(1)} mo`), hint: 'Months of essential spending covered by cash on hand.' },
         { label: 'Debt-free age', value: h.debtFreeAge == null ? (derived?.debt.totalBalance ? 'Never' : 'Now') : String(h.debtFreeAge), d: ageDelta(h.debtFreeAge, a?.debtFreeAge), hint: 'Age at which every debt is paid off in the active path.' },
+      ]
+    : [];
+
+  // Sprout readouts: money in per month, savings rate, the starter/emergency fund, card balance, net worth, and what
+  // today's habits grow to by 30 (today's dollars) instead of the retirement figures.
+  const meetAge = state.profile.age < 30 ? 30 : state.profile.age + 10;
+  const atAge = (d: Derived | null | undefined): number | null => {
+    if (!d) return null;
+    const r = d.active.rows.find((x) => x.age === meetAge) ?? d.active.rows[d.active.rows.length - 1];
+    return r ? toBasis(r.investable + r.balances.cash + r.balances.goals, r.yearIndex, state.assumptions.inflation, 'today') : null;
+  };
+  const cardBalance = state.debts.filter((d) => d.kind === 'credit_card').reduce((t, d) => t + Math.max(0, d.balance), 0);
+  const studentItems = h && derived
+    ? [
+        { label: 'Money in', value: `${fmtMoney(derived.tax.takeHome / 12)}/mo`, d: delta(derived.tax.takeHome, mode === 'draft' ? approvedDerived?.tax.takeHome : null, (x, o) => `${o.sign && x > 0 ? '+' : ''}${fmtMoney(x / 12)}/mo`), hint: `Take-home pay plus allowance per month in ${derived.tax.year}, after taxes.` },
+        { label: 'Savings rate', value: fmtPct(h.savingsRate, 0), d: delta(h.savingsRate, a?.savingsRate, (x, o) => fmtPct(x, 1, o)), hint: 'Share of what comes in that goes to savings this year.' },
+        { label: 'Emergency fund', value: fmtMoney(derived.emergency.current), d: delta(h.emergencyMonthsCovered, a?.emergencyMonthsCovered, (x, o) => `${o.sign && x > 0 ? '+' : ''}${x.toFixed(1)} mo`), hint: `Cash on hand against a target of ${fmtMoney(derived.emergency.target)} ($500 starter, then months of expenses).` },
+        { label: 'Card balance', value: fmtMoney(cardBalance), d: { text: undefined, good: null as boolean | null }, hint: 'Total owed on credit cards today. Pay the statement balance in full and the card charges no interest.' },
+        { label: 'Net worth', value: fmtCompact(h.netWorth), d: delta(h.netWorth, a?.netWorth, fmtCompact), hint: 'What you own minus what you owe, today.' },
+        { label: `At ${meetAge}`, value: fmtCompact(atAge(derived) ?? 0), d: delta(atAge(derived), mode === 'draft' ? atAge(approvedDerived) : null, fmtCompact), hint: `Savings and investments at age ${meetAge} on the expected-return path, in today's dollars. Hypothetical, not a promise.` },
       ]
     : [];
 
@@ -133,7 +154,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
     <div className="flex flex-wrap items-center gap-2 shrink-0 no-print">
       <Seg cockpit={cockpit} label="Dollar basis" value={basis} options={[{ value: 'today', label: "Today's $" }, { value: 'nominal', label: 'Nominal' }]} onChange={setBasis} />
       {staff && <Seg cockpit={cockpit} label="View" value={viewMode} options={[{ value: 'client', label: cockpit ? 'Client' : 'Client view' }, { value: 'advisor', label: cockpit ? 'Advisor' : 'Advisor view' }]} onChange={setViewMode} />}
-      {staff && PERSONAS.length > 0 && <Button size="sm" icon={cockpit ? undefined : <UserCog className="h-3.5 w-3.5" aria-hidden />} onClick={() => setPersonaOpen(true)}>{cockpit ? 'Load demo pilot' : 'Load demo persona'}</Button>}
+      {staff && PERSONAS.length > 0 && <Button size="sm" icon={cockpit ? undefined : <UserCog className="h-3.5 w-3.5" aria-hidden />} onClick={() => setPersonaOpen(true)}>{cockpit ? 'Load demo pilot' : sprout ? 'Load demo student' : 'Load demo persona'}</Button>}
       <Button size="sm" icon={cockpit ? undefined : <Download className="h-3.5 w-3.5" aria-hidden />} onClick={doExport}>{cockpit ? 'Export' : 'Export JSON'}</Button>
       <Button size="sm" icon={cockpit ? undefined : <Upload className="h-3.5 w-3.5" aria-hidden />} onClick={() => fileRef.current?.click()}>{cockpit ? 'Import' : 'Import JSON'}</Button>
       <input ref={fileRef} type="file" accept="application/json,.json" className="sr-only" aria-label="Import plan JSON" onChange={(e) => { const f = e.target.files?.[0]; if (f) void doImport(f); e.target.value = ''; }} />
@@ -142,7 +163,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
   );
 
   const personaDialog = (
-    <Dialog open={personaOpen} onClose={() => setPersonaOpen(false)} title={cockpit ? 'Load demo pilot' : 'Load demo persona'} footer={<><Button onClick={() => setPersonaOpen(false)}>Cancel</Button><Button variant="primary" onClick={loadPersona}>Load into draft</Button></>}>
+    <Dialog open={personaOpen} onClose={() => setPersonaOpen(false)} title={cockpit ? 'Load demo pilot' : sprout ? 'Load demo student' : 'Load demo persona'} footer={<><Button onClick={() => setPersonaOpen(false)}>Cancel</Button><Button variant="primary" onClick={loadPersona}>Load into draft</Button></>}>
       <p className="text-sm text-ink-2 mb-3">Replaces every input in the current draft with the persona's inputs. Personas are fictional.</p>
       <label htmlFor="persona-select" className="ui-label text-xs font-medium text-ink-2">Persona</label>
       <Select id="persona-select" value={PERSONAS.some((p) => p.key === persona) ? persona : PERSONAS[0]?.key ?? ''} onChange={(e) => setPersona(e.target.value)} options={PERSONAS.map((p) => ({ value: p.key, label: `${p.name} — ${p.tagline}` }))} />
@@ -180,7 +201,7 @@ export function ReadoutStrip({ basePath }: { basePath: string }) {
         <div className="flex gap-5 overflow-x-auto flex-1 min-w-0 pb-0.5" aria-live="polite" aria-atomic="true" aria-busy={stale} role="status">
           {error && <span className="text-xs text-ink-3 py-2">Engine not available — readouts will appear once the plan engine loads.</span>}
           {!error && !h && <span className="text-xs text-ink-3 py-2">Computing…</span>}
-          {items.map((it) => (
+          {(sprout ? studentItems : items).map((it) => (
             <div key={it.label} className="shrink-0"><Readout label={it.label} value={it.value} delta={it.d.text} deltaGood={it.d.good} hint={it.hint} size="md" /></div>
           ))}
         </div>

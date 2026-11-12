@@ -17,13 +17,14 @@ function usePhases() {
   // Labels follow the plan's product when it differs from the deployment's (an advisor opening a pilot plan on Base Case).
   const phases = (state.product && PRODUCTS[state.product] ? PRODUCTS[state.product] : product).phases;
   const cockpit = (state.product ?? product.key) === 'flight-plan';
-  return { phases, cockpit, loc, state };
+  const sprout = (state.product ?? product.key) === 'sprout';
+  return { phases, cockpit, sprout, loc, state };
 }
 
 export function PhaseStepper({ basePath }: { basePath: string }) {
   const navigate = useNavigate();
   const ref = useRef<HTMLElement>(null);
-  const { phases: PHASES, cockpit, loc, state } = usePhases();
+  const { phases: PHASES, cockpit, sprout, loc, state } = usePhases();
   const current = PHASES.findIndex((p) => loc.pathname.startsWith(`${basePath}/${p.key}`));
   const complete: Record<string, boolean> = {
     profile: state.profile.nickname.trim().length > 0,
@@ -85,14 +86,20 @@ export function PhaseStepper({ basePath }: { basePath: string }) {
           className={({ isActive }) =>
             cx(
               'relative flex items-center gap-1.5 px-3 py-2 text-xs font-semibold uppercase tracking-wider whitespace-nowrap focus-visible:ring-2 focus-visible:ring-edit focus-visible:outline-none',
+              sprout && 'items-start normal-case tracking-normal text-sm font-medium py-2.5',
               isActive ? 'text-ink' : 'text-ink-3 hover:text-ink-2',
             )
           }
         >
           {({ isActive }) => (
             <>
-              <span className={cx('num text-xxs', isActive ? 'text-rec' : 'text-ink-4')}>{i + 1}</span>
-              {p.label}
+              <span className={cx('num text-xxs', sprout && 'mt-0.5', isActive ? 'text-rec' : 'text-ink-4')}>{i + 1}</span>
+              {sprout ? (
+                <span className="leading-tight">
+                  <span className="block">{p.label}</span>
+                  <span className="hidden xl:block text-xxs font-normal text-ink-3 whitespace-normal max-w-[180px]">{p.hint}</span>
+                </span>
+              ) : p.label}
               {complete[p.key] && !isActive && <Check className="h-3 w-3 text-ok" aria-label="complete" />}
               {isActive && <span className="absolute left-2 right-2 -bottom-px h-0.5 bg-rec" aria-hidden />}
             </>

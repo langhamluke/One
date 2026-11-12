@@ -88,5 +88,17 @@ The path moves from student or CFI to a regional, then to a major (hired, or a g
 # Company retirement contributions
 Airline 401(k) contributions are non-elective percentages of pay (15–18% at the majors). Total annual additions are capped by §415(c); company money above the cap is paid as taxable cash (invested after tax in the projection), credited to a market-based cash balance plan, or forfeited, according to the carrier's contract and the path's override. Southwest's 2% cash balance credit and FedEx's legacy pension or market-based cash balance alternative are modelled from reported contract terms and flagged where unverified.`;
 
+export const STUDENT_METHODOLOGY_TEXT = `# Student years and the practice paycheck (Sprout)
+Until the expected graduation year the plan earns student income: the hourly wage times the hours a week in the school year and in summer times the weeks in each, plus any allowance or gifts as untaxed other income (not earned income, so it cannot fund a Roth IRA). The default wage for a listed job is the BLS OEWS May 2025 national median hourly wage, floored at the state minimum wage from the U.S. Department of Labor's state table; a wage you type in wins and is listed as self-reported. With no job and the practice paycheck on, the plan uses a cashier's wage at 10 hours a week in school and 20 in summer so the budget is real; it is labelled as practice on every screen and never counts as real income. The career ladder starts in the graduation year. Expected student loans become one federal loan on the tiered standard plan with a six-month grace period, starting at graduation.
+
+# Emergency fund
+A $500 starter cushion, then months of expenses from four questions: one month if you pay some of your housing and food, three if you pay all of it, plus one month when hours change week to week or work is seasonal, plus one month when nobody could easily help you out, plus $500 when a car, phone or other bill is in your name. The target is the larger of the starter and the months of expenses, plus the bill cushion.
+
+# What Sprout never does
+Sprout never holds or moves money and never charges students. It describes asset classes, never specific funds, stocks, apps or products, and never nudges toward risky investing. Every suggested automatic transfer carries a low-balance warning. Every projection is hypothetical and educational, not a promise. Sprout is for ages 13 and up and collects the minimum: a nickname and ballpark numbers.`;
+
+export const STUDENT_DISCLAIMER =
+  'Sprout is an educational tool for students. The numbers are hypothetical projections from the inputs you entered and public data as of the dates shown; they are not investment, tax or legal advice and not a promise of any result. Sprout never holds or moves money.';
+
 export const DEFAULT_DISCLAIMER =
   'Prepared for discussion purposes. Hypothetical projections based on stated assumptions and publicly available salary and tax data as of the dates shown; not investment, tax, or legal advice. Actual results will vary.';

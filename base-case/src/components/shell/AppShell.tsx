@@ -21,10 +21,22 @@ const NAV: NavItem[] = [
   { to: '/account', label: 'Account', icon: UserCircle, roles: ['client', 'advisor', 'admin'] },
 ];
 
-/** Product mark. Base Case: the line chart on ink. Flight Plan: the original cockpit mark (magenta track on a panel tile). */
+/** Product mark. Base Case: the line chart on ink. Flight Plan: the original cockpit mark (magenta track on a panel tile). Sprout: a serif S on deep green. */
 export function ProductLogo({ size = 22, tagline = false }: { size?: number; tagline?: boolean }) {
   const product = useProduct();
   const flight = product.key === 'flight-plan';
+  if (product.key === 'sprout') {
+    return (
+      <div className="flex items-center gap-2">
+        <svg width={size} height={size} viewBox="0 0 32 32" aria-hidden>
+          <rect width="32" height="32" rx="7" fill="rgb(var(--c-edit))" />
+          <text x="16" y="23.5" textAnchor="middle" fontFamily="var(--font-serif)" fontSize="22" fill="rgb(var(--c-paper))">S</text>
+        </svg>
+        <span className="font-serif text-[20px] leading-none tracking-tight">{product.name}</span>
+        {tagline && <span className="text-xxs text-ink-3">{product.tagline}</span>}
+      </div>
+    );
+  }
   if (flight) {
     return (
       <div className="flex items-center gap-3">

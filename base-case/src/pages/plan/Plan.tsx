@@ -1,7 +1,9 @@
 import { usePlanStore } from '@/state/plan';
 import { useDerived } from '@/state/derived';
-import { useAdvisorView, useCockpit } from './PlanLayout';
-import { Chip, Field, NumberInput, Panel, Slider, SourceLine, Stat, Table, VerifyTag, cx, td, tdNum, th, thNum } from '@/components/ui';
+import { useAdvisorView, useCockpit, useSprout } from './PlanLayout';
+import { Chip, Field, Note, NumberInput, Panel, Slider, SourceLine, Stat, Table, VerifyTag, cx, td, tdNum, th, thNum } from '@/components/ui';
+import { defaultStudentProfile } from '@shared/lib/inputs';
+import { STARTER_FUND } from '@shared/lib/sprout';
 import { AllocationDonut } from '@/components/charts/AllocationDonut';
 import { GlideChart } from '@/components/charts/GlideChart';
 import { EngineUnavailable } from '@/components/EngineUnavailable';
@@ -21,11 +23,74 @@ export function PlanPage() {
   const { derived, error } = useDerived();
   const advisor = useAdvisorView();
   const cockpit = useCockpit();
+  const sprout = useSprout();
   const a = state.assumptions;
   const retirementAge = state.whatIf.retireAtOverride ?? state.profile.retirementAge;
 
   if (error) return <EngineUnavailable error={advisor ? error : undefined} />;
   if (!derived) return <Panel title="Plan"><p className="text-sm text-ink-3">Computing…</p></Panel>;
+
+  // Sprout "Save & spend": a monthly budget (needs, wants, savings, unassigned), the pay-yourself-first transfer with
+  // its low-balance warning, and the goals with what each needs per month. The ledger itself is unchanged.
+  const st = state.profile.student ?? defaultStudentProfile();
+  const monthlyIn = derived.tax.takeHome / 12;
+  const transfer = Math.round(state.savings.taxableContribution / 12);
+  const iraMonthly = state.savings.iraContribution / 12;
+  const savingMonthly = transfer + iraMonthly;
+  const unassigned = monthlyIn - st.needsMonthly - st.wantsMonthly - savingMonthly;
+  const share = (x: number) => (monthlyIn > 0 ? x / monthlyIn : 0);
+  const budgetInsight = (() => {
+    if (monthlyIn <= 0) return { tone: 'neutral' as const, text: 'Add a job, an allowance or the practice paycheck on the You screen to see a budget.' };
+    if (unassigned < -1) return { tone: 'warn' as const, text: `You are planning to spend ${fmtMoney(-unassigned)} a month more than comes in. Spending more than you earn usually ends up on a credit card at 20% or more. Trim a want or two first; that is the easiest lever.` };
+    if (savingMonthly <= 0) return { tone: 'warn' as const, text: 'Nothing is going to savings yet. Start tiny: even $10 a week is $520 a year. Set the transfer below for the day you get paid.' };
+    if (share(savingMonthly) >= 0.2) return { tone: 'ok' as const, text: `You are saving ${fmtPct(share(savingMonthly), 0)} of what comes in, more than the 20% in the 50/30/20 guideline.` };
+    if (unassigned > monthlyIn * 0.05) return { tone: 'neutral' as const, text: `${fmtMoney(unassigned)} a month has no job yet. Money with no plan tends to disappear; the projection assumes it is spent. Raise the transfer or name a goal for it.` };
+    return { tone: 'neutral' as const, text: `You save ${fmtPct(share(savingMonthly), 0)}; every bit counts. Saving 20% would be ${fmtMoney(monthlyIn * 0.2)} a month.` };
+  })();
+  const budgetPanel = sprout ? (
+    <Panel title="Your budget" subtitle={`per month · ${derived.tax.year}`}>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <Stat label="Money in" value={fmtMoney(monthlyIn)} sub="after taxes" />
+        <Stat label="Needs" value={fmtMoney(st.needsMonthly)} sub={fmtPct(share(st.needsMonthly), 0)} />
+        <Stat label="Wants" value={fmtMoney(st.wantsMonthly)} sub={fmtPct(share(st.wantsMonthly), 0)} />
+        <Stat label="Saving" value={fmtMoney(savingMonthly)} sub={fmtPct(share(savingMonthly), 0)} />
+      </div>
+      {monthlyIn > 0 && (
+        <div className="mt-3 flex h-2.5 w-full overflow-hidden rounded-pill bg-line-2" aria-hidden>
+          <span className="bg-ink-3" style={{ width: `${Math.min(100, share(st.needsMonthly) * 100)}%` }} />
+          <span className="bg-ink-4" style={{ width: `${Math.min(100, share(st.wantsMonthly) * 100)}%` }} />
+          <span className="bg-rec" style={{ width: `${Math.min(100, share(savingMonthly) * 100)}%` }} />
+        </div>
+      )}
+      <div className="mt-2 flex items-center justify-between text-xs text-ink-3"><span>Needs · wants · saving</span><span className={cx('num', unassigned < -1 && 'text-danger')}>{unassigned >= 0 ? `${fmtMoney(unassigned)} unassigned` : `${fmtMoney(-unassigned)} short`}</span></div>
+      <Note tone={budgetInsight.tone} className="mt-3">{budgetInsight.text}</Note>
+      <div className="mt-4">
+        <Slider id="sv-transfer-s" label="Pay yourself first: automatic transfer" value={transfer} min={0} max={Math.max(50, Math.round(Math.max(monthlyIn, 100) / 5) * 5)} step={5} format={(v) => `${fmtMoney(v)}/mo`} onChange={(v) => update((s) => { s.savings.taxableContribution = v * 12; })} help="Moved to savings the day money lands. The projection fills the emergency fund first, then goals, then invests the rest." />
+        <p className="text-xs text-ink-2 mt-2"><span className="font-medium">Low-balance warning:</span> pick an amount your account can cover on its lowest day of the month. One overdraft fee costs more than a month of saving. Start smaller than you think and raise it later.</p>
+      </div>
+      <p className="text-xxs text-ink-3 mt-3">Edit needs and wants on the You screen. Sprout never moves money: set the transfer up at your own bank or credit union.</p>
+    </Panel>
+  ) : null;
+  const goalsPanel = sprout ? (
+    <Panel title="Savings goals" subtitle={state.goals.length ? `${state.goals.length} goal${state.goals.length === 1 ? '' : 's'}` : undefined}>
+      {state.goals.length === 0 ? <p className="text-sm text-ink-3">No goals yet. Add one on the You screen: a car, a laptop, a trip, moving out.</p> : (
+        <ul className="flex flex-col gap-2 text-sm">
+          {[...state.goals].sort((x, y) => x.priority - y.priority).map((g) => {
+            const monthsLeft = Math.max(1, (g.targetYear - derived.tax.year + 1) * 12);
+            const perMonth = Math.max(0, g.targetAmount - g.fundedSoFar) / monthsLeft;
+            const pct = g.targetAmount > 0 ? Math.min(1, g.fundedSoFar / g.targetAmount) : 1;
+            return (
+              <li key={g.id} className="rounded-md border border-line-2 p-3">
+                <div className="flex items-center justify-between gap-2"><span className="font-medium">{g.name}</span><span className="num text-ink-3">{fmtMoney(g.fundedSoFar)} of {fmtMoney(g.targetAmount)} · {g.targetYear}</span></div>
+                <div className="mt-2 h-1.5 rounded-pill bg-line-2 overflow-hidden" aria-hidden><div className="h-full bg-rec" style={{ width: `${pct * 100}%` }} /></div>
+                <div className="mt-1 text-xs text-ink-3">{pct >= 1 ? 'Funded.' : `${fmtMoney(perMonth)} a month gets there by ${g.targetYear}.`}</div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Panel>
+  ) : null;
 
   const yr1 = derived.active.rows[derived.active.firstIncomeYearIndex] ?? derived.active.rows[0];
   const limits = [
@@ -69,7 +134,7 @@ export function PlanPage() {
         </Panel>
   );
   const emergencyPanel = (
-        <Panel title="Emergency fund">
+        <Panel title="Emergency fund" subtitle={sprout ? `${fmtMoney(STARTER_FUND.value)} starter, then months of expenses` : undefined}>
           <div className="grid grid-cols-3 gap-3">
             <Stat label="Target" value={fmtMoney(derived.emergency.target)} sub={`${derived.emergency.monthsTarget} months`} />
             <Stat label="Current" value={fmtMoney(derived.emergency.current)} sub={`${derived.emergency.monthsCovered.toFixed(1)} months`} />
@@ -137,7 +202,7 @@ export function PlanPage() {
     </>
   );
   const playbookPanel = (
-        <Panel title={cockpit ? "Fuel planning · order of operations" : "Playbook · order of operations"}>
+        <Panel title={cockpit ? "Fuel planning · order of operations" : sprout ? "Your next steps" : "Playbook · order of operations"}>
           <PlaybookList actions={derived.actions} />
         </Panel>
   );
@@ -202,6 +267,27 @@ export function PlanPage() {
           <div className="lg:col-span-4 min-w-0">{alertsPanel}</div>
         </div>
         {assumptionsPanel}
+      </div>
+    );
+  }
+
+  if (sprout) {
+    return (
+      <div className="grid gap-4 lg:grid-cols-12">
+        <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
+          {budgetPanel}
+          {emergencyPanel}
+          {goalsPanel}
+          {debtPanel}
+          {playbookPanel}
+        </div>
+        <div className="lg:col-span-5 flex flex-col gap-4 min-w-0">
+          {alertsPanel}
+          {allocPanel}
+          {glidePanel}
+          {taxAndLimits}
+          {assumptionsPanel}
+        </div>
       </div>
     );
   }

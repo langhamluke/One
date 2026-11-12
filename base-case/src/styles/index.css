@@ -79,6 +79,94 @@
     color-scheme: dark;
   }
 
+  /* Sprout: the prototype's warm off-white desk (or near-black at night), deep green for anything editable, brass for
+     the recommended path, Instrument Serif for headings and big numbers, Geist for everything else. Line icons only. */
+  :root[data-product='sprout'] {
+    --font-sans: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --font-mono: 'Geist', ui-sans-serif, system-ui, sans-serif;
+    --font-serif: 'Instrument Serif', Georgia, 'Times New Roman', serif;
+    --c-paper: 245 244 239;      /* #f5f4ef page */
+    --c-paper-2: 255 255 255;    /* surface */
+    --c-paper-3: 238 237 230;    /* #eeede6 inset */
+    --c-ink: 18 26 23;           /* #121a17 */
+    --c-ink-2: 61 72 67;
+    --c-ink-3: 95 107 102;       /* #5f6b66 muted */
+    --c-ink-4: 152 164 158;      /* #98a49e */
+    --c-line: 227 225 216;       /* #e3e1d8 */
+    --c-line-2: 236 234 226;
+    --c-edit: 30 77 59;          /* #1e4d3b brand deep green = editable */
+    --c-edit-soft: 228 237 232;  /* #e4ede8 */
+    --c-rec: 156 122 67;         /* #9c7a43 brass = recommended */
+    --c-rec-soft: 242 235 221;   /* #f2ebdd */
+    --c-ok: 45 106 79;           /* #2d6a4f */
+    --c-ok-soft: 227 239 232;
+    --c-warn: 143 101 22;        /* #8f6516 */
+    --c-warn-soft: 245 237 218;
+    --c-danger: 155 58 46;       /* #9b3a2e */
+    --c-danger-soft: 246 229 225;
+    --c-a-uslc: 46 107 80; --c-a-ussmid: 62 138 134; --c-a-intl: 61 106 138; --c-a-em: 122 92 126;
+    --c-a-bonds: 168 131 74; --c-a-tips: 176 100 74; --c-a-cash: 138 145 141;
+    --c-path-1: #121a17; --c-path-2: #1e4d3b; --c-path-3: #9c7a43; --c-path-4: #3d6a8a;
+    --radius-card: 14px;
+    --shadow-card: 0 1px 2px rgba(18, 26, 23, 0.04);
+    --shadow-pop: 0 12px 32px rgba(18, 26, 23, 0.12);
+    --chart-grid: #e3e1d8;
+    --chart-axis: #d5d3c9;
+    --chart-text: #5f6b66;
+    --tooltip-bg: #FFFFFF;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root[data-product='sprout']:not([data-theme='light']) {
+      --c-paper: 13 17 16;         /* #0d1110 */
+      --c-paper-2: 20 26 24;       /* #141a18 */
+      --c-paper-3: 27 35 32;       /* #1b2320 */
+      --c-ink: 232 236 233;        /* #e8ece9 */
+      --c-ink-2: 195 202 198;
+      --c-ink-3: 152 164 158;      /* #98a49e */
+      --c-ink-4: 107 117 112;
+      --c-line: 38 48 44;          /* #26302c */
+      --c-line-2: 31 40 37;
+      --c-edit: 140 194 166;       /* #8cc2a6 */
+      --c-edit-soft: 26 43 35;
+      --c-rec: 205 170 110;        /* #cdaa6e */
+      --c-rec-soft: 42 36 22;
+      --c-ok: 140 194 166;
+      --c-ok-soft: 26 43 35;
+      --c-warn: 217 179 106;
+      --c-warn-soft: 43 36 22;
+      --c-danger: 224 144 127;
+      --c-danger-soft: 46 26 22;
+      --c-a-uslc: 140 194 166; --c-a-ussmid: 124 196 191; --c-a-intl: 143 182 212; --c-a-em: 183 155 187;
+      --c-a-bonds: 205 170 110; --c-a-tips: 217 149 123; --c-a-cash: 138 145 141;
+      --c-path-1: #e8ece9; --c-path-2: #8cc2a6; --c-path-3: #cdaa6e; --c-path-4: #8fb6d4;
+      --shadow-card: none;
+      --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+      --chart-grid: #26302c;
+      --chart-axis: #26302c;
+      --chart-text: #98a49e;
+      --tooltip-bg: #141a18;
+      color-scheme: dark;
+    }
+  }
+  :root[data-product='sprout'][data-theme='dark'] {
+    --c-paper: 13 17 16; --c-paper-2: 20 26 24; --c-paper-3: 27 35 32;
+    --c-ink: 232 236 233; --c-ink-2: 195 202 198; --c-ink-3: 152 164 158; --c-ink-4: 107 117 112;
+    --c-line: 38 48 44; --c-line-2: 31 40 37;
+    --c-edit: 140 194 166; --c-edit-soft: 26 43 35; --c-rec: 205 170 110; --c-rec-soft: 42 36 22;
+    --c-ok: 140 194 166; --c-ok-soft: 26 43 35; --c-warn: 217 179 106; --c-warn-soft: 43 36 22; --c-danger: 224 144 127; --c-danger-soft: 46 26 22;
+    --c-a-uslc: 140 194 166; --c-a-ussmid: 124 196 191; --c-a-intl: 143 182 212; --c-a-em: 183 155 187; --c-a-bonds: 205 170 110; --c-a-tips: 217 149 123; --c-a-cash: 138 145 141;
+    --c-path-1: #e8ece9; --c-path-2: #8cc2a6; --c-path-3: #cdaa6e; --c-path-4: #8fb6d4;
+    --shadow-card: none; --shadow-pop: 0 12px 32px rgba(0, 0, 0, 0.6);
+    --chart-grid: #26302c; --chart-axis: #26302c; --chart-text: #98a49e; --tooltip-bg: #141a18;
+    color-scheme: dark;
+  }
+
+  /* Geist (Vercel, SIL OFL) and Instrument Serif (Rodrigo Fuenzalida / Jordan Egstad, SIL OFL): served from /fonts; only Sprout uses them. */
+  @font-face { font-family: 'Geist'; font-style: normal; font-weight: 100 900; font-display: swap; src: url('/fonts/Geist-latin.woff2') format('woff2'); }
+  @font-face { font-family: 'Instrument Serif'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/InstrumentSerif-400.woff2') format('woff2'); }
+  @font-face { font-family: 'Instrument Serif'; font-style: italic; font-weight: 400; font-display: swap; src: url('/fonts/InstrumentSerif-400i.woff2') format('woff2'); }
+
   /* B612: the cockpit typeface (Airbus / Intactile, SIL OFL). Served from /fonts; only the cockpit theme uses it. */
   @font-face { font-family: 'B612'; font-style: normal; font-weight: 400; font-display: swap; src: url('/fonts/B612-400.woff2') format('woff2'); }
   @font-face { font-family: 'B612'; font-style: normal; font-weight: 700; font-display: swap; src: url('/fonts/B612-700.woff2') format('woff2'); }
@@ -105,6 +193,13 @@
     background-image: none;
     letter-spacing: 0.01em;
   }
+  :root[data-product='sprout'] body {
+    background-image: none;
+    font-size: 15px;
+    line-height: 1.55;
+  }
+  :root[data-product='sprout'] h1 { font-family: var(--font-serif); font-weight: 400; font-size: 30px; line-height: 34px; letter-spacing: -0.01em; }
+  :root[data-product='sprout'] h2 { font-weight: 600; letter-spacing: -0.005em; }
   * {
     box-sizing: border-box;
   }
@@ -230,6 +325,14 @@
   }
   .recharts-legend-item-text { color: rgb(var(--c-ink-2)) !important; }
   .recharts-tooltip-wrapper { outline: none; }
+
+  /* ---- Sprout components: serif readouts, rounder cards, green focus. Same markup as Base Case. ---- */
+  :root[data-product='sprout'] .readout-value { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.01em; }
+  :root[data-product='sprout'] .num { font-family: var(--font-sans); font-variant-numeric: tabular-nums; }
+  :root[data-product='sprout'] .label-caps { letter-spacing: 0.08em; }
+  :root[data-product='sprout'] .input-base { border-radius: 10px; }
+  :root[data-product='sprout'] .ui-btn { border-radius: 999px; }
+  :root[data-product='sprout'] .radio-card { border-radius: 10px; }
 
   /* ---- Cockpit components (Flight Plan only). Same markup as Base Case, the original's styling. ---- */
   :root[data-product='flight-plan'] .label-caps,

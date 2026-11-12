@@ -2,14 +2,19 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'node:path';
+import { productFromEnv, productConfig } from './shared/product';
 
-/** Stamp the product on <html> so the first paint already carries the right theme (no light flash on Flight Plan). */
+/** Stamp the product on <html> so the first paint already carries the right theme (no light flash on Flight Plan or Sprout). */
 function productAttr() {
-  const product = (process.env.PRODUCT ?? '').toLowerCase() === 'flight-plan' ? 'flight-plan' : 'base-case';
+  const product = productFromEnv(process.env.PRODUCT);
+  const icon = product === 'base-case' ? 'favicon' : `favicon-${product}`;
   return {
     name: 'product-attr',
     transformIndexHtml(html: string) {
-      return html.replace(/data-product="[a-z-]+"/, `data-product="${product}"`).replace(/href="\/favicon[a-z-]*\.svg"/, `href="/${product === 'flight-plan' ? 'favicon-flight-plan' : 'favicon'}.svg"`);
+      return html
+        .replace(/data-product="[a-z-]+"/, `data-product="${product}"`)
+        .replace(/href="\/favicon[a-z-]*\.svg"/, `href="/${icon}.svg"`)
+        .replace(/<title>[^<]*<\/title>/, `<title>${productConfig(product).name}</title>`);
     },
   };
 }

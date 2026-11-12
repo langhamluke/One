@@ -8,7 +8,7 @@ interface SessionCtx {
   me: MeResponse | null;
   loading: boolean;
   error: string | null;
-  /** The product this deployment serves (Base Case or Flight Plan); known before sign-in via GET /api/product */
+  /** The product this deployment serves (Base Case, Flight Plan or Sprout); known before sign-in via GET /api/product */
   product: ProductConfig;
   /** Public descriptor from the server (firm name before sign-in) */
   productInfo: ProductInfo | null;
@@ -68,9 +68,9 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.title = product.name;
     document.documentElement.dataset.product = product.key;
-    // Tab icon: the original Flight Plan chevron (magenta on near-black) or the Base Case line chart.
+    // Tab icon: the Base Case line chart, the original Flight Plan chevron, or Sprout's serif S on deep green.
     const icon = document.getElementById('favicon') as HTMLLinkElement | null;
-    if (icon) icon.href = product.key === 'flight-plan' ? '/favicon-flight-plan.svg' : '/favicon.svg';
+    if (icon) icon.href = product.key === 'base-case' ? '/favicon.svg' : `/favicon-${product.key}.svg`;
   }, [product.name, product.key]);
 
   // Another tab may sign in as a different user (one cookie jar per browser). When this tab regains focus, re-check

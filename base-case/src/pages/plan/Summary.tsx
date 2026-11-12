@@ -9,7 +9,7 @@ import { AllocationDonut } from '@/components/charts/AllocationDonut';
 import { GlideChart } from '@/components/charts/GlideChart';
 import { EngineUnavailable } from '@/components/EngineUnavailable';
 import { admin } from '@/api/endpoints';
-import { DEFAULT_DISCLAIMER } from '@/content/legal';
+import { DEFAULT_DISCLAIMER, STUDENT_DISCLAIMER } from '@/content/legal';
 import { QUESTIONNAIRE_SOURCE } from '@shared/data/questionnaire';
 import { productConfig } from '@shared/product';
 import { fmtAge, fmtCompact, fmtMoney, fmtPct, toBasis } from '@/lib/format';
@@ -47,7 +47,7 @@ export function SummaryPage() {
       <header className="flex flex-wrap items-end justify-between gap-2 border-b border-ink pb-2">
         <div>
           <div className="label-caps">{me?.firm.name ?? productConfig(state.product).name}</div>
-          <h1>{state.product === 'flight-plan' ? 'Briefing' : 'Plan summary'} — {state.profile.nickname || 'Client'}</h1>
+          <h1>{state.product === 'flight-plan' ? 'Briefing' : state.product === 'sprout' ? 'Your plan' : 'Plan summary'} — {state.profile.nickname || 'Client'}</h1>
         </div>
         <div className="text-xs text-ink-3 num text-right">{date}<br />Active path: {derived.active.name}</div>
       </header>
@@ -92,9 +92,9 @@ export function SummaryPage() {
 
       <div className="grid md:grid-cols-2 gap-3">
         <div className="card p-3">
-          <h2 className="mb-1">Top actions</h2>
+          <h2 className="mb-1">{state.product === 'sprout' ? 'Your next three steps, easiest first' : 'Top actions'}</h2>
           <ol className="text-xs flex flex-col gap-1">
-            {derived.actions.slice(0, 5).map((x, i) => (
+            {derived.actions.slice(0, state.product === 'sprout' ? 3 : 5).map((x, i) => (
               <li key={x.id} className="flex gap-2"><span className="num text-ink-4 w-3">{i + 1}</span><span className="flex-1">{x.title}</span>{x.amount != null && <span className="num shrink-0">{fmtMoney(x.amount)}/yr</span>}</li>
             ))}
           </ol>
@@ -115,6 +115,7 @@ export function SummaryPage() {
         Assumptions: inflation {fmtPct(a.inflation, 1)} · landing equity {fmtPct(a.landingEquity, 0)} · income replacement {fmtPct(a.incomeReplacement, 0)} · SS claim {a.ssClaimAge} · life expectancy {a.lifeExpectancy} · {derived.mc.sims} sims (seed {derived.mc.seed}) · net worth today {fmtMoney(derived.headline.netWorth)} · savings rate {fmtPct(derived.headline.savingsRate, 1)}
       </div>
       <p className="text-xxs text-ink-3">{QUESTIONNAIRE_SOURCE}</p>
+      {state.product === 'sprout' && <p className="text-xxs text-ink-3">{STUDENT_DISCLAIMER}</p>}
       <p className="text-xxs text-ink-3">{disclaimer}</p>
     </div>
   );

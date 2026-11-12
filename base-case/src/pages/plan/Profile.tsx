@@ -8,8 +8,12 @@ import { AlertLedger, EicasCounts } from '@/components/AlertLedger';
 import { listStates } from '@shared/data/states';
 import { listMetros } from '@shared/data/careers';
 import { AIRLINES, PILOT_STAGES, isMajorStage, isRegionalStage, listAirlines, type EmployerChoice, type PilotStage } from '@shared/data/airlines';
-import { CURRENT_YEAR, defaultPilotProfile, isPilotPlan, type Debt, type DebtKind, type FederalPlan, type Goal, type GoalKind } from '@shared/lib/inputs';
+import { CURRENT_YEAR, defaultPilotProfile, defaultStudentProfile, isPilotPlan, type CardStatus, type CollegePlan, type Debt, type DebtKind, type FederalPlan, type Goal, type GoalKind, type SchoolStage } from '@shared/lib/inputs';
 import { FAA_RETIREMENT_AGE } from '@shared/lib/airline';
+import { listStudentJobs, defaultStudentWage, minimumWageFor, type StudentJobKey } from '@shared/data/studentJobs';
+import { listOccupations } from '@shared/data/careers';
+import { studentIncome, studentYears } from '@shared/lib/sprout';
+import { productConfig } from '@shared/product';
 import { fmtMoney, fmtPct } from '@/lib/format';
 
 const DEBT_KINDS: { value: DebtKind; label: string }[] = [
@@ -42,6 +46,19 @@ export function ProfilePage() {
   const metros = listMetros();
   const pilot = isPilotPlan(state);
   const pp = p.pilot ?? defaultPilotProfile();
+  const sprout = state.product === 'sprout';
+  const st = p.student ?? defaultStudentProfile();
+  const minAge = productConfig(state.product).minAge ?? 16;
+  const setStudent = (patch: Partial<typeof st>) => update((s) => {
+    const cur = s.profile.student ?? defaultStudentProfile();
+    s.profile.student = { ...cur, ...patch };
+    s.profile.livingExpenses = 12 * (s.profile.student.needsMonthly + s.profile.student.wantsMonthly);
+    if (s.profile.housingCost > s.profile.livingExpenses) s.profile.housingCost = s.profile.livingExpenses;
+  });
+  const income = sprout ? studentIncome(state) : null;
+  const jobOptions = [{ value: '', label: 'No job yet' }, ...listStudentJobs().map((j) => ({ value: j.key, label: `${j.title} (${j.blurb})` })), { value: 'custom', label: 'Something else' }];
+  const defaultWage = sprout && st.job && st.job !== 'custom' ? defaultStudentWage(st.job as StudentJobKey, p.stateCode) : null;
+  const careerOptions = listOccupations().map((o) => ({ value: o.code, label: o.title, group: o.industry }));
   const employerOptions: { value: EmployerChoice; label: string }[] = [
     { value: 'none', label: 'None yet (student / instructing)' },
     ...listAirlines().filter((a) => a.id !== 'cfi').map((a) => ({ value: a.id, label: a.name })),
@@ -245,7 +262,8 @@ export function ProfilePage() {
   return (
     <div className="grid gap-4 lg:grid-cols-12">
       <div className="lg:col-span-7 flex flex-col gap-4 min-w-0">
-        <Note tone="neutral">Use a nickname and ballpark numbers. Never enter SSNs, account numbers, certificate numbers or health details.</Note>
+        <Note tone="neutral">{sprout ? 'Use a nickname and ballpark numbers. Never enter your Social Security number, birth date, account numbers or full name.' : 'Use a nickname and ballpark numbers. Never enter SSNs, account numbers, certificate numbers or health details.'}</Note>
+        {sprout && p.age < minAge && <Note tone="warn"><span className="font-medium">Sprout is for ages {minAge} and up.</span> We cannot plan for anyone younger, and the projection uses age {minAge} until the age above is corrected.</Note>}
         {pilot && (
           <Panel title={pilot ? "Career position" : "Position"} subtitle={pilot ? undefined : "where you are in the career today"} collapseKey="profile.pilot">
             <div className="grid gap-3 sm:grid-cols-2">
@@ -266,9 +284,11 @@ export function ProfilePage() {
         <Panel title={pilot ? "Pilot profile" : "About you"} collapseKey="profile.about">
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Nickname" htmlFor="pf-nick"><TextInput id="pf-nick" value={p.nickname} onChange={(e) => update((s) => { s.profile.nickname = e.target.value; })} placeholder="e.g. Sam" maxLength={40} /></Field>
-            <Field label="Age" htmlFor="pf-age"><NumberInput id="pf-age" value={p.age} min={16} max={80} step={1} suffix="yrs" onChange={(v) => update((s) => { s.profile.age = v ?? 22; })} /></Field>
-            <Field label="Retirement age" htmlFor="pf-ret"><NumberInput id="pf-ret" value={p.retirementAge} min={40} max={80} step={1} suffix="yrs" onChange={(v) => update((s) => { s.profile.retirementAge = v ?? 67; })} /></Field>
-            <Field label="Filing status" htmlFor="pf-filing"><Select id="pf-filing" value={p.filingStatus} onChange={(e) => update((s) => { s.profile.filingStatus = e.target.value as typeof p.filingStatus; })} options={[{ value: 'single', label: 'Single' }, { value: 'mfj', label: 'Married filing jointly' }, { value: 'hoh', label: 'Head of household' }]} /></Field>
+            <Field label="Age" htmlFor="pf-age" help={sprout ? `Sprout is for ages ${minAge} and up.` : undefined}><NumberInput id="pf-age" value={p.age} min={minAge} max={80} step={1} suffix="yrs" onChange={(v) => update((s) => { s.profile.age = v ?? (sprout ? 16 : 22); })} /></Field>
+            {sprout && <Field label="School stage" htmlFor="pf-stage"><Select id="pf-stage" value={st.stage} onChange={(e) => setStudent({ stage: e.target.value as SchoolStage })} options={[{ value: 'high_school', label: 'High school' }, { value: 'college', label: 'College' }, { value: 'recent_grad', label: 'Recent grad' }]} /></Field>}
+            {sprout && <Field label="Expected graduation year" htmlFor="pf-grad-s" help="The year you finish school and start full-time work. If you plan on college, use the year you finish college."><NumberInput id="pf-grad-s" value={p.graduationYear} min={CURRENT_YEAR} max={CURRENT_YEAR + 12} step={1} onChange={(v) => update((s) => { s.profile.graduationYear = v ?? CURRENT_YEAR; })} /></Field>}
+            <Field label="Retirement age" htmlFor="pf-ret" help={sprout ? 'Far away, but the projection needs an end point. 65 is a common default.' : undefined}><NumberInput id="pf-ret" value={p.retirementAge} min={40} max={80} step={1} suffix="yrs" onChange={(v) => update((s) => { s.profile.retirementAge = v ?? (sprout ? 65 : 67); })} /></Field>
+            {!sprout && <Field label="Filing status" htmlFor="pf-filing"><Select id="pf-filing" value={p.filingStatus} onChange={(e) => update((s) => { s.profile.filingStatus = e.target.value as typeof p.filingStatus; })} options={[{ value: 'single', label: 'Single' }, { value: 'mfj', label: 'Married filing jointly' }, { value: 'hoh', label: 'Head of household' }]} /></Field>}
             <Field label="State" htmlFor="pf-state" help="State income tax preset. Pick Custom to enter a flat effective rate.">
               <Select id="pf-state" value={p.stateCode} onChange={(e) => update((s) => { s.profile.stateCode = e.target.value; if (e.target.value === 'CUSTOM' && s.profile.customStateRate == null) s.profile.customStateRate = 0.04; })} options={[...states.map((st) => ({ value: st.code, label: st.name })), { value: 'CUSTOM', label: 'Custom rate' }]} />
             </Field>
@@ -280,46 +300,91 @@ export function ProfilePage() {
             {p.stateCode === 'CUSTOM' && (
               <Field label="Metro" htmlFor="pf-metro2"><Select id="pf-metro2" value={p.metro} onChange={(e) => update((s) => { s.profile.metro = e.target.value; })} options={metros.map((m) => ({ value: m.key, label: m.name }))} /></Field>
             )}
-            <Field label="Dependents" htmlFor="pf-dep"><NumberInput id="pf-dep" value={p.dependents} min={0} max={10} step={1} onChange={(v) => update((s) => { s.profile.dependents = v ?? 0; })} /></Field>
-            <Field label="Spouse / partner income" htmlFor="pf-spouse" help="Annual wages of a partner included in the household plan; 0 if none."><NumberInput id="pf-spouse" value={p.spouseIncome} min={0} max={5_000_000} step={1000} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.profile.spouseIncome = v ?? 0; })} /></Field>
-            {!pilot && <Field label="Graduation year" htmlFor="pf-grad"><NumberInput id="pf-grad" value={p.graduationYear} min={CURRENT_YEAR - 15} max={CURRENT_YEAR + 8} step={1} onChange={(v) => update((s) => { s.profile.graduationYear = v ?? CURRENT_YEAR; })} /></Field>}
-            <Field label="Degree" htmlFor="pf-degree"><Select id="pf-degree" value={p.degree} onChange={(e) => update((s) => { s.profile.degree = e.target.value as typeof p.degree; })} options={[{ value: 'bachelor', label: "Bachelor's" }, { value: 'associate', label: "Associate's" }, { value: 'master', label: "Master's" }, { value: 'professional', label: 'Professional (JD/MD)' }, { value: 'doctoral', label: 'Doctoral' }, { value: 'trade', label: 'Trade / certificate' }, { value: 'none', label: 'No degree' }]} /></Field>
-            {!pilot && <Field label="Field of study" htmlFor="pf-field"><TextInput id="pf-field" value={p.fieldOfStudy ?? ''} onChange={(e) => update((s) => { s.profile.fieldOfStudy = e.target.value || undefined; })} placeholder="optional" maxLength={60} /></Field>}
+            {!sprout && <Field label="Dependents" htmlFor="pf-dep"><NumberInput id="pf-dep" value={p.dependents} min={0} max={10} step={1} onChange={(v) => update((s) => { s.profile.dependents = v ?? 0; })} /></Field>}
+            {!sprout && <Field label="Spouse / partner income" htmlFor="pf-spouse" help="Annual wages of a partner included in the household plan; 0 if none."><NumberInput id="pf-spouse" value={p.spouseIncome} min={0} max={5_000_000} step={1000} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.profile.spouseIncome = v ?? 0; })} /></Field>}
+            {!pilot && !sprout && <Field label="Graduation year" htmlFor="pf-grad"><NumberInput id="pf-grad" value={p.graduationYear} min={CURRENT_YEAR - 15} max={CURRENT_YEAR + 8} step={1} onChange={(v) => update((s) => { s.profile.graduationYear = v ?? CURRENT_YEAR; })} /></Field>}
+            {!sprout && <Field label="Degree" htmlFor="pf-degree"><Select id="pf-degree" value={p.degree} onChange={(e) => update((s) => { s.profile.degree = e.target.value as typeof p.degree; })} options={[{ value: 'bachelor', label: "Bachelor's" }, { value: 'associate', label: "Associate's" }, { value: 'master', label: "Master's" }, { value: 'professional', label: 'Professional (JD/MD)' }, { value: 'doctoral', label: 'Doctoral' }, { value: 'trade', label: 'Trade / certificate' }, { value: 'none', label: 'No degree' }]} /></Field>}
+            {!pilot && !sprout && <Field label="Field of study" htmlFor="pf-field"><TextInput id="pf-field" value={p.fieldOfStudy ?? ''} onChange={(e) => update((s) => { s.profile.fieldOfStudy = e.target.value || undefined; })} placeholder="optional" maxLength={60} /></Field>}
           </div>
         </Panel>
-        <Panel title="Spending" collapseKey="profile.spending">
+        {sprout && (
+          <Panel title="School and work" subtitle="the money you have coming in" collapseKey="profile.student">
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Job" htmlFor="st-job" help="Common student jobs come with a typical wage from BLS data, floored at your state's minimum wage."><Select id="st-job" value={st.job} onChange={(e) => { const job = e.target.value as typeof st.job; const j = listStudentJobs().find((x) => x.key === job); setStudent({ job, hourlyWage: 0, hoursSchoolYear: j ? j.typicalHours.schoolYear : st.hoursSchoolYear, hoursSummer: j ? j.typicalHours.summer : st.hoursSummer }); }} options={jobOptions} /></Field>
+              {st.job === 'custom' && <Field label="What you do" htmlFor="st-title"><TextInput id="st-title" value={st.jobTitle} onChange={(e) => setStudent({ jobTitle: e.target.value })} placeholder="e.g. Dog walking" maxLength={40} /></Field>}
+              {st.job !== '' && <Field label="Hourly wage" htmlFor="st-wage" help={defaultWage ? `Leave 0 to use ${fmtMoney(defaultWage.wage)}/hr (${defaultWage.floored ? `${p.stateCode} minimum wage` : 'BLS median for this job'}). Tips do not count toward the minimum here.` : 'What you actually earn per hour.'}><NumberInput id="st-wage" value={st.hourlyWage} min={0} max={200} step={0.25} digits={2} prefix="$" suffix="/hr" onChange={(v) => setStudent({ hourlyWage: v ?? 0 })} /></Field>}
+              {st.job !== '' && <Field label="Hours a week in the school year" htmlFor="st-hsy"><NumberInput id="st-hsy" value={st.hoursSchoolYear} min={0} max={60} step={1} suffix="hrs" onChange={(v) => setStudent({ hoursSchoolYear: v ?? 0 })} /></Field>}
+              {st.job !== '' && <Field label="Hours a week in summer" htmlFor="st-hsu"><NumberInput id="st-hsu" value={st.hoursSummer} min={0} max={60} step={1} suffix="hrs" onChange={(v) => setStudent({ hoursSummer: v ?? 0 })} /></Field>}
+              {st.job !== '' && <Field label="Weeks worked (school year / summer)" htmlFor="st-wsy"><div className="grid grid-cols-2 gap-2"><NumberInput id="st-wsy" aria-label="Weeks in the school year" value={st.weeksSchoolYear} min={0} max={52} step={1} suffix="wk" onChange={(v) => setStudent({ weeksSchoolYear: v ?? 36 })} /><NumberInput id="st-wsu" aria-label="Weeks in summer" value={st.weeksSummer} min={0} max={52} step={1} suffix="wk" onChange={(v) => setStudent({ weeksSummer: v ?? 12 })} /></div></Field>}
+              <Field label="Allowance or other money" htmlFor="st-allow" help="Allowance, gifts, side money. Not earned income, so it cannot go into a Roth IRA."><NumberInput id="st-allow" value={st.allowanceMonthly} min={0} max={100000} step={10} prefix="$" suffix="/mo" onChange={(v) => setStudent({ allowanceMonthly: v ?? 0 })} /></Field>
+              {st.job === '' && <div className="sm:col-span-2"><Toggle id="st-practice" checked={st.practicePaycheck} onChange={(v) => setStudent({ practicePaycheck: v })} label="Use a practice paycheck" description={`No job yet? Plan with a cashier's wage (${fmtMoney(defaultStudentWage('cashier', p.stateCode).wage)}/hr) at 10 hours a week in school and 20 in summer. It is labelled as practice everywhere and is not real income.`} /></div>}
+              <Field label="College plan" htmlFor="st-college"><Select id="st-college" value={st.collegePlan} onChange={(e) => setStudent({ collegePlan: e.target.value as CollegePlan })} options={[{ value: 'none', label: 'No college / trade or apprenticeship' }, { value: 'two_year', label: '2-year college' }, { value: 'four_year', label: '4-year college' }]} /></Field>
+              {st.collegePlan !== 'none' && <Field label="Student loans you expect to have at graduation" htmlFor="st-loans" help="Becomes one federal loan on the tiered standard plan, starting six months after graduation. Loans you already have go under Debts."><NumberInput id="st-loans" value={st.expectedStudentLoans} min={0} max={500000} step={1000} prefix="$" onChange={(v) => setStudent({ expectedStudentLoans: v ?? 0 })} /></Field>}
+              <Field label="Cards" htmlFor="st-card"><Select id="st-card" value={st.card} onChange={(e) => setStudent({ card: e.target.value as CardStatus })} options={[{ value: 'none', label: 'No card' }, { value: 'debit', label: 'Debit card' }, { value: 'authorized_user', label: "Authorized user on someone else's credit card" }, { value: 'credit', label: 'My own credit card' }]} /></Field>
+              <Field label="Career you are aiming for" htmlFor="st-career" help="Sets the pay ladder that starts in your graduation year. Change or compare careers on the First jobs screen."><Select id="st-career" value={state.careerPaths[0]?.occupationCode ?? ''} onChange={(e) => update((s) => { const cp = s.careerPaths[0]; if (cp) { cp.occupationCode = e.target.value; cp.name = careerOptions.find((o) => o.value === e.target.value)?.label ?? cp.name; cp.startYearOffset = Math.max(0, s.profile.graduationYear - CURRENT_YEAR); } })} options={careerOptions} /></Field>
+            </div>
+            {income && (
+              <Note tone={income.practice ? 'warn' : 'neutral'} className="mt-3">
+                {income.total > 0 ? (
+                  <>
+                    <span className="font-medium">{income.practice ? 'Practice paycheck: ' : ''}about {fmtMoney(income.total)} a year</span>
+                    {income.wages > 0 && <> from {fmtMoney(income.hourlyWage)}/hr × {income.hoursSchoolYear} hrs × {income.weeksSchoolYear} weeks in school and {income.hoursSummer} hrs × {income.weeksSummer} weeks in summer{income.floored ? ` (${p.stateCode} minimum wage applied)` : ''}</>}
+                    {income.allowance > 0 && <>{income.wages > 0 ? ', plus' : ' from'} {fmtMoney(income.allowance)} of allowance</>}
+                    {studentYears(state) > 0 ? ` for the next ${studentYears(state)} year${studentYears(state) === 1 ? '' : 's'}, then the career you picked.` : '; the career starts this year.'}
+                    {income.practice && ' Turn the practice paycheck off once you have real income to plan with.'}
+                  </>
+                ) : (
+                  <>No money coming in yet. Add a job or an allowance, or turn on the practice paycheck to build a budget anyway.</>
+                )}
+              </Note>
+            )}
+          </Panel>
+        )}
+        <Panel title="Spending" subtitle={sprout ? 'per month' : undefined} collapseKey="profile.spending">
+          {sprout ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Needs" htmlFor="sp-needs" help="Things you would have to replace if they disappeared: food you buy, getting to school or work, a phone bill in your name, rent you pay."><NumberInput id="sp-needs" value={st.needsMonthly} min={0} max={100000} step={10} prefix="$" suffix="/mo" onChange={(v) => setStudent({ needsMonthly: v ?? 0 })} /></Field>
+              <Field label="Wants" htmlFor="sp-wants" help="Eating out, games, clothes, going out. Both are fine; the point is knowing which is which."><NumberInput id="sp-wants" value={st.wantsMonthly} min={0} max={100000} step={10} prefix="$" suffix="/mo" onChange={(v) => setStudent({ wantsMonthly: v ?? 0 })} /></Field>
+              <Field label="Rent you pay (part of needs)" htmlFor="sp-rent"><NumberInput id="sp-rent" value={Math.round(p.housingCost / 12)} min={0} max={Math.round(p.livingExpenses / 12)} step={25} prefix="$" suffix="/mo" onChange={(v) => update((s) => { s.profile.housingCost = Math.min(s.profile.livingExpenses, (v ?? 0) * 12); })} /></Field>
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Living expenses" htmlFor="sp-living" help="Annual spending excluding debt payments, payroll deductions and savings, in today's dollars."><NumberInput id="sp-living" value={p.livingExpenses} min={0} max={2_000_000} step={500} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.profile.livingExpenses = v ?? 0; })} /></Field>
             <Field label="Housing cost (included above)" htmlFor="sp-housing" help="Rent or mortgage plus utilities, as part of living expenses."><NumberInput id="sp-housing" value={p.housingCost} min={0} max={p.livingExpenses} step={500} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.profile.housingCost = v ?? 0; })} /></Field>
           </div>
+          )}
         </Panel>
         <Panel title="Balance sheet" collapseKey="profile.balance">
           <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
             {([
               ['cash', 'Cash (checking + savings)', 'Your emergency fund lives here.'],
-              ['taxable', 'Taxable brokerage', ''],
+              ['taxable', sprout ? 'Investments (brokerage)' : 'Taxable brokerage', ''],
               ['preTax', 'Pre-tax retirement (401k/IRA)', ''],
-              ['roth', 'Roth balances', ''],
+              ['roth', sprout ? 'Roth IRA' : 'Roth balances', ''],
               ['hsa', 'HSA balance', ''],
-              ['otherAssets', 'Other assets (car, etc.)', 'Counted in net worth only.'],
-            ] as const).map(([k, label, help]) => (
+              ['otherAssets', sprout ? 'Other things you own (car, etc.)' : 'Other assets (car, etc.)', 'Counted in net worth only.'],
+            ] as const).filter(([k]) => !sprout || (k !== 'preTax' && k !== 'hsa')).map(([k, label, help]) => (
               <Field key={k} label={label} htmlFor={`bs-${k}`} help={help || undefined}>
                 <NumberInput id={`bs-${k}`} value={bs[k]} min={0} max={50_000_000} step={500} prefix="$" onChange={(v) => update((s) => { s.balanceSheet[k] = v ?? 0; })} />
               </Field>
             ))}
           </div>
         </Panel>
-        <Panel title="Debts" collapseKey="profile.debts" subtitle={state.debts.length ? `${state.debts.length} · ${fmtMoney(state.debts.reduce((a, d) => a + d.balance, 0))}` : undefined} actions={<Button size="sm" icon={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => update((s) => { s.debts.push({ id: uid('debt'), name: `Debt ${s.debts.length + 1}`, kind: 'federal_student', balance: 20000, rate: 0.0652, termMonths: 120, federalPlan: 'tiered_standard', legacyBorrower: false, graceMonths: 0 }); })}>Add debt</Button>}>
-          {state.debts.length === 0 ? <p className="text-sm text-ink-3">No debts. Add student loans, cards or car loans to model payoff.</p> : (
+        <Panel title="Debts" collapseKey="profile.debts" subtitle={state.debts.length ? `${state.debts.length} · ${fmtMoney(state.debts.reduce((a, d) => a + d.balance, 0))}` : undefined} actions={<Button size="sm" icon={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => update((s) => { s.debts.push(sprout ? { id: uid('debt'), name: `Card ${s.debts.length + 1}`, kind: 'credit_card', balance: 0, rate: 0.2499, creditLimit: 500 } : { id: uid('debt'), name: `Debt ${s.debts.length + 1}`, kind: 'federal_student', balance: 20000, rate: 0.0652, termMonths: 120, federalPlan: 'tiered_standard', legacyBorrower: false, graceMonths: 0 }); })}>{sprout ? 'Add a card or loan' : 'Add debt'}</Button>}>
+          {state.debts.length === 0 ? <p className="text-sm text-ink-3">{sprout ? 'Nothing owed. Add a credit card (with its limit) or a student loan you already have.' : 'No debts. Add student loans, cards or car loans to model payoff.'}</p> : (
             <div className="flex flex-col gap-3">
-              {state.debts.map((d, i) => <DebtRow key={d.id} d={d} i={i} />)}
+              {state.debts.map((d, i) => <DebtRow key={d.id} d={d} i={i} sprout={sprout} />)}
             </div>
           )}
+          {sprout ? (
+            <Note className="mt-3"><span className="font-medium">Cards:</span> pay the full statement balance by the due date and the card charges no interest. Enter the limit so the plan can watch utilization (balance ÷ limit; under 30% is the rule of thumb).</Note>
+          ) : (
           <Note className="mt-3">
             <span className="font-medium">Federal plans after July 1, 2026.</span> <span className="font-medium">Tiered standard</span>: fixed payments over 10–25 years depending on how much you borrowed. <span className="font-medium">RAP</span>: payment is a share of your income (1–10%), unpaid interest is waived, and the balance is forgiven after 30 years of payments.
           </Note>
+          )}
         </Panel>
-        <Panel title="Benefits" collapseKey="profile.benefits" defaultCollapsed>
+        {!sprout && <Panel title="Benefits" collapseKey="profile.benefits" defaultCollapsed>
           {pilot && <Note className="mb-3">Airline paths use the carrier's own company contribution (for example 18% non-elective at the majors) and its §415(c) excess rule. The match fields below apply only to non-airline paths.</Note>}
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="Employer match rate" htmlFor="bn-match" help="1.0 = dollar for dollar; 0.5 = fifty cents per dollar."><NumberInput id="bn-match" value={b.matchRate} scale={100} min={0} max={3} step={0.25} suffix="%" onChange={(v) => update((s) => { s.benefits.matchRate = v ?? 0; })} /></Field>
@@ -354,8 +419,16 @@ export function ProfilePage() {
               </div>
             </div>
           </div>
-        </Panel>
+        </Panel>}
         <Panel title={pilot ? "Savings behavior" : "Savings habits"} collapseKey="profile.savings">
+          {sprout ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Automatic transfer to savings" htmlFor="sv-transfer" help="Pay yourself first: a set amount moved on payday. Pick an amount your account can cover on its lowest day; an overdraft fee costs more than a month of saving."><NumberInput id="sv-transfer" value={Math.round(sv.taxableContribution / 12)} min={0} max={100000} step={5} prefix="$" suffix="/mo" onChange={(v) => update((s) => { s.savings.taxableContribution = (v ?? 0) * 12; })} /></Field>
+              <Field label="Roth IRA contribution" htmlFor="sv-ira-s" help="Only money from a job counts (up to the yearly limit). Under 18 it is a custodial account a parent opens with you."><NumberInput id="sv-ira-s" value={sv.iraContribution} min={0} max={20000} step={100} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.savings.iraContribution = v ?? 0; s.savings.iraType = 'roth'; })} /></Field>
+              <Field label="401(k) after graduation" htmlFor="sv-def-s" help="Share of pay you plan to put into a workplace plan once the career starts."><NumberInput id="sv-def-s" value={sv.deferralPct} scale={100} digits={1} min={0} max={1} step={0.01} suffix="% of pay" onChange={(v) => update((s) => { s.savings.deferralPct = v ?? 0; })} /></Field>
+              {advisor && <Field label="Emergency fund override" htmlFor="sv-ef-s" help="Advisor: months of expenses instead of the student rule."><NumberInput id="sv-ef-s" value={sv.emergencyFundMonthsOverride} allowEmpty placeholder="auto" min={0} max={24} step={1} suffix="mo" onChange={(v) => update((s) => { s.savings.emergencyFundMonthsOverride = v; })} /></Field>}
+            </div>
+          ) : (
           <div className="grid gap-3 sm:grid-cols-2">
             <Field label="401(k) deferral" htmlFor="sv-def"><NumberInput id="sv-def" value={sv.deferralPct} scale={100} digits={1} min={0} max={1} step={0.01} suffix="% of pay" onChange={(v) => update((s) => { s.savings.deferralPct = v ?? 0; })} /></Field>
             <Field label="Deferral type" htmlFor="sv-type"><Select id="sv-type" value={sv.deferralType} onChange={(e) => update((s) => { s.savings.deferralType = e.target.value as typeof sv.deferralType; })} options={[{ value: 'pretax', label: 'Pre-tax' }, { value: 'roth', label: 'Roth' }, { value: 'split', label: 'Split' }]} /></Field>
@@ -366,9 +439,10 @@ export function ProfilePage() {
             <Field label="Taxable investing" htmlFor="sv-tax"><NumberInput id="sv-tax" value={sv.taxableContribution} min={0} max={1_000_000} step={100} prefix="$" suffix="/yr" onChange={(v) => update((s) => { s.savings.taxableContribution = v ?? 0; })} /></Field>
             <Field label="Emergency fund override" htmlFor="sv-ef" help="Leave blank to use the computed target."><NumberInput id="sv-ef" value={sv.emergencyFundMonthsOverride} allowEmpty placeholder="auto" min={0} max={24} step={1} suffix="mo" onChange={(v) => update((s) => { s.savings.emergencyFundMonthsOverride = v; })} /></Field>
           </div>
+          )}
         </Panel>
         <Panel title="Goals" collapseKey="profile.goals" actions={<Button size="sm" icon={<Plus className="h-3.5 w-3.5" aria-hidden />} onClick={() => update((s) => { s.goals.push({ id: uid('goal'), name: 'New goal', kind: 'other', targetAmount: 10000, targetYear: CURRENT_YEAR + 3, priority: s.goals.length + 1, fundedSoFar: 0 }); })}>Add goal</Button>}>
-          {state.goals.length === 0 ? <p className="text-sm text-ink-3">No goals yet. Add a home, car or other target so the plan can fund it.</p> : (
+          {state.goals.length === 0 ? <p className="text-sm text-ink-3">{sprout ? 'No goals yet. A car, a laptop, a trip, moving out: name it and the plan funds it after the emergency cushion.' : 'No goals yet. Add a home, car or other target so the plan can fund it.'}</p> : (
             <div className="flex flex-col gap-3">{state.goals.map((g, i) => <GoalRow key={g.id} g={g} i={i} />)}</div>
           )}
         </Panel>
@@ -418,10 +492,11 @@ export function ProfilePage() {
   );
 }
 
-function DebtRow({ d, i }: { d: Debt; i: number }) {
+function DebtRow({ d, i, sprout }: { d: Debt; i: number; sprout?: boolean }) {
   const update = usePlanStore((s) => s.update);
   const set = <K extends keyof Debt>(k: K, v: Debt[K]) => update((s) => { (s.debts[i] as Debt)[k] = v; });
   const fed = d.kind === 'federal_student';
+  const card = d.kind === 'credit_card';
   return (
     <div className="rounded-md border border-line-2 p-3">
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -429,6 +504,7 @@ function DebtRow({ d, i }: { d: Debt; i: number }) {
         <Field label="Name" htmlFor={`db-name-${d.id}`}><TextInput id={`db-name-${d.id}`} value={d.name} onChange={(e) => set('name', e.target.value)} maxLength={40} /></Field>
         <Field label="Balance" htmlFor={`db-bal-${d.id}`}><NumberInput id={`db-bal-${d.id}`} value={d.balance} min={0} max={5_000_000} step={500} prefix="$" onChange={(v) => set('balance', v ?? 0)} /></Field>
         <Field label="Rate" htmlFor={`db-rate-${d.id}`}><NumberInput id={`db-rate-${d.id}`} value={d.rate} scale={100} digits={2} min={0} max={0.5} step={0.0025} suffix="%" onChange={(v) => set('rate', v ?? 0)} /></Field>
+        {sprout && card && <Field label="Credit limit" htmlFor={`db-limit-${d.id}`} help="Balance ÷ limit is your utilization."><NumberInput id={`db-limit-${d.id}`} value={d.creditLimit} allowEmpty placeholder="unknown" min={0} max={1_000_000} step={100} prefix="$" onChange={(v) => set('creditLimit', v)} /></Field>}
         {!(fed && d.federalPlan && d.federalPlan !== 'custom') && (
           <Field label="Term" htmlFor={`db-term-${d.id}`}><NumberInput id={`db-term-${d.id}`} value={d.termMonths} allowEmpty placeholder="auto" min={1} max={480} step={12} suffix="mo" onChange={(v) => set('termMonths', v)} /></Field>
         )}

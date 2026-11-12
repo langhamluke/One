@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { METHODOLOGY_TEXT, PILOT_METHODOLOGY_TEXT, PRIVACY_TEXT, TERMS_TEXT } from '@/content/legal';
+import { METHODOLOGY_TEXT, PILOT_METHODOLOGY_TEXT, PRIVACY_TEXT, STUDENT_METHODOLOGY_TEXT, TERMS_TEXT } from '@/content/legal';
 import { useProduct } from '@/state/session';
 
 /** Renders the markdown-ish legal strings: "# " headings, blank-line paragraphs. */
@@ -40,6 +40,7 @@ export function LegalPage({ kind }: { kind: 'privacy' | 'terms' | 'methodology' 
         </div>
         <div className="card p-6">
           {product.key === 'flight-plan' && kind === 'methodology' && <RenderDoc text={PILOT_METHODOLOGY_TEXT} />}
+          {product.key === 'sprout' && kind === 'methodology' && <RenderDoc text={STUDENT_METHODOLOGY_TEXT} />}
           <RenderDoc text={text} />
           <p className="mt-6 text-xxs text-ink-4">{kind === 'methodology' ? 'See the Data & Sources page for every figure, its source and as-of date.' : 'Draft pending attorney review; the full document is published by the operator of this deployment.'}</p>
         </div>

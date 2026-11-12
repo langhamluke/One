@@ -1,7 +1,8 @@
 /** @type {import('tailwindcss').Config} */
-// Every color is a CSS variable (R G B triple) so one build serves both products:
-// Base Case ("model desk", light paper) and Flight Plan (the original cockpit: dark panels, B612).
-// The values live in src/styles/index.css under :root and :root[data-product="flight-plan"].
+// Every color is a CSS variable (R G B triple) so one build serves every product:
+// Base Case ("model desk", light paper), Flight Plan (the original cockpit: dark panels, B612) and Sprout (warm
+// off-white or near-black, deep green and brass, Instrument Serif headings, Geist text).
+// The values live in src/styles/index.css under :root, :root[data-product="flight-plan"] and :root[data-product="sprout"].
 const v = (name) => `rgb(var(--c-${name}) / <alpha-value>)`;
 
 export default {
@@ -11,6 +12,7 @@ export default {
       fontFamily: {
         sans: ['var(--font-sans)'],
         mono: ['var(--font-mono)'],
+        serif: ['var(--font-serif)'],
       },
       colors: {
         // Surfaces. One meaning per semantic color.
