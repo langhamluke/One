@@ -13,6 +13,7 @@ import { STATES } from '../../shared/data/states';
 import { ALL_PERSONAS, PERSONAS } from '../../shared/data/personas';
 import { PILOT_PLAYBOOK, PLAYBOOK } from '../../shared/data/playbook';
 import { AIRLINES, AIRLINE_PATHS, AIRLINE_IDS } from '../../shared/data/airlines';
+import { STATE_MINIMUM_WAGE, STUDENT_JOBS } from '../../shared/data/studentJobs';
 
 function isSourced(x: unknown): x is Sourced<unknown> {
   return !!x && typeof x === 'object' && 'value' in (x as object) && 'source' in (x as object) && 'asOf' in (x as object);
@@ -39,6 +40,8 @@ describe('sourced values are well-formed', () => {
     ...collect(METROS, 'metros'),
     ...collect(STATES, 'states'),
     ...collect(AIRLINES, 'airlines'),
+    ...collect(STUDENT_JOBS, 'studentJobs'),
+    ...collect(STATE_MINIMUM_WAGE, 'minWage'),
   ];
   it('has at least a few dozen sourced values', () => {
     expect(all.length).toBeGreaterThan(40);

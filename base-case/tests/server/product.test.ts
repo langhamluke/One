@@ -3,6 +3,7 @@ import { json, login, makeApp, req, type TestApp } from './helpers';
 import { DEMO, bootstrap, demoAccounts, runDemoSeed } from '../../server/seed';
 import { PILOT_PERSONAS, PILOT_SEED_CLIENTS } from '../../shared/data/personasPilot';
 import { PERSONAS } from '../../shared/data/personas';
+import { STUDENT_PERSONAS } from '../../shared/data/personasSprout';
 import { configFromEnv } from '../../server/config';
 import { buildPlanContext } from '../../server/services/planContext';
 import { assistantName, systemPrompt } from '../../server/services/assistant';
@@ -11,8 +12,8 @@ const apps: TestApp[] = [];
 afterEach(async () => {
   while (apps.length) await apps.pop()!.close();
 });
-async function app(product: 'base-case' | 'flight-plan') {
-  const t = await makeApp({ config: { product, firmName: product === 'flight-plan' ? 'Flight Plan' : 'Test Firm' } });
+async function app(product: 'base-case' | 'flight-plan' | 'sprout') {
+  const t = await makeApp({ config: { product, firmName: product === 'flight-plan' ? 'Flight Plan' : product === 'sprout' ? 'Sprout' : 'Test Firm' } });
   apps.push(t);
   return t;
 }
@@ -27,6 +28,52 @@ describe('product configuration', () => {
     const bc = configFromEnv({} as NodeJS.ProcessEnv);
     expect(bc.product).toBe('base-case');
     expect(bc.firmName).toBe('Base Case');
+    const sp = configFromEnv({ PRODUCT: 'sprout' } as NodeJS.ProcessEnv);
+    expect(sp.product).toBe('sprout');
+    expect(sp.firmName).toBe('Sprout');
+  });
+
+  it('serves a Sprout instance: public product, student demo seed on demo.sprout.local, no real seed clients', async () => {
+    const t = await app('sprout');
+    const pub = await json(await req(t, 'GET', '/api/product', { noCsrf: true }));
+    expect(pub).toEqual({ key: 'sprout', name: 'Sprout', tagline: 'Build money habits before you need them', firmName: 'Sprout' });
+    vi.spyOn(console, 'log').mockImplementation(() => {});
+    const r = await runDemoSeed(t.deps, { print: false });
+    expect(r.credentials.filter((c) => c.role === 'client').map((c) => c.email).sort()).toEqual(STUDENT_PERSONAS.map((p) => p.email).sort());
+    expect(demoAccounts('sprout').advisor.email).toBe('advisor@demo.sprout.local');
+    const advisor = await login(t, demoAccounts('sprout').advisor.email, DEMO.advisor.password, '42.1.0.3');
+    const clients = await json(await req(t, 'GET', '/api/clients', { cookie: advisor }));
+    expect(clients.length).toBe(STUDENT_PERSONAS.length);
+    const sam = clients.find((c: { email: string }) => c.email === 'sam@demo.sprout.local');
+    const plan = await json(await req(t, 'GET', `/api/plans/${sam.id}`, { cookie: advisor }));
+    expect(plan.state.product).toBe('sprout');
+    expect(plan.state.profile.student.job).toBe('retail_sales');
+    expect(plan.state.debts[0].creditLimit).toBe(1000);
+    const me = await json(await req(t, 'GET', '/api/me', { cookie: advisor }));
+    expect(me.firm.product).toBe('sprout');
+  });
+
+  it('gives the assistant a student prompt bound by the Sprout product rules, and a product-aware glossary', async () => {
+    const ctx = buildPlanContext(STUDENT_PERSONAS[1].state);
+    expect(ctx.product).toBe('sprout');
+    expect(ctx.dataAsOf.studentWages).toBe('2025-05');
+    expect(ctx.dataAsOf.minimumWages).toBe('2026-01');
+    const prompt = systemPrompt(ctx, 'Sprout');
+    expect(prompt).toContain('Sprout Assistant');
+    expect(prompt).toContain('16-year-old');
+    expect(prompt).toContain('never holds or moves money');
+    expect(prompt).toContain('low-balance warning');
+    expect(prompt).toContain('practice paycheck');
+    expect(prompt).toMatch(/Never recommend a specific stock/);
+    expect(prompt).not.toContain('airline');
+    expect(assistantName('sprout')).toBe('Sprout Assistant');
+    const { classifyIntent, findTerm, offlineAnswer } = await import('../../server/services/assistant');
+    expect(findTerm('what is utilization', 'sprout')?.key).toBe('utilization');
+    expect(findTerm('what is utilization', 'base-case')).toBeUndefined();
+    expect(classifyIntent('what is a practice paycheck', 'sprout')).toBe('glossary');
+    expect(classifyIntent('what is a practice paycheck')).toBe('unknown');
+    expect(offlineAnswer(ctx, 'should I pay off my card first?')).toContain('parent, teacher or advisor');
+    expect(offlineAnswer(buildPlanContext(PERSONAS[0].state), 'should I pay off my card first?')).toContain('advisor before acting');
   });
 
   it('serves GET /api/product without a session and stamps the product on /api/me', async () => {

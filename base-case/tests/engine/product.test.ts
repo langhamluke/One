@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { PRODUCTS, PRODUCT_KEYS, phaseLabel, productConfig, productFromEnv } from '../../shared/product';
 import { defaultPlanState, defaultPlanStateFor, exportPlan, importPlan, isPilotPlan, mergePlanState } from '../../shared/lib/inputs';
-import { PILOT_SUPPLEMENT, QUESTIONS, SUPPLEMENT, questionsFor, supplementFor } from '../../shared/data/questionnaire';
-import { ALL_PERSONAS, PERSONAS, personasFor } from '../../shared/data/personas';
-import { PILOT_PLAYBOOK, PLAYBOOK, playbookFor } from '../../shared/data/playbook';
+import { PILOT_SUPPLEMENT, QUESTIONS, STUDENT_SUPPLEMENT, SUPPLEMENT, questionsFor, supplementFor } from '../../shared/data/questionnaire';
+import { ALL_PERSONAS, PERSONAS, personasFor, seedClientsFor } from '../../shared/data/personas';
+import { PILOT_PLAYBOOK, PLAYBOOK, STUDENT_PLAYBOOK, playbookFor } from '../../shared/data/playbook';
+import { STUDENT_PERSONAS } from '../../shared/data/personasSprout';
 import { emergencyMonths } from '../../shared/lib/scoring';
 
 describe('products', () => {
@@ -16,6 +17,44 @@ describe('products', () => {
     expect(productFromEnv(undefined)).toBe('base-case');
     expect(productFromEnv('something-else')).toBe('base-case');
     expect(productConfig('nope').key).toBe('base-case');
+    expect(productFromEnv('sprout')).toBe('sprout');
+    expect(productFromEnv('Sprout')).toBe('sprout');
+    expect(productFromEnv('SPROUT_APP')).toBe('sprout');
+    expect(PRODUCT_KEYS).toEqual(['base-case', 'flight-plan', 'sprout']);
+  });
+
+  it('gives Sprout its six student phases, a 13+ age floor, retirement at 65 and its own demo domain and export tag', () => {
+    const sp = PRODUCTS.sprout;
+    expect(sp.phases.map((p) => p.key)).toEqual(['profile', 'risk', 'career', 'plan', 'future', 'summary']);
+    expect(sp.phases.map((p) => p.label)).toEqual(['You', 'Comfort with risk', 'First jobs', 'Save & spend', 'Meet you at 30', 'Your plan']);
+    expect(sp.phases.every((p) => p.hint.length > 10)).toBe(true);
+    expect(sp.tagline).toBe('Build money habits before you need them');
+    expect(sp.minAge).toBe(13);
+    expect(sp.careerAgeLimit).toBeUndefined();
+    expect(sp.defaultRetirementAge).toBe(65);
+    expect(sp.defaultCareerKind).toBe('ladder');
+    expect(sp.demoDomain).toBe('demo.sprout.local');
+    expect(sp.exportTag).toBe('sprout');
+    expect(phaseLabel('sprout', 'future')).toBe('Meet you at 30');
+    expect(PRODUCTS['base-case'].minAge).toBeUndefined();
+    // Sprout defaults, export round-trip and older-save inference
+    const s = defaultPlanStateFor('sprout');
+    expect(s.profile.student).toBeDefined();
+    expect(isPilotPlan(s)).toBe(false);
+    const exp = exportPlan(s);
+    expect(exp.app).toBe('sprout');
+    const back = importPlan(JSON.parse(JSON.stringify(exp)));
+    expect(back.product).toBe('sprout');
+    expect(back.profile.student?.practicePaycheck).toBe(true);
+    expect(mergePlanState({ product: 'sprout', profile: { nickname: 'x' } }).product).toBe('sprout');
+    // product-specific wording, supplement, personas and playbook
+    expect(supplementFor('sprout')).toBe(STUDENT_SUPPLEMENT);
+    expect(questionsFor('sprout')).not.toBe(QUESTIONS);
+    expect(personasFor('sprout')).toBe(STUDENT_PERSONAS);
+    expect(personasFor('sprout')).toHaveLength(5);
+    expect(seedClientsFor('sprout')).toEqual([]);
+    expect(playbookFor('sprout').filter((t) => t.products?.includes('sprout'))).toHaveLength(STUDENT_PLAYBOOK.length);
+    expect(new Set(ALL_PERSONAS.map((p) => p.email)).size).toBe(ALL_PERSONAS.length);
   });
 
   it('gives every product six phases with the same route keys and Flight Plan its cockpit names', () => {
