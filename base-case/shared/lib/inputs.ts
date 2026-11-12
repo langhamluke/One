@@ -6,6 +6,7 @@
 import type { AssetClass, FilingStatus, Sourced } from './types';
 import type { AirlinePathChoice, EmployerChoice, ExcessHandling, Milestones, PilotStage } from '../data/airlines';
 import { productConfig, type ProductKey } from '../product';
+import type { StudentJobKey } from '../data/studentJobs';
 
 export const PLAN_STATE_VERSION = 1;
 
@@ -22,6 +23,37 @@ export interface PilotProfile {
   creditHours: number;
   /** Base / domicile, free text (context only) */
   domicile: string;
+}
+
+export type SchoolStage = 'high_school' | 'college' | 'recent_grad';
+export type CollegePlan = 'none' | 'two_year' | 'four_year';
+/** Payment card situation (Sprout): none, a debit card, an authorized user on someone else's card, or an own credit card */
+export type CardStatus = 'none' | 'debit' | 'authorized_user' | 'credit';
+
+/** Where a student is today (Sprout). Drives the student stage in front of the career ladder. */
+export interface StudentProfile {
+  stage: SchoolStage;
+  /** Student job key from shared/data/studentJobs.ts, 'custom' for another job, '' for no job */
+  job: StudentJobKey | 'custom' | '';
+  /** Free-text title when job === 'custom' */
+  jobTitle: string;
+  /** Hourly wage actually earned (0 = use the job's default wage floored at the state minimum) */
+  hourlyWage: number;
+  hoursSchoolYear: number;
+  hoursSummer: number;
+  weeksSchoolYear: number;
+  weeksSummer: number;
+  /** Allowance, gifts or other money per month */
+  allowanceMonthly: number;
+  /** No job yet: plan with a realistic practice paycheck (labelled as practice everywhere) */
+  practicePaycheck: boolean;
+  collegePlan: CollegePlan;
+  /** Student loans expected by graduation (today's dollars); becomes a federal loan that starts at graduation */
+  expectedStudentLoans: number;
+  card: CardStatus;
+  /** Monthly spending split used by the Save & spend screen; livingExpenses = 12 × (needs + wants) */
+  needsMonthly: number;
+  wantsMonthly: number;
 }
 
 export interface Profile {
@@ -48,6 +80,8 @@ export interface Profile {
   fieldOfStudy?: string;
   /** Airline-pilot position (Flight Plan) */
   pilot?: PilotProfile;
+  /** School and work situation (Sprout) */
+  student?: StudentProfile;
 }
 
 export interface BalanceSheet {
@@ -106,6 +140,8 @@ export interface Debt {
   originalBalance?: number;
   /** Months of deferment / grace remaining before payments start */
   graceMonths?: number;
+  /** Credit limit for a card (utilization alerts) */
+  creditLimit?: number;
 }
 
 export interface Pension {
@@ -436,6 +472,31 @@ export function defaultPilotProfile(): PilotProfile {
   return { stage: 'regional_fo', employer: 'regional', hours: 1500, yearsAtEmployer: 0, creditHours: 80, domicile: '' };
 }
 
+export function defaultStudentProfile(): StudentProfile {
+  return {
+    stage: 'high_school',
+    job: '',
+    jobTitle: '',
+    hourlyWage: 0,
+    hoursSchoolYear: 10,
+    hoursSummer: 20,
+    weeksSchoolYear: 36,
+    weeksSummer: 12,
+    allowanceMonthly: 0,
+    practicePaycheck: true,
+    collegePlan: 'none',
+    expectedStudentLoans: 0,
+    card: 'none',
+    needsMonthly: 150,
+    wantsMonthly: 150,
+  };
+}
+
+/** True when the plan was created in Sprout (student stage, practice paycheck, $500 starter emergency fund). */
+export function isSproutPlan(state: Pick<PlanState, 'product'>): boolean {
+  return state.product === 'sprout';
+}
+
 export function defaultAirlineConfig(pathId: AirlinePathChoice = 'envoy-aa'): AirlinePathConfig {
   return { pathId, milestones: {}, profitSharingPct: 0, payGrowthAfterContract: 0.03, envoyCaRateRule: true, fedexOption: 'legacy' };
 }
@@ -568,6 +629,23 @@ export function defaultPlanStateFor(product: ProductKey): PlanState {
     s.careerPaths = [defaultAirlinePath('path-1', 'envoy-aa', 'Envoy → American'), defaultAirlinePath('path-2', 'regional-swa', 'Regional → Southwest')];
     s.activePathId = 'path-1';
   }
+  if (product === 'sprout') {
+    // A 16-year-old high-school junior with no job yet: the practice paycheck is on, spending is $300 a month,
+    // the Q5 "amount to invest" is a student-sized $1,000, and the first career path is a nurse after graduation.
+    s.profile.age = 16;
+    s.profile.graduationYear = CURRENT_YEAR + 2;
+    s.profile.degree = 'none';
+    s.profile.student = defaultStudentProfile();
+    s.profile.livingExpenses = 12 * (s.profile.student.needsMonthly + s.profile.student.wantsMonthly);
+    s.profile.housingCost = 0;
+    s.balanceSheet.cash = 200;
+    s.savings.deferralPct = 0;
+    s.savings.iraContribution = 0;
+    s.portfolioAmount = 1000;
+    s.insurance = { disability: false, life: false, health: 'parent', renters: false, lossOfLicense: false };
+    s.careerPaths = [{ ...defaultCareerPath('path-1'), name: 'After school', occupationCode: 'registered_nurse', startYearOffset: 2 }];
+    s.activePathId = 'path-1';
+  }
   return s;
 }
 
@@ -607,7 +685,7 @@ export function mergePlanState(saved: unknown): PlanState {
     merged.activePathId = merged.careerPaths[0].id;
   }
   // Older saves have no product tag: infer it from the career paths (an airline path means Flight Plan).
-  if (s.product !== 'base-case' && s.product !== 'flight-plan') {
+  if (s.product !== 'base-case' && s.product !== 'flight-plan' && s.product !== 'sprout') {
     merged.product = merged.careerPaths.some((p) => p.kind === 'airline') ? 'flight-plan' : 'base-case';
   }
   merged.version = PLAN_STATE_VERSION;
@@ -627,8 +705,8 @@ export function exportPlan(state: PlanState): PlanExport {
 }
 
 export function importPlan(json: unknown): PlanState {
-  if (!isObj(json) || (json.app !== 'base-case' && json.app !== 'flight-plan') || !isObj(json.state)) {
-    throw new Error('Not a Base Case / Flight Plan plan file');
+  if (!isObj(json) || (json.app !== 'base-case' && json.app !== 'flight-plan' && json.app !== 'sprout') || !isObj(json.state)) {
+    throw new Error('Not a Base Case / Flight Plan / Sprout plan file');
   }
   return mergePlanState(json.state);
 }

@@ -5,13 +5,14 @@
  */
 import type { ActionItem } from './types';
 import { isPilotPlan, type PlanState } from './inputs';
-import type { EmergencyFund, PathResult } from './derived';
+import type { EmergencyFund, PathResult, YearRow } from './derived';
 import type { LedgerOutput } from './plan';
 import { deferralLimit, hsaLimit, iraLimit } from './limits';
 import { initialMonthlyPayment, levelPayment, rapMonthlyPayment, tieredStandardTermMonths } from './loans';
-import { emergencyMonths } from './scoring';
+import { emergencyMonths, emergencyTarget } from './scoring';
 import { matchLeftOnTable } from './alerts';
 import { fmtMoney, fmtPct } from './format';
+import { STARTER_FUND, UTILIZATION_CAUTION, cardUtilization } from './sprout';
 
 export interface ActionContext {
   state: PlanState;
@@ -34,11 +35,12 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   const b = state.benefits;
   const sv = state.savings;
   const core: Omit<ActionItem, 'rank' | 'id'>[] = [];
+  const cashStart = fi > 0 ? rows[fi - 1].balances.cash : Math.max(0, state.balanceSheet.cash);
+  if (state.product === 'sprout') return buildStudentActions(ctx, row, pay, year, cashStart);
 
   // 1. Emergency fund
   const months = emergencyMonths(state).months;
   const target = months * ((row.livingExpenses + row.debtService) / 12);
-  const cashStart = fi > 0 ? rows[fi - 1].balances.cash : Math.max(0, state.balanceSheet.cash);
   if (target - cashStart > 1) {
     core.push({
       category: 'emergency',
@@ -198,4 +200,96 @@ export function buildActions(ctx: ActionContext): ActionItem[] {
   }
 
   return items;
+}
+
+/**
+ * Sprout: three to six next steps, easiest first. An automatic transfer (five minutes at the bank), the $500 starter
+ * cushion, a card balance back to zero, the first savings goal, then a Roth IRA once there is earned income. Every
+ * suggested automatic transfer carries the low-balance warning (product rule).
+ */
+function buildStudentActions(ctx: ActionContext, row: YearRow, pay: number, year: number, cashStart: number): ActionItem[] {
+  const { state } = ctx;
+  const sv = state.savings;
+  const items: Omit<ActionItem, 'rank' | 'id'>[] = [];
+  const idx = state.assumptions.indexing ?? state.assumptions.inflation;
+  const monthlyIn = Math.max(0, row.takeHome) / 12;
+  const planned = Math.max(0, sv.taxableContribution) + Math.max(0, sv.iraContribution) + (pay > 0 ? Math.max(0, sv.deferralPct) * pay : 0) + Math.max(0, state.whatIf.extraSavingsRatePct) * pay;
+
+  // 1. Pay yourself first (easiest)
+  if (planned <= 0 && monthlyIn > 0) {
+    const suggested = Math.max(20, Math.round((monthlyIn * 0.1) / 5) * 5);
+    items.push({
+      category: 'goal',
+      title: `Set up an automatic transfer of ${fmtMoney(suggested)} a month to savings`,
+      detail: `About 10% of the ${fmtMoney(monthlyIn)} a month you have coming in, moved the day money lands so you never see it. Low-balance warning: pick an amount your checking account can cover on its lowest day, because an overdraft fee costs more than a month of saving. Set it on the Save & spend screen.`,
+      amount: suggested * 12,
+    });
+  }
+
+  // 2. Starter cushion, then the full target
+  const em = emergencyTarget(state, (row.livingExpenses + row.debtService) / 12);
+  if (cashStart < STARTER_FUND.value - 1) {
+    items.push({
+      category: 'emergency',
+      title: `Build the ${fmtMoney(STARTER_FUND.value)} starter cushion (${fmtMoney(cashStart)} saved)`,
+      detail: 'A flat tire or a broken phone screen should come out of savings, not a credit card. Keep it in a savings account you do not spend from.',
+      amount: STARTER_FUND.value - cashStart,
+    });
+  } else if (em.target - cashStart > 1) {
+    items.push({
+      category: 'emergency',
+      title: `Grow the emergency fund to ${fmtMoney(em.target)}`,
+      detail: `${em.reason}. ${fmtMoney(cashStart)} is set aside today.`,
+      amount: em.target - cashStart,
+    });
+  }
+
+  // 3. Card balance to zero
+  const u = cardUtilization(state);
+  if (u.balance > 0) {
+    const worst = u.cards.filter((c) => c.ratio != null).sort((a, b) => (b.ratio ?? 0) - (a.ratio ?? 0))[0];
+    items.push({
+      category: 'debt',
+      title: `Pay the card balance down to $0 (${fmtMoney(u.balance)} owed)`,
+      detail: `Pay the full statement balance by the due date and the card charges no interest.${worst && (worst.ratio ?? 0) > UTILIZATION_CAUTION ? ` ${worst.name} is at ${fmtPct(worst.ratio ?? 0, 0)} of its limit; under ${fmtPct(UTILIZATION_CAUTION, 0)} is the usual rule of thumb for your credit score.` : ''}`,
+      amount: u.balance,
+    });
+  }
+
+  // 4. Other high-interest debt
+  const hi = state.debts.filter((d) => d.kind !== 'credit_card' && d.balance > 0 && d.rate > HIGH_INTEREST_RATE);
+  if (hi.length) {
+    const bal = hi.reduce((s, d) => s + d.balance, 0);
+    items.push({ category: 'debt', title: `Pay off high-interest debt (${fmtMoney(bal)})`, detail: `${hi.map((d) => `${d.name} ${fmtPct(d.rate, 1)}`).join(', ')}. Anything above ${fmtPct(HIGH_INTEREST_RATE, 0)} costs more than saving is likely to earn.`, amount: bal });
+  }
+
+  // 5. First savings goal
+  const goal = [...state.goals].sort((a, b) => a.priority - b.priority || a.targetYear - b.targetYear).find((g) => g.fundedSoFar < g.targetAmount && g.targetYear >= year);
+  if (goal) {
+    const monthsLeft = Math.max(1, (goal.targetYear - year + 1) * 12);
+    const perMonth = (goal.targetAmount - goal.fundedSoFar) / monthsLeft;
+    items.push({ category: 'goal', title: `Save ${fmtMoney(perMonth)} a month for ${goal.name}`, detail: `${fmtMoney(goal.fundedSoFar)} of ${fmtMoney(goal.targetAmount)} saved; ${fmtMoney(perMonth)} a month gets there by ${goal.targetYear}. Give the goal its own savings account so it does not get spent.`, amount: perMonth * 12 });
+  }
+
+  // 6. Roth IRA with earned income
+  if (pay > 0 && row.limits.rothIra !== 'none') {
+    const lim = iraLimit(row.age, year, idx).total;
+    const room = Math.min(lim, row.limits.rothIraAllowed) - row.iraContribution;
+    if (room > 1) {
+      items.push({
+        category: 'ira',
+        title: `Learn about a Roth IRA: up to ${fmtMoney(room)} of this year's pay could go in`,
+        detail: `Roth IRA contributions are limited to earned income (your job pay, not allowance), up to ${fmtMoney(lim)} in ${year}. ${row.age < 18 ? 'Under 18 it is a custodial account a parent or guardian opens with you. ' : ''}Money you put in can come back out without tax or penalty; growth is for later. This is an account type to understand, not a recommendation to buy anything.`,
+        amount: room,
+      });
+    }
+  }
+
+  // 7. Credit basics for an adult without any card history
+  const st = state.profile.student;
+  if (st && st.card === 'none' && row.age >= 18) {
+    items.push({ category: 'other', title: 'Start a credit history on purpose', detail: 'Common first steps at 18 or older: become an authorized user on a parent\'s card, or open a student or secured card, put one small bill on it and set autopay to the full balance. Under 21 you need your own income or a co-signer (CARD Act).' });
+  }
+
+  return items.slice(0, 6).map((it, i) => ({ id: `action-student-${it.category}-${i}`, rank: i + 1, ...it }));
 }

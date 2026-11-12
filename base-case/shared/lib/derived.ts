@@ -3,7 +3,7 @@
  */
 import type { ActionItem, Alert, Allocation, DataQualityItem, HorizonCategory, RiskCategory } from './types';
 
-export type Stage = 'pre-start' | 'working' | 'gap' | 'grad-school' | 'retired';
+export type Stage = 'pre-start' | 'student' | 'working' | 'gap' | 'grad-school' | 'retired';
 
 export interface YearRow {
   /** 0 = first projection year (CURRENT_YEAR) */
@@ -19,6 +19,8 @@ export interface YearRow {
   spouseWages: number;
   pensionIncome: number;
   socialSecurity: number;
+  /** Untaxed other income (student allowance / gifts); part of grossIncome, not earned */
+  otherIncome: number;
   grossIncome: number;
   // Payroll
   employeePretax401k: number;

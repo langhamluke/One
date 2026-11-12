@@ -13,6 +13,7 @@ import { LIMITS_2026 } from '../data/irs2026';
 import { FAA_RETIREMENT_AGE } from './airline';
 import { compensationCap, deferralLimit } from './limits';
 import { fmtMoney, fmtPct } from './format';
+import { STARTER_FUND, UTILIZATION_CAUTION, UTILIZATION_WARNING, cardUtilization, studentIncome, studentYears } from './sprout';
 
 function fmtMonth(iso: string): string {
   const [y, m] = iso.split('-');
@@ -76,8 +77,36 @@ export function buildAlerts(ctx: AlertContext): Alert[] {
     push('retirement-drawdown', 'caution', 'Savings run out in retirement on the expected-return path', 'At expected returns the portfolio cannot cover the retirement spending target every year to life expectancy.');
   }
 
+  // Sprout: the starter cushion, savings habit, practice paycheck and card utilization
+  const student = state.product === 'sprout';
+  const belowStarter = student && Math.max(0, state.balanceSheet.cash) < STARTER_FUND.value - 1;
+  if (student) {
+    if (belowStarter) {
+      push('starter-fund', 'warning', `Emergency fund is below the ${fmtMoney(STARTER_FUND.value)} starter`, `${fmtMoney(Math.max(0, state.balanceSheet.cash))} in cash today. The starter cushion keeps a surprise bill off a credit card; the full target is ${fmtMoney(emergency.target)} (${emergency.reason}).`, { value: STARTER_FUND.value - Math.max(0, state.balanceSheet.cash) });
+    }
+    const sv = state.savings;
+    const pay = first ? first.wages + first.bonus : 0;
+    const planned = Math.max(0, sv.taxableContribution) + Math.max(0, sv.iraContribution) + Math.max(0, sv.deferralPct) * pay + Math.max(0, state.whatIf.extraSavingsRatePct) * pay;
+    if (first && first.grossIncome > 0 && planned <= 0) {
+      push('no-savings-yet', 'caution', 'Nothing is going to savings yet', 'Start tiny: even $10 a week is $520 a year. Set up an automatic transfer the day you get paid so you never see it, and check that your account can cover it on its lowest day.');
+    }
+    const inc = studentIncome(state);
+    if (inc.practice && studentYears(state) > 0) {
+      push('practice-paycheck', 'advisory', 'Practice paycheck is on', `The plan uses a practice paycheck of ${fmtMoney(inc.wages)} a year (${fmtMoney(inc.hourlyWage)}/hr, ${inc.hoursSchoolYear} hrs a week in school and ${inc.hoursSummer} in summer) so you can build a real budget. It is not real income: turn it off on the You screen when you have a job or allowance to plan with.`);
+    }
+    const u = cardUtilization(state);
+    for (const c of u.cards) {
+      if (c.ratio == null) {
+        if (c.balance > 0) push(`card-limit:${c.id}`, 'advisory', `${c.name}: enter the credit limit`, 'Utilization (balance ÷ limit) is the second-biggest factor in a credit score; add the limit to see where this card stands.');
+        continue;
+      }
+      if (c.ratio > UTILIZATION_WARNING) push(`card-utilization:${c.id}`, 'warning', `${c.name} is ${fmtPct(c.ratio, 0)} of its limit`, `Balances above ${fmtPct(UTILIZATION_WARNING, 0)} of the limit weigh on a credit score even when every payment is on time. Pay it down before the statement closes.`, { value: c.balance });
+      else if (c.ratio > UTILIZATION_CAUTION) push(`card-utilization:${c.id}`, 'caution', `${c.name} is ${fmtPct(c.ratio, 0)} of its limit`, `Keeping balances under ${fmtPct(UTILIZATION_CAUTION, 0)} of the limit (under 10% is better) is the common rule of thumb for your credit score.`, { value: c.balance });
+    }
+  }
+
   // Emergency fund
-  if (emergency.target > 0 && emergency.monthsCovered < emergency.monthsTarget - 0.05) {
+  if (!belowStarter && emergency.target > 0 && emergency.monthsCovered < emergency.monthsTarget - 0.05) {
     const sev: Severity = emergency.monthsCovered < 1 ? 'warning' : 'caution';
     push('emergency-fund', sev, `Emergency fund covers ${emergency.monthsCovered.toFixed(1)} of ${emergency.monthsTarget} months`, `${emergency.reason}. Target ${fmtMoney(emergency.target)}, on hand ${fmtMoney(emergency.current)}.`, { value: emergency.target - emergency.current });
   }
@@ -85,17 +114,17 @@ export function buildAlerts(ctx: AlertContext): Alert[] {
   // Insurance
   const pilot = isPilotPlan(state);
   const airlinePath = rows.some((r) => r.airline);
-  if (!state.benefits.disabilityCoverage && !state.insurance.disability) {
+  if (!student && !state.benefits.disabilityCoverage && !state.insurance.disability) {
     push('disability', 'caution', pilot ? 'No long-term disability coverage' : 'No long-term disability coverage', pilot ? 'Own-occupation LTD protects the largest asset in the plan: future pilot earnings. Union group plans are a start; check the benefit cap against the pay projection.' : 'Your ability to earn is your largest asset at this stage; check whether work offers group LTD, or price an individual policy.');
   }
   if (pilot && !state.insurance.lossOfLicense) {
     push('loss-of-license', 'caution', 'No loss-of-license coverage', 'A medical certificate denial ends pilot income even when a general disability policy would not pay. Loss-of-license coverage bridges that gap.');
   }
   const dependents = state.profile.dependents > 0 || state.profile.filingStatus === 'mfj';
-  if (dependents && first && first.wages > 0 && !state.insurance.life && state.benefits.lifeCoverageMultiple < 5) {
+  if (!student && dependents && first && first.wages > 0 && !state.insurance.life && state.benefits.lifeCoverageMultiple < 5) {
     push('life-insurance', 'caution', 'Life insurance looks thin with dependents', `No individual term policy is recorded and employer coverage is ${state.benefits.lifeCoverageMultiple > 0 ? `${state.benefits.lifeCoverageMultiple}× salary` : 'none'}; a common rule of thumb with dependents is around 10× income (${fmtMoney(10 * (first.wages + first.bonus))}).`);
   }
-  if (!state.insurance.renters) {
+  if (!student && !state.insurance.renters) {
     push('renters', 'advisory', 'No renters insurance', 'Renters insurance is inexpensive and covers belongings and liability; most landlords require it.');
   }
 

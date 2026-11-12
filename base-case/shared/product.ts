@@ -5,10 +5,12 @@
  *
  *  - base-case   : new college graduates in any industry (BLS career ladders).
  *  - flight-plan : airline pilots (airline pay scales, seat/longevity progression, flow, furlough, §415(c) spillover).
+ *  - sprout      : high school and college students (student jobs in front of a BLS ladder, practice paycheck,
+ *                  $500 starter emergency fund, card basics; never holds money, never charges students).
  *
  * Pure TypeScript: shared by the server (config, seed, assistant) and the client (branding, screens).
  */
-export type ProductKey = 'base-case' | 'flight-plan';
+export type ProductKey = 'base-case' | 'flight-plan' | 'sprout';
 
 export interface PhaseDef {
   /** Route segment under /plan (stable across products) */
@@ -31,6 +33,8 @@ export interface ProductConfig {
   careerAgeLimit?: number;
   /** Default retirement age for a new plan */
   defaultRetirementAge: number;
+  /** Youngest age the product accepts (Sprout blocks anyone under 13); engine clamps and the intake refuses lower */
+  minAge?: number;
   /** Demo e-mail domain for seeded personas */
   demoDomain: string;
   /** Tag written into exported JSON files */
@@ -75,6 +79,25 @@ export const PRODUCTS: Record<ProductKey, ProductConfig> = {
     demoDomain: 'demo.flightplan.local',
     exportTag: 'flight-plan',
   },
+  sprout: {
+    key: 'sprout',
+    name: 'Sprout',
+    tagline: 'Build money habits before you need them',
+    audience: 'student',
+    phases: [
+      { key: 'profile', label: 'You', hint: 'School, age, and the money you have coming in.' },
+      { key: 'risk', label: 'Comfort with risk', hint: 'How you\'d feel if your investments dropped for a while.' },
+      { key: 'career', label: 'First jobs', hint: 'Your pay now and the career you\'re aiming for.' },
+      { key: 'plan', label: 'Save & spend', hint: 'Your budget, savings goals and a pay-yourself-first transfer.' },
+      { key: 'future', label: 'Meet you at 30', hint: 'What today\'s habits could grow to.' },
+      { key: 'summary', label: 'Your plan', hint: 'Your three next steps, starting with the easiest.' },
+    ],
+    defaultCareerKind: 'ladder',
+    defaultRetirementAge: 65,
+    minAge: 13,
+    demoDomain: 'demo.sprout.local',
+    exportTag: 'sprout',
+  },
 };
 
 export const PRODUCT_KEYS = Object.keys(PRODUCTS) as ProductKey[];
@@ -88,6 +111,7 @@ export function productFromEnv(value: string | undefined | null): ProductKey {
   const v = (value ?? '').trim().toLowerCase().replace(/[\s_]+/g, '-');
   if (v === 'flightplan') return 'flight-plan';
   if (v === 'basecase') return 'base-case';
+  if (v === 'sprout' || v === 'sprout-app') return 'sprout';
   return isProductKey(v) ? v : 'base-case';
 }
 

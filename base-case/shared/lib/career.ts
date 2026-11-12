@@ -34,6 +34,7 @@ import { sourced, type DataQualityItem, type Sourced } from './types';
 import type { LoanInput } from './loans';
 import type { AirlineId, ExcessHandling, Fleet, Milestones, Seat } from '../data/airlines';
 import { simulateAirlinePath } from './airline';
+import { simulateStudentPath } from './sprout';
 
 export const TRACK_POSITION: Record<Track, number> = { low: 0.25, mid: 0.5, high: 0.75 };
 
@@ -68,6 +69,8 @@ export interface PayRow {
   tuitionExcess: number;
   pensionEmployeeContrib: number;
   pensionIncome: number;
+  /** Untaxed, non-earned income (a student's allowance or gifts, Sprout); not wages, no FICA, cannot fund an IRA */
+  otherIncome?: number;
   /** False only for working years in a pension job not covered by Social Security */
   coveredBySS: boolean;
   yearsOfService: number;
@@ -149,9 +152,10 @@ function clampIdx(i: number, n: number): number {
   return Math.min(Math.max(0, Math.floor(Number.isFinite(i) ? i : 0)), Math.max(0, n - 1));
 }
 
-/** Simulate one career path: occupation ladder (default) or airline seat/longevity progression. */
+/** Simulate one career path: occupation ladder (default), airline seat/longevity progression, or (Sprout) student years then the ladder. */
 export function simulatePath(state: PlanState, path: CareerPath, whatIf: WhatIf): CareerSim {
   if (path.kind === 'airline') return simulateAirlinePath(state, path, whatIf);
+  if (state.product === 'sprout') return simulateStudentPath(state, path, whatIf);
   return simulateLadderPath(state, path, whatIf);
 }
 

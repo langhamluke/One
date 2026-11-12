@@ -28,7 +28,7 @@ import { applySection415c, compensationCap, deferralLimit, employerContributions
 import type { ExcessHandling } from '../data/airlines';
 import { allocationFromEquity } from '../data/models';
 import { expectedReturn, glideEquity, glideParams } from './glidepath';
-import { emergencyMonths } from './scoring';
+import { emergencyTarget } from './scoring';
 import { LIMITS_2026 } from '../data/irs2026';
 
 export interface LedgerUsage {
@@ -106,7 +106,6 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
   const dependents = Math.max(0, Math.floor(p.dependents));
   const householdSize = 1 + (status === 'mfj' ? 1 : 0) + dependents;
   const hsaCoverage: 'self' | 'family' = status === 'mfj' || dependents > 0 ? 'family' : 'self';
-  const months = emergencyMonths(state).months;
   const grossUp = Math.max(0, a.taxGrossUp);
 
   const debts: LoanInput[] = [...state.debts];
@@ -190,7 +189,8 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     const spouseWages = !retired ? Math.max(0, p.spouseIncome) * inflIdx : 0;
     const pensionIncome = r.pensionIncome;
     const socialSecurity = age >= ssClaim ? ctx.ss.annualAtClaim * inflIdx : 0;
-    let grossIncome = wages + bonus + equityComp + spouseWages + pensionIncome + socialSecurity;
+    const otherIncome = Math.max(0, r.otherIncome ?? 0);
+    let grossIncome = wages + bonus + equityComp + spouseWages + pensionIncome + socialSecurity + otherIncome;
     const pay = wages + bonus;
     const earned = wages + bonus;
     lifetimeEarnings += wages + bonus + equityComp;
@@ -226,7 +226,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
     }
     const pensionContrib = r.pensionEmployeeContrib;
     const pretaxPayroll = employeePretax + hsaEmployee + pensionContrib;
-    const agi = Math.max(0, grossIncome - pretaxPayroll);
+    const agi = Math.max(0, grossIncome - otherIncome - pretaxPayroll);
 
     // ---- Debt (needs AGI); employer repayment only while employed
     const employerRepay = working && pay > 0 ? Math.max(0, b.employerLoanRepayment) : 0;
@@ -330,7 +330,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       takeHome = grossIncome;
       pretaxDeductions = 0;
     } else {
-      const agiLike = Math.max(0, grossIncome - pretaxPayroll - tradDeduction + s127Excess);
+      const agiLike = Math.max(0, grossIncome - otherIncome - pretaxPayroll - tradDeduction + s127Excess);
       taxableIncome = Math.max(0, agiLike - sd);
       federalTax = federalIncomeTax(taxableIncome, status, year, idx);
       stTax = stateTax(agiLike, p.stateCode, status, { customRate: p.customStateRate });
@@ -410,7 +410,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       usage.negativeCashFlowYears.push(i);
     } else {
       let rem = surplus;
-      const target = months * ((living + debtService) / 12);
+      const target = emergencyTarget(state, (living + debtService) / 12).target;
       emergencyTopUp = Math.min(rem, Math.max(0, target - cash));
       rem -= emergencyTopUp;
       const iraWant = rothPlanned + tradPlanned;
@@ -509,6 +509,7 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
       spouseWages,
       pensionIncome,
       socialSecurity,
+      otherIncome,
       grossIncome,
       employeePretax401k: employeePretax,
       employeeRoth401k: employeeRoth,
@@ -577,13 +578,15 @@ export function runLedger(state: PlanState, sim: CareerSim, ctx: { modelEquity: 
 
 /** Emergency-fund readout based on today's essentials (year-0 living expenses + debt service) and current cash. */
 export function computeEmergencyFund(state: PlanState, rows: YearRow[]): EmergencyFund {
-  const em = emergencyMonths(state);
   const row = rows[0];
   const monthlyEssentials = row ? (row.livingExpenses + row.debtService) / 12 : Math.max(0, state.profile.livingExpenses) / 12;
-  const target = em.months * monthlyEssentials;
+  const em = emergencyTarget(state, monthlyEssentials);
+  const target = em.target;
   const current = Math.max(0, state.balanceSheet.cash);
   const monthsCovered = monthlyEssentials > 0 ? current / monthlyEssentials : em.months;
-  return { monthsTarget: em.months, monthlyEssentials, target, current, monthsCovered, reason: em.reason };
+  // Sprout's target is dollar-based (starter + months + bill cushion): express it in months of essentials for the readouts.
+  const monthsTarget = em.rule === 'student' ? (monthlyEssentials > 0 ? Math.round((target / monthlyEssentials) * 10) / 10 : em.months) : em.months;
+  return { monthsTarget, monthlyEssentials, target, current, monthsCovered, reason: em.reason };
 }
 
 /** Debt readout for the active path. */

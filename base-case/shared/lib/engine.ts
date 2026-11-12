@@ -7,7 +7,8 @@
  * PlanState: inputs are clamped first (sanitizeState) and any unexpected failure degrades to an empty Derived with an
  * 'engine-error' alert rather than crashing the UI.
  */
-import { CURRENT_YEAR, defaultAirlineConfig, defaultCareerPath, defaultPilotProfile, type CareerPath, type Debt, type Goal, type PlanState } from './inputs';
+import { CURRENT_YEAR, defaultAirlineConfig, defaultCareerPath, defaultPilotProfile, defaultStudentProfile, type CareerPath, type Debt, type Goal, type PlanState } from './inputs';
+import { productConfig } from '../product';
 import type { Derived, MonteCarloResult, PathResult } from './derived';
 import { riskProfile } from './scoring';
 import { allocationFromEquity, modelEquity as modelEquityFor } from '../data/models';
@@ -41,7 +42,8 @@ function cl(x: unknown, lo: number, hi: number, dflt: number): number {
 /** Clamp absurd inputs so the projection stays finite. Returns a new object; the input is not mutated. */
 export function sanitizeState(s: PlanState): PlanState {
   const p = s.profile;
-  const age = cl(p.age, 16, 100, 22);
+  const minAge = productConfig(s.product).minAge ?? 16;
+  const age = cl(p.age, minAge, 100, 22);
   const retirementAge = Math.max(age, cl(p.retirementAge, 30, 100, 67));
   const a = s.assumptions;
   const lifeExpectancy = Math.max(retirementAge + 1, cl(a.lifeExpectancy, age + 1, 110, 95));
@@ -84,9 +86,27 @@ export function sanitizeState(s: PlanState): PlanState {
     : paths.some((x) => x.kind === 'airline')
       ? defaultPilotProfile()
       : undefined;
+  const student = p.student
+    ? {
+        ...defaultStudentProfile(),
+        ...p.student,
+        hourlyWage: cl(p.student.hourlyWage, 0, 1000, 0),
+        hoursSchoolYear: cl(p.student.hoursSchoolYear, 0, 80, 10),
+        hoursSummer: cl(p.student.hoursSummer, 0, 80, 20),
+        weeksSchoolYear: cl(p.student.weeksSchoolYear, 0, 52, 36),
+        weeksSummer: cl(p.student.weeksSummer, 0, 52, 12),
+        allowanceMonthly: cl(p.student.allowanceMonthly, 0, 1e6, 0),
+        expectedStudentLoans: cl(p.student.expectedStudentLoans, 0, 1e7, 0),
+        needsMonthly: cl(p.student.needsMonthly, 0, 1e6, 0),
+        wantsMonthly: cl(p.student.wantsMonthly, 0, 1e6, 0),
+      }
+    : s.product === 'sprout'
+      ? defaultStudentProfile()
+      : undefined;
   const debts: Debt[] = (s.debts ?? []).map((d) => ({
     ...d,
     balance: cl(d.balance, 0, 1e9, 0),
+    creditLimit: d.creditLimit === undefined ? undefined : cl(d.creditLimit, 0, 1e8, 0),
     rate: cl(d.rate, 0, 1, 0),
     extraPayment: d.extraPayment === undefined ? undefined : cl(d.extraPayment, 0, 1e7, 0),
     payment: d.payment === undefined ? undefined : cl(d.payment, 0, 1e7, 0),
@@ -107,6 +127,7 @@ export function sanitizeState(s: PlanState): PlanState {
     profile: {
       ...p,
       pilot,
+      student,
       age,
       retirementAge,
       dependents: cl(p.dependents, 0, 20, 0),

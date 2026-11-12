@@ -9,6 +9,7 @@ import type { HorizonCategory, RiskCategory } from './types';
 import { isPilotPlan, type PlanState } from './inputs';
 import type { RiskProfile } from './derived';
 import { isEarlyCareerStage } from '../data/airlines';
+import { studentEmergencyRule, studentEmergencyTarget } from './sprout';
 
 export const RISK_IDS = QUESTIONS.filter((q) => q.section === 'risk').map((q) => q.id);
 export const HORIZON_IDS = QUESTIONS.filter((q) => q.section === 'horizon').map((q) => q.id);
@@ -84,7 +85,7 @@ export interface EmergencyMonthsResult {
   months: number;
   reason: string;
   /** Which rule fired */
-  rule: 'override' | 'default' | 'single-or-exposed' | 'single-early-exposed';
+  rule: 'override' | 'default' | 'single-or-exposed' | 'single-early-exposed' | 'student';
 }
 
 /**
@@ -103,6 +104,10 @@ export function emergencyMonths(state: PlanState): EmergencyMonthsResult {
   const override = state.savings?.emergencyFundMonthsOverride;
   if (override !== undefined && override !== null && Number.isFinite(override)) {
     return { months: Math.max(0, override), reason: 'Advisor override', rule: 'override' };
+  }
+  if (state.product === 'sprout') {
+    const r = studentEmergencyRule(state);
+    return { months: r.months, reason: r.reason, rule: 'student' };
   }
   const s = state.supplement ?? {};
   const pilot = isPilotPlan(state);
@@ -129,4 +134,24 @@ export function emergencyMonths(state: PlanState): EmergencyMonthsResult {
     return { months: 9, reason: `${why.charAt(0).toUpperCase()}${why.slice(1)}: 9 months`, rule: 'single-or-exposed' };
   }
   return { months: base, reason: `Default target: ${base} months of essentials`, rule: 'default' };
+}
+
+export interface EmergencyTargetResult extends EmergencyMonthsResult {
+  /** Dollar target for the given monthly essentials */
+  target: number;
+}
+
+/**
+ * Dollar emergency-fund target: months × monthly essentials for Base Case and Flight Plan. Sprout uses
+ * max($500 starter, months × essentials) plus $500 when a bill is in the student's name (studentEmergencyTarget);
+ * an advisor override of months wins on every product.
+ */
+export function emergencyTarget(state: PlanState, monthlyEssentials: number): EmergencyTargetResult {
+  const em = emergencyMonths(state);
+  const essentials = Math.max(0, monthlyEssentials);
+  if (em.rule === 'student') {
+    const t = studentEmergencyTarget(state, essentials);
+    return { ...em, months: t.months, reason: t.reason, target: t.target };
+  }
+  return { ...em, target: em.months * essentials };
 }
