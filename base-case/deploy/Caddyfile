@@ -9,6 +9,6 @@
 	}
 }
 
-# Extra products on the same droplet (Flight Plan): one site file each, written by deploy/setup-flight-plan.sh.
+# Extra products on the same droplet (Flight Plan, Sprout): one site file each, written by deploy/setup-flight-plan.sh / setup-sprout.sh.
 # A glob that matches nothing is fine.
 import /etc/caddy/sites/*.caddy

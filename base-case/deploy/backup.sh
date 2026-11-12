@@ -18,3 +18,10 @@ if [[ -f deploy/.env.flight-plan ]]; then
   find "$OUT" -name 'flightplan-*.dump' -mtime +14 -delete
   echo "$(date -u) backup ok: $OUT/flightplan-$STAMP.dump"
 fi
+if [[ -f deploy/.env.sprout ]]; then
+  docker compose -f deploy/docker-compose.sprout.yml --env-file deploy/.env.sprout exec -T sprout-db \
+    pg_dump -U sprout -d sprout --format=custom > "$OUT/sprout-$STAMP.dump"
+  chmod 600 "$OUT/sprout-$STAMP.dump"
+  find "$OUT" -name 'sprout-*.dump' -mtime +14 -delete
+  echo "$(date -u) backup ok: $OUT/sprout-$STAMP.dump"
+fi
