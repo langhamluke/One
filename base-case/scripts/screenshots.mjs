@@ -14,7 +14,7 @@ const BASE_URL = process.env.BASE_URL || 'http://localhost:8787';
 const args = process.argv.slice(2);
 const onlyRole = args.includes('--role') ? args[args.indexOf('--role') + 1] : null;
 const quick = args.includes('--quick');
-const WIDTHS = quick ? [1280] : [1440, 1024, 768];
+const WIDTHS = process.env.WIDTHS ? process.env.WIDTHS.split(',').map(Number) : quick ? [1280] : [1440, 1024, 768];
 
 // PRODUCT=flight-plan reviews a Flight Plan instance (pilot demo accounts live on demo.flightplan.local);
 // PRODUCT=sprout reviews a Sprout instance (student demo accounts on demo.sprout.local).

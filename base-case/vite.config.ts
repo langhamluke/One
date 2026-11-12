@@ -28,9 +28,10 @@ export default defineConfig({
     },
   },
   server: {
-    port: 5173,
+    // WEB_PORT / API_PORT let a second product run next to the default dev pair (5173 -> 8787).
+    port: Number(process.env.WEB_PORT ?? 5173),
     proxy: {
-      '/api': { target: 'http://localhost:8787', changeOrigin: false },
+      '/api': { target: `http://localhost:${process.env.API_PORT ?? 8787}`, changeOrigin: false },
     },
   },
   build: {

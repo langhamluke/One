@@ -44,7 +44,7 @@ export function AccountPage() {
     <Page>
       <PageHeader title="Account" subtitle={<span>{me?.user.email} · <span className="capitalize">{me?.user.role}</span></span>} />
       <div className="grid gap-4 lg:grid-cols-2">
-        <Panel title="Change password">
+        <Panel title="Change password" className="min-w-0">
           <form onSubmit={changePw} className="flex flex-col gap-3" noValidate>
             <Field label="Current password" htmlFor="pw-cur"><TextInput id="pw-cur" type="password" autoComplete="current-password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} required /></Field>
             <Field label="New password" htmlFor="pw-new" hint="At least 12 characters."><TextInput id="pw-new" type="password" autoComplete="new-password" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} required /></Field>
@@ -53,7 +53,7 @@ export function AccountPage() {
             <div><Button type="submit" variant="primary" loading={busy}>Update password</Button></div>
           </form>
         </Panel>
-        <Panel title="Two-factor authentication" actions={me?.user.mfaEnabled ? <Chip tone="ok">Enabled</Chip> : <Chip tone="warn">Off</Chip>}>
+        <Panel title="Two-factor authentication" className="min-w-0" actions={me?.user.mfaEnabled ? <Chip tone="ok">Enabled</Chip> : <Chip tone="warn">Off</Chip>}>
           {me?.user.mfaEnabled ? (
             <div className="flex flex-col gap-2">
               <p className="text-sm text-ink-2">Your account asks for a 6-digit code from an authenticator app at every sign-in.</p>
@@ -74,7 +74,7 @@ export function AccountPage() {
             </div>
           )}
         </Panel>
-        <Panel title="Sessions" className="lg:col-span-2">
+        <Panel title="Sessions" className="lg:col-span-2 min-w-0">
           {!sessions ? <Loading /> : sessions.length === 0 ? <p className="text-sm text-ink-3">No session data.</p> : (
             <Table caption="Active sessions">
               <thead><tr><th className={th}>Device</th><th className={th}>Started</th><th className={th}>Last seen</th><th className={th}></th></tr></thead>
