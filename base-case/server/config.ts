@@ -17,7 +17,7 @@ export interface Config {
   masterKeyHex: string | null;
   anthropicApiKey: string | null;
   chatModel: string;
-  /** Which product this instance serves: 'base-case' (graduates) or 'flight-plan' (airline pilots) */
+  /** Which product this instance serves: 'base-case' (graduates), 'flight-plan' (airline pilots) or 'sprout' (students) */
   product: ProductKey;
   firmName: string;
   bootstrapAdminEmail: string | null;

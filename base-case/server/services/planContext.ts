@@ -8,16 +8,17 @@ import type { Derived } from '../../shared/lib/derived';
 import { computeDerived } from '../../shared/lib/engine';
 import { IRS_AS_OF, TAX_YEAR, WAGES_AS_OF, LOANS_AS_OF, SS_AS_OF } from '../../shared/data';
 import { AIRLINES_AS_OF } from '../../shared/data/airlines';
+import { MIN_WAGE_AS_OF, STUDENT_WAGES_AS_OF } from '../../shared/data/studentJobs';
 import type { ProductKey } from '../../shared/product';
 
 export interface PlanContext {
-  /** Product the plan belongs to ('base-case' graduates, 'flight-plan' airline pilots) */
+  /** Product the plan belongs to ('base-case' graduates, 'flight-plan' airline pilots, 'sprout' students) */
   product: ProductKey;
   /** Plan inputs without free-text notes */
   inputs: Record<string, unknown>;
   derived: DerivedSummary | null;
   derivedError: string | null;
-  dataAsOf: { irs: string; taxYear: number; wages: string; loans: string; ssa: string; airlines?: string };
+  dataAsOf: { irs: string; taxYear: number; wages: string; loans: string; ssa: string; airlines?: string; studentWages?: string; minimumWages?: string };
 }
 
 export interface DerivedSummary {
@@ -128,6 +129,20 @@ export function buildPlanContext(state: PlanState): PlanContext {
   } catch (err) {
     derivedError = err instanceof Error ? err.message.slice(0, 200) : 'engine unavailable';
   }
-  const product: ProductKey = isPilotPlan(state) ? 'flight-plan' : 'base-case';
-  return { product, inputs, derived, derivedError, dataAsOf: { irs: IRS_AS_OF, taxYear: TAX_YEAR, wages: WAGES_AS_OF, loans: LOANS_AS_OF, ssa: SS_AS_OF, ...(product === 'flight-plan' ? { airlines: AIRLINES_AS_OF } : {}) } };
+  const product: ProductKey = isPilotPlan(state) ? 'flight-plan' : state.product === 'sprout' ? 'sprout' : 'base-case';
+  return {
+    product,
+    inputs,
+    derived,
+    derivedError,
+    dataAsOf: {
+      irs: IRS_AS_OF,
+      taxYear: TAX_YEAR,
+      wages: WAGES_AS_OF,
+      loans: LOANS_AS_OF,
+      ssa: SS_AS_OF,
+      ...(product === 'flight-plan' ? { airlines: AIRLINES_AS_OF } : {}),
+      ...(product === 'sprout' ? { studentWages: STUDENT_WAGES_AS_OF, minimumWages: MIN_WAGE_AS_OF } : {}),
+    },
+  };
 }

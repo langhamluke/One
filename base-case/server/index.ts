@@ -29,7 +29,7 @@ if (config.env === 'production') {
     const rel = path.relative(process.cwd(), distDir) || '.';
     // The build may have been made for either product; stamp this instance's product, icon and title on the page so
     // the first paint is right. Registered before the static handler, which would otherwise serve index.html as is.
-    const icon = config.product === 'flight-plan' ? 'favicon-flight-plan' : 'favicon';
+    const icon = config.product === 'base-case' ? 'favicon' : `favicon-${config.product}`;
     const page = fs
       .readFileSync(indexFile, 'utf8')
       .replace(/data-product="[a-z-]+"/, `data-product="${config.product}"`)
